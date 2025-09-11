@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import "./global.css";
-import { useState } from "react";
+import { useState, useContext } from "react";
 import Svg, { Path } from "react-native-svg";
 import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
@@ -23,7 +23,7 @@ function useTabPress(initialTab = 0) {
 }
 
 export default function App() {
-  const { isSelected, onPress } = useTabPress(0);
+  const { isSelected, onPress } = useTabPress(1);
 
   // Datos y constantes para la tabla
 
@@ -51,7 +51,7 @@ export default function App() {
             android_ripple={{
               radius: 100,
               color: "rgba(31, 31, 31, 0.6)",
-              foreground: true
+              foreground: true,
             }}
             onPress={onPress(1)}
             className={`self-start active:rounded-none active:border-b-2 active:border-[#1f1f1f]/80 ${isSelected(1) ? "border-b-2 border-[#1f1f1f]" : "border-0"} p-2`}
@@ -78,21 +78,24 @@ export default function App() {
             </Text>
           </Pressable>
         </View>
+
         {isSelected(0) && (
-          <View className={`flex flex-col h-full py-2`}>
+          <View
+            className={`flex flex-col h-full py-2 ${isSelected(1) ? "translate-y-[-100%]" : ""}`}
+          >
             <TablaVentas />
           </View>
         )}
 
         {isSelected(1) && (
           <View>
-            <Text></Text>
+            <Text>Aqui se colocaran las tablas para ingresos y alumnos</Text>
           </View>
         )}
 
         {isSelected(2) && (
           <View>
-            <Text></Text>
+            <Text>Aqui se colocaran tanto el catálogo como el tarifario</Text>
           </View>
         )}
       </View>
@@ -114,14 +117,6 @@ const TablaVentas = () => {
     [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
   ];
 
-  const elementButton = (rowIndex) => (
-    <TouchableOpacity
-      className="bg-blue-500 rounded-lg px-3 py-1"
-      onPress={() => alert(`Ticket de la fila ${rowIndex + 1}`)}
-    >
-      <Text className="text-white font-semibold text-center">Ver</Text>
-    </TouchableOpacity>
-  );
   return (
     <>
       <View className={`w-full flex flex-row items-center justify-between`}>
@@ -180,7 +175,7 @@ const TablaVentas = () => {
             }}
             horizontal
           >
-            <Table borderStyle={{ borderWidth: 1, borderColor: "#ccc" }}>
+            <Table borderStyle={{ borderColor: "#1f1f1f", borderWidth: 2 }}>
               {/* Encabezados estáticos */}
               <Row
                 data={[
@@ -191,62 +186,72 @@ const TablaVentas = () => {
                   "Sesiones",
                   "Grupo",
                   "Ingreso",
-                  "Tickets",
                 ]}
-                widthArr={[150, 200, 200, 120, 120, 150, 150, 120]}
+                widthArr={[150, 200, 200, 120, 120, 150, 150]}
                 className="flex items-center justify-center"
                 textStyle={{
                   textAlign: "center",
                   fontWeight: "bold",
-                  height: "3em",
-                  backgroundColor: "#808B97",
                 }}
               />
 
               {/* Filas dinámicas */}
               {tableData.map((rowData, index) => (
-                <TableWrapper
+                /**
+                 * Se agregó un presable para que*/
+                <TouchableOpacity
+                  className={`border-y-[0.1em]`}
+                  android_ripple={{ color: "#1f1f1f" }}
                   key={index}
-                  style={{ direction: "flex", flexDirection: "row" }}
+                  onPress={() => {
+                    if (rowData[1] === "Juan Pérez") {
+                      // Acción para Juan Pérez
+                      alert("¡Fila de Juan Pérez!");
+                    } else if (rowData[1] === "María López") {
+                      // Acción para María López
+                      alert("¡Fila de María López!");
+                    }
+                  }}
+                  style={{ flexDirection: "row" }}
                 >
-                  <Cell
-                    data={rowData[0]}
-                    width={150}
-                    textStyle={{ textAlign: "center", paddingVertical: 15 }}
-                    // Este padding vertical es para aumentar la altura de todas las filas
-                  />
-                  <Cell
-                    data={rowData[1]}
-                    width={200}
-                    textStyle={{ textAlign: "center" }}
-                  />
-                  <Cell
-                    data={rowData[2]}
-                    width={200}
-                    textStyle={{ textAlign: "center" }}
-                  />
-                  <Cell
-                    data={rowData[3]}
-                    width={120}
-                    textStyle={{ textAlign: "center" }}
-                  />
-                  <Cell
-                    data={rowData[4]}
-                    width={120}
-                    textStyle={{ textAlign: "center" }}
-                  />
-                  <Cell
-                    data={rowData[5]}
-                    width={150}
-                    textStyle={{ textAlign: "center" }}
-                  />
-                  <Cell
-                    data={rowData[6]}
-                    width={150}
-                    textStyle={{ textAlign: "center" }}
-                  />
-                  <Cell data={elementButton(index)} width={120} />
-                </TableWrapper>
+                  <TableWrapper style={{ flexDirection: "row", flex: 1 }}>
+                    <Cell
+                      data={rowData[0]}
+                      width={150}
+                      textStyle={{ textAlign: "center", paddingVertical: 15 }}
+                    />
+                    <Cell
+                      data={rowData[1]}
+                      width={200}
+                      textStyle={{ textAlign: "center" }}
+                    />
+                    <Cell
+                      data={rowData[2]}
+                      width={200}
+                      textStyle={{ textAlign: "center" }}
+                    />
+                    <Cell
+                      data={rowData[3]}
+                      width={120}
+                      textStyle={{ textAlign: "center" }}
+                    />
+                    <Cell
+                      data={rowData[4]}
+                      width={120}
+                      textStyle={{ textAlign: "center" }}
+                    />
+                    <Cell
+                      data={rowData[5]}
+                      width={150}
+                      textStyle={{ textAlign: "center" }}
+                    />
+                    <Cell
+                      data={rowData[6]}
+                      width={150}
+                      textStyle={{ textAlign: "center" }}
+                    />
+                  </TableWrapper>
+                </TouchableOpacity>
               ))}
             </Table>
           </ScrollView>
