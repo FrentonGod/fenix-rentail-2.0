@@ -1,0 +1,276 @@
+import {
+  StyleSheet,
+  Text,
+  View,
+  Pressable,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
+import "./global.css";
+import { useState } from "react";
+import Svg, { Path } from "react-native-svg";
+import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
+import Ripple from "react-native-material-ripple";
+
+import TopBar from "./components/topbar.jsx";
+
+function useTabPress(initialTab = 0) {
+  const [selected, setSelected] = useState(initialTab);
+  const isSelected = (tabIndex) => selected === tabIndex;
+  const onPress = (tabIndex) => () => setSelected(tabIndex);
+
+  return { selected, isSelected, onPress };
+}
+
+export default function App() {
+  const { isSelected, onPress } = useTabPress(0);
+
+  // Datos y constantes para la tabla
+
+  return (
+    <View className="bg-slate-50 flex flex-col overflow-hidden">
+      <TopBar />
+      <View className="w-dvw h-dvh p-2 -z-[1]">
+        <View className="flex flex-row gap-x-1 border-b border-[#dadce0] w-screen">
+          <Pressable
+            android_ripple={{
+              radius: 100,
+              color: "rgba(31, 31, 31, 0.6)",
+              foreground: true,
+            }}
+            onPress={onPress(0)}
+            className={`self-start active:rounded-none active:border-b-2 active:border-[#1f1f1f]/80 ${isSelected(0) ? "border-b-2 border-[#1f1f1f]" : "border-0"} p-2`}
+          >
+            <Text
+              className={`select-none font-semibold uppercase ${isSelected(0) ? "text-[#1f1f1f]" : "text-[#70757a]"}`}
+            >
+              Venta rápida
+            </Text>
+          </Pressable>
+          <Pressable
+            android_ripple={{
+              radius: 100,
+              color: "rgba(31, 31, 31, 0.6)",
+              foreground: true
+            }}
+            onPress={onPress(1)}
+            className={`self-start active:rounded-none active:border-b-2 active:border-[#1f1f1f]/80 ${isSelected(1) ? "border-b-2 border-[#1f1f1f]" : "border-0"} p-2`}
+          >
+            <Text
+              className={`select-none font-semibold uppercase ${isSelected(1) ? "text-[#1f1f1f]" : "text-[#70757a]"}`}
+            >
+              Reporte
+            </Text>
+          </Pressable>
+          <Pressable
+            android_ripple={{
+              radius: 100,
+              color: "rgba(31, 31, 31, 0.6)",
+              foreground: true,
+            }}
+            onPress={onPress(2)}
+            className={`self-start active:rounded-none active:border-b-2 active:border-[#1f1f1f]/80 ${isSelected(2) ? "border-b-2 border-[#1f1f1f]" : "border-0"} p-2`}
+          >
+            <Text
+              className={`select-none font-semibold uppercase ${isSelected(2) ? "text-[#1f1f1f]" : "text-[#70757a]"}`}
+            >
+              Catálogos
+            </Text>
+          </Pressable>
+        </View>
+        {isSelected(0) && (
+          <View className={`flex flex-col h-full py-2`}>
+            <TablaVentas />
+          </View>
+        )}
+
+        {isSelected(1) && (
+          <View>
+            <Text></Text>
+          </View>
+        )}
+
+        {isSelected(2) && (
+          <View>
+            <Text></Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
+const TablaVentas = () => {
+  const tableData = [
+    [
+      1,
+      "Juan Pérez",
+      "Curso de React Native",
+      "$500",
+      "10",
+      "Grupo A",
+      "$1500",
+    ],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+  ];
+
+  const elementButton = (rowIndex) => (
+    <TouchableOpacity
+      className="bg-blue-500 rounded-lg px-3 py-1"
+      onPress={() => alert(`Ticket de la fila ${rowIndex + 1}`)}
+    >
+      <Text className="text-white font-semibold text-center">Ver</Text>
+    </TouchableOpacity>
+  );
+  return (
+    <>
+      <View className={`w-full flex flex-row items-center justify-between`}>
+        <Ripple
+          id="boton-venta"
+          rippleContainerBorderRadius={5}
+          className={`rounded bg-[#66b5ff] max-w-[20em] justify-center items-center self-start p-1 flex flex-row gap-x-1`}
+        >
+          <Text
+            className={`text-[#010101] capitalize text-nowrap font-semibold text-sm text-center`}
+          >
+            Generar venta
+          </Text>
+          <Svg
+            xmlns="http://www.w3.org/2000/svg"
+            height="24px"
+            viewBox="0 -960 960 960"
+            width="24px"
+            fill="#010101"
+          >
+            <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+          </Svg>
+        </Ripple>
+        <Ripple
+          rippleContainerBorderRadius={5}
+          id="reimprimir-ticket"
+          className={`rounded bg-yellow-400 max-w-[20em] justify-center items-center self-start p-1 flex flex-row gap-x-2`}
+        >
+          <Text
+            className={`text-[#010101] capitalize text-nowrap font-semibold text-sm text-center`}
+          >
+            Reimprimir ticket
+          </Text>
+          <Svg
+            xmlns="http://www.w3.org/2000/svg"
+            height="24px"
+            viewBox="0 -960 960 960"
+            width="24px"
+            fill="#010101"
+          >
+            <Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z" />
+          </Svg>
+        </Ripple>
+      </View>
+      <View className={`relative py-20`}>
+        <BotonBusqueda />
+        <View className={`w-full flex justify-center items-center mt-4`}>
+          <ScrollView
+            className={`rounded`}
+            contentContainerStyle={{
+              backgroundColor: "#f8fafc",
+              width: "fit-content",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            horizontal
+          >
+            <Table borderStyle={{ borderWidth: 1, borderColor: "#ccc" }}>
+              {/* Encabezados estáticos */}
+              <Row
+                data={[
+                  "Número de transacción",
+                  "Nombre del cliente",
+                  "Curso/Asesoría",
+                  "Pendiente",
+                  "Sesiones",
+                  "Grupo",
+                  "Ingreso",
+                  "Tickets",
+                ]}
+                widthArr={[150, 200, 200, 120, 120, 150, 150, 120]}
+                className="flex items-center justify-center"
+                textStyle={{
+                  textAlign: "center",
+                  fontWeight: "bold",
+                  height: "3em",
+                  backgroundColor: "#808B97",
+                }}
+              />
+
+              {/* Filas dinámicas */}
+              {tableData.map((rowData, index) => (
+                <TableWrapper
+                  key={index}
+                  style={{ direction: "flex", flexDirection: "row" }}
+                >
+                  <Cell
+                    data={rowData[0]}
+                    width={150}
+                    textStyle={{ textAlign: "center", paddingVertical: 15 }}
+                    // Este padding vertical es para aumentar la altura de todas las filas
+                  />
+                  <Cell
+                    data={rowData[1]}
+                    width={200}
+                    textStyle={{ textAlign: "center" }}
+                  />
+                  <Cell
+                    data={rowData[2]}
+                    width={200}
+                    textStyle={{ textAlign: "center" }}
+                  />
+                  <Cell
+                    data={rowData[3]}
+                    width={120}
+                    textStyle={{ textAlign: "center" }}
+                  />
+                  <Cell
+                    data={rowData[4]}
+                    width={120}
+                    textStyle={{ textAlign: "center" }}
+                  />
+                  <Cell
+                    data={rowData[5]}
+                    width={150}
+                    textStyle={{ textAlign: "center" }}
+                  />
+                  <Cell
+                    data={rowData[6]}
+                    width={150}
+                    textStyle={{ textAlign: "center" }}
+                  />
+                  <Cell data={elementButton(index)} width={120} />
+                </TableWrapper>
+              ))}
+            </Table>
+          </ScrollView>
+        </View>
+      </View>
+    </>
+  );
+};
+
+const BotonBusqueda = () => {
+  return (
+    <Ripple
+      rippleContainerBorderRadius={100}
+      className="absolute bottom-0 right-2 z-[2] self-start rounded-full p-3 bg-sky-400/80"
+    >
+      <Svg
+        xmlns="http://www.w3.org/2000/svg"
+        height="24px"
+        viewBox="0 -960 960 960"
+        width="24px"
+        fill="#010101"
+      >
+        <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
+      </Svg>
+    </Ripple>
+  );
+};
