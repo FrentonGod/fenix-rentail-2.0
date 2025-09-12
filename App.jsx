@@ -11,6 +11,8 @@ import { useState, useContext } from "react";
 import Svg, { Path } from "react-native-svg";
 import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
+import { BarChart } from "react-native-gifted-charts";
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import TopBar from "./components/topbar.jsx";
 
@@ -28,10 +30,10 @@ export default function App() {
   // Datos y constantes para la tabla
 
   return (
-    <View className="bg-slate-50 flex flex-col overflow-hidden">
+    <SafeAreaView style={{ backgroundColor: "#6F09EA", background: "linear-gradient(90deg,rgba(111, 9, 234, 1) 0%, rgba(112, 9, 232, 1) 100%)" }} className="flex-1 flex-col w-full">
       <TopBar />
-      <View className="w-dvw h-dvh p-2 -z-[1]">
-        <View className="flex flex-row gap-x-1 border-b border-[#dadce0] w-screen">
+      <View className="flex-1 p-2 bg-slate-50">
+        <View className="flex flex-row gap-x-1 border-b border-[#dadce0]">
           <Pressable
             android_ripple={{
               radius: 100,
@@ -80,11 +82,21 @@ export default function App() {
         </View>
 
         {isSelected(0) && (
-          <View
-            className={`flex flex-col h-full py-2 ${isSelected(1) ? "translate-y-[-100%]" : ""}`}
-          >
+          
+          <ScrollView className={`flex h-full p-2`}>
             <TablaVentas />
-          </View>
+            <BarChart
+              data={[
+                { value: 250, label: "Ene" },
+                { value: 500, label: "Feb" },
+                { value: 745, label: "Mar" },
+                { value: 320, label: "Abi" },
+                { value: 600, label: "May" },
+                { value: 256, label: "Jun" },
+                { value: 300, label: "Jul" },
+              ]}
+            />
+          </ScrollView>
         )}
 
         {isSelected(1) && (
@@ -99,7 +111,7 @@ export default function App() {
           </View>
         )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 

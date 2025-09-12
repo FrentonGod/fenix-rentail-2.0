@@ -28,7 +28,7 @@ const TopBar = () => {
   return (
     <View className={`relative z-[5]`}>
       <View style={{ backgroundColor: "#6F09EA", background: "linear-gradient(90deg,rgba(111, 9, 234, 1) 0%, rgba(112, 9, 232, 1) 100%)" }} className="h-fit flex items-center py-5">
-        <View className="w-[100%] flex flex-row items-center justify-between px-10 relative mt-6">
+        <View className="w-[100%] flex flex-row items-center justify-between px-10 relative">
           <EvilIcons name="" />
 
           <Pressable
