@@ -5,8 +5,8 @@ import Svg, { Path } from "react-native-svg";
 
 import Ripple from "react-native-material-ripple";
 
-const TopBar = () => {
-  const [sideBar, setSideBar] = useState("");
+const TopBar = ({sideBar, setSideBar}) => {
+  
 
   const animatedValue = useRef(new Animated.Value(0)).current;
 
@@ -25,6 +25,9 @@ const TopBar = () => {
       }).start();
     }
   }, [sideBar]);
+
+
+  const [menu, setMenu]=useState(``);
   return (
     <View className={`relative z-[5]`}>
       <View style={{ backgroundColor: "#6F09EA", background: "linear-gradient(90deg,rgba(111, 9, 234, 1) 0%, rgba(112, 9, 232, 1) 100%)" }} className="h-fit flex items-center py-5">
@@ -43,7 +46,6 @@ const TopBar = () => {
               color={"white"}
             />
 
-            {/* El padding right es para aumentar el hitbox del Pressable */}
           </Pressable>
 
           <Text className="text-white uppercase text-2xl absolute left-7 vertical:opacity-0 horizontal:opacity-100">
@@ -57,14 +59,12 @@ const TopBar = () => {
       </View>
       {sideBar && (
         <>
-        {/* El margin left es para que no cubra los botones del sidebar */}
         <Pressable
           className={`top-0 left-0 ml-[10.7em] absolute w-screen h-screen z-[6] bg-transparent`}
           style={{backgroundColor:("rgba(0,0,0,0.3)")}}
           onPress={() => setSideBar(false)}
           pointerEvents="auto"
         />
-        {/* Este pressable es para que se cierre el sidebar, el elemento se renderiza solo cuando cambia el estado */}
       
       <Animated.View
         pointerEvents={sideBar ? "auto" : "none"}

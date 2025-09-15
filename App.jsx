@@ -8,11 +8,11 @@ import {
 } from "react-native";
 import "./global.css";
 import { useState, useContext } from "react";
-import Svg, { Path } from "react-native-svg";
+import Svg, { Path, G } from "react-native-svg";
 import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
 import { BarChart } from "react-native-gifted-charts";
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 
 import TopBar from "./components/topbar.jsx";
 
@@ -27,91 +27,173 @@ function useTabPress(initialTab = 0) {
 export default function App() {
   const { isSelected, onPress } = useTabPress(1);
 
-  // Datos y constantes para la tabla
+  const [sideBar, setSideBar] = useState("");
 
   return (
-    <SafeAreaView style={{ backgroundColor: "#6F09EA", background: "linear-gradient(90deg,rgba(111, 9, 234, 1) 0%, rgba(112, 9, 232, 1) 100%)" }} className="flex-1 flex-col w-full">
-      <TopBar />
-      <View className="flex-1 p-2 bg-slate-50">
-        <View className="flex flex-row gap-x-1 border-b border-[#dadce0]">
-          <Pressable
-            android_ripple={{
-              radius: 100,
-              color: "rgba(31, 31, 31, 0.6)",
-              foreground: true,
-            }}
-            onPress={onPress(0)}
-            className={`self-start active:rounded-none active:border-b-2 active:border-[#1f1f1f]/80 ${isSelected(0) ? "border-b-2 border-[#1f1f1f]" : "border-0"} p-2`}
-          >
-            <Text
-              className={`select-none font-semibold uppercase ${isSelected(0) ? "text-[#1f1f1f]" : "text-[#70757a]"}`}
+    <SafeAreaProvider>
+      <SafeAreaView
+        style={{
+          backgroundColor: sideBar ? "#1f1f1f" : "#6F09EA",
+          background: sideBar
+            ? ""
+            : "linear-gradient(90deg,rgba(111, 9, 234, 1) 0%, rgba(112, 9, 232, 1) 100%)",
+        }}
+        className={`flex-1 flex-col w-full`}
+      >
+        <TopBar sideBar={sideBar} setSideBar={setSideBar} />
+
+        {}
+        <View className="flex-1 p-2 bg-slate-50">
+          <View className="flex flex-row gap-x-1 border-b border-[#dadce0]">
+            <Pressable
+              android_ripple={{
+                radius: 100,
+                color: "rgba(31, 31, 31, 0.6)",
+                foreground: true,
+              }}
+              onPress={onPress(0)}
+              className={`self-start active:rounded-none active:border-b-2 active:border-[#1f1f1f]/80 ${isSelected(0) ? "border-b-2 border-[#1f1f1f]" : "border-0"} p-2`}
             >
-              Venta rápida
-            </Text>
-          </Pressable>
-          <Pressable
-            android_ripple={{
-              radius: 100,
-              color: "rgba(31, 31, 31, 0.6)",
-              foreground: true,
-            }}
-            onPress={onPress(1)}
-            className={`self-start active:rounded-none active:border-b-2 active:border-[#1f1f1f]/80 ${isSelected(1) ? "border-b-2 border-[#1f1f1f]" : "border-0"} p-2`}
-          >
-            <Text
-              className={`select-none font-semibold uppercase ${isSelected(1) ? "text-[#1f1f1f]" : "text-[#70757a]"}`}
+              <Text
+                className={`select-none font-semibold uppercase ${isSelected(0) ? "text-[#1f1f1f]" : "text-[#70757a]"}`}
+              >
+                Venta rápida
+              </Text>
+            </Pressable>
+            <Pressable
+              android_ripple={{
+                radius: 100,
+                color: "rgba(31, 31, 31, 0.6)",
+                foreground: true,
+              }}
+              onPress={onPress(1)}
+              className={`self-start active:rounded-none active:border-b-2 active:border-[#1f1f1f]/80 ${isSelected(1) ? "border-b-2 border-[#1f1f1f]" : "border-0"} p-2`}
             >
-              Reporte
-            </Text>
-          </Pressable>
-          <Pressable
-            android_ripple={{
-              radius: 100,
-              color: "rgba(31, 31, 31, 0.6)",
-              foreground: true,
-            }}
-            onPress={onPress(2)}
-            className={`self-start active:rounded-none active:border-b-2 active:border-[#1f1f1f]/80 ${isSelected(2) ? "border-b-2 border-[#1f1f1f]" : "border-0"} p-2`}
-          >
-            <Text
-              className={`select-none font-semibold uppercase ${isSelected(2) ? "text-[#1f1f1f]" : "text-[#70757a]"}`}
+              <Text
+                className={`select-none font-semibold uppercase ${isSelected(1) ? "text-[#1f1f1f]" : "text-[#70757a]"}`}
+              >
+                Reporte
+              </Text>
+            </Pressable>
+            <Pressable
+              android_ripple={{
+                radius: 100,
+                color: "rgba(31, 31, 31, 0.6)",
+                foreground: true,
+              }}
+              onPress={onPress(2)}
+              className={`self-start active:rounded-none active:border-b-2 active:border-[#1f1f1f]/80 ${isSelected(2) ? "border-b-2 border-[#1f1f1f]" : "border-0"} p-2`}
             >
-              Catálogos
-            </Text>
-          </Pressable>
+              <Text
+                className={`select-none font-semibold uppercase ${isSelected(2) ? "text-[#1f1f1f]" : "text-[#70757a]"}`}
+              >
+                Catálogos
+              </Text>
+            </Pressable>
+          </View>
+
+          {isSelected(0) && (
+            <ScrollView className={`flex-1 p-2`}>
+              <TablaVentas />
+            </ScrollView>
+          )}
+
+          {isSelected(1) && (
+            <ScrollView contentContainerStyle={{flex:1, justifyContent:"center", alignItems:"center"}}>
+              <View className={``}>
+                <Text className={`uppercase font-semibold text-center`}>
+                  Reporte de ventas mensuales
+                </Text>
+                <BarChart
+                  className={``}
+                  roundedTop
+                  roundedBottom
+                  hideRules
+                  spacing={2}
+                  showGradient
+                  backgroundColor={`#F8FAFC`}
+                  frontColor={`#6F09EA`}
+                  gradientColor={`#A46CF5`}
+                  width={``}
+                  data={[
+                    { value: 250, label: "Ene" },
+                    { value: 500, label: "Feb" },
+                    { value: 745, label: "Mar" },
+                    { value: 320, label: "Abi" },
+                    { value: 600, label: "May" },
+                    { value: 256, label: "Jun" },
+                    { value: 300, label: "Jul" },
+                    { value: 250, label: "Ago" },
+                    { value: 500, label: "Sep" },
+                    { value: 745, label: "Oct" },
+                    { value: 320, label: "Nov" },
+                    { value: 600, label: "Dic" },
+                  ]}
+                />
+              </View>
+
+              <View className={``}>
+                <Text className={`text-center`}>
+                  Reporte de alúmnos registrados
+                </Text>
+                <BarChart
+                  className={``}
+                  roundedTop
+                  roundedBottom
+                  hideRules
+                  spacing={2}
+                  showGradient
+                  backgroundColor={`#F8FAFC`}
+                  frontColor={`#6F09EA`}
+                  gradientColor={`#A46CF5`}
+                  width={`39`}
+                  data={[
+                    { value: 250, label: "Ene" },
+                    { value: 500, label: "Feb" },
+                    { value: 745, label: "Mar" },
+                    { value: 320, label: "Abi" },
+                    { value: 600, label: "May" },
+                    { value: 256, label: "Jun" },
+                    { value: 300, label: "Jul" },
+                    { value: 250, label: "Ago" },
+                    { value: 500, label: "Sep" },
+                    { value: 745, label: "Oct" },
+                    { value: 320, label: "Nov" },
+                    { value: 600, label: "Dic" },
+                  ]}
+                />
+              </View>
+            </ScrollView>
+          )}
+
+          {isSelected(2) && (
+            <ScrollView contentContainerStyle={{flexDirection:"row", justifyContent:"space-between"}} flex style={{}}>
+              <View>
+                <Text>Aquí se encuentran</Text>
+                <Ripple
+                  rippleContainerBorderRadius={10}
+                  className={`self-start p-2`}
+                >
+                  <Text>Catálogo</Text>
+                </Ripple>
+              </View>
+              <View>
+                <Ripple className={`self-start p-2`}>
+                  <Text>Tarifario</Text>
+                </Ripple>
+              </View>
+            </ScrollView>
+          )}
         </View>
 
-        {isSelected(0) && (
-          
-          <ScrollView className={`flex h-full p-2`}>
-            <TablaVentas />
-            <BarChart
-              data={[
-                { value: 250, label: "Ene" },
-                { value: 500, label: "Feb" },
-                { value: 745, label: "Mar" },
-                { value: 320, label: "Abi" },
-                { value: 600, label: "May" },
-                { value: 256, label: "Jun" },
-                { value: 300, label: "Jul" },
-              ]}
-            />
-          </ScrollView>
-        )}
-
-        {isSelected(1) && (
-          <View>
-            <Text>Aqui se colocaran las tablas para ingresos y alumnos</Text>
-          </View>
-        )}
-
-        {isSelected(2) && (
-          <View>
-            <Text>Aqui se colocaran tanto el catálogo como el tarifario</Text>
-          </View>
-        )}
-      </View>
-    </SafeAreaView>
+        {}
+        {}
+        {}
+        {}
+        {}
+        {}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
@@ -188,7 +270,6 @@ const TablaVentas = () => {
             horizontal
           >
             <Table borderStyle={{ borderColor: "#1f1f1f", borderWidth: 2 }}>
-              {/* Encabezados estáticos */}
               <Row
                 data={[
                   "Número de transacción",
@@ -207,7 +288,6 @@ const TablaVentas = () => {
                 }}
               />
 
-              {/* Filas dinámicas */}
               {tableData.map((rowData, index) => (
                 /**
                  * Se agregó un presable para que*/
@@ -217,10 +297,8 @@ const TablaVentas = () => {
                   key={index}
                   onPress={() => {
                     if (rowData[1] === "Juan Pérez") {
-                      // Acción para Juan Pérez
                       alert("¡Fila de Juan Pérez!");
                     } else if (rowData[1] === "María López") {
-                      // Acción para María López
                       alert("¡Fila de María López!");
                     }
                   }}
