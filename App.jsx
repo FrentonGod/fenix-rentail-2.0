@@ -8,11 +8,12 @@ import {
 } from "react-native";
 import "./global.css";
 import { useState, useContext } from "react";
-import Svg, { Path, G } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
 import { BarChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
+import PagerView from "react-native-pager-view";
 
 import TopBar from "./components/topbar.jsx";
 
@@ -25,9 +26,11 @@ function useTabPress(initialTab = 0) {
 }
 
 export default function App() {
-  const { isSelected, onPress } = useTabPress(1);
+  const { isSelected, onPress } = useTabPress(2);
 
   const [sideBar, setSideBar] = useState("");
+
+  const [tarifario, setTarifario] = useState("");
 
   return (
     <SafeAreaProvider>
@@ -98,91 +101,70 @@ export default function App() {
             </ScrollView>
           )}
 
-          {isSelected(1) && (
-            <ScrollView contentContainerStyle={{flex:1, justifyContent:"center", alignItems:"center"}}>
-              <View className={``}>
-                <Text className={`uppercase font-semibold text-center`}>
-                  Reporte de ventas mensuales
-                </Text>
-                <BarChart
-                  className={``}
-                  roundedTop
-                  roundedBottom
-                  hideRules
-                  spacing={2}
-                  showGradient
-                  backgroundColor={`#F8FAFC`}
-                  frontColor={`#6F09EA`}
-                  gradientColor={`#A46CF5`}
-                  width={``}
-                  data={[
-                    { value: 250, label: "Ene" },
-                    { value: 500, label: "Feb" },
-                    { value: 745, label: "Mar" },
-                    { value: 320, label: "Abi" },
-                    { value: 600, label: "May" },
-                    { value: 256, label: "Jun" },
-                    { value: 300, label: "Jul" },
-                    { value: 250, label: "Ago" },
-                    { value: 500, label: "Sep" },
-                    { value: 745, label: "Oct" },
-                    { value: 320, label: "Nov" },
-                    { value: 600, label: "Dic" },
-                  ]}
-                />
-              </View>
-
-              <View className={``}>
-                <Text className={`text-center`}>
-                  Reporte de alúmnos registrados
-                </Text>
-                <BarChart
-                  className={``}
-                  roundedTop
-                  roundedBottom
-                  hideRules
-                  spacing={2}
-                  showGradient
-                  backgroundColor={`#F8FAFC`}
-                  frontColor={`#6F09EA`}
-                  gradientColor={`#A46CF5`}
-                  width={`39`}
-                  data={[
-                    { value: 250, label: "Ene" },
-                    { value: 500, label: "Feb" },
-                    { value: 745, label: "Mar" },
-                    { value: 320, label: "Abi" },
-                    { value: 600, label: "May" },
-                    { value: 256, label: "Jun" },
-                    { value: 300, label: "Jul" },
-                    { value: 250, label: "Ago" },
-                    { value: 500, label: "Sep" },
-                    { value: 745, label: "Oct" },
-                    { value: 320, label: "Nov" },
-                    { value: 600, label: "Dic" },
-                  ]}
-                />
-              </View>
-            </ScrollView>
-          )}
+          {isSelected(1) && <SeccionReportes />}
 
           {isSelected(2) && (
-            <ScrollView contentContainerStyle={{flexDirection:"row", justifyContent:"space-between"}} flex style={{}}>
-              <View>
-                <Text>Aquí se encuentran</Text>
-                <Ripple
-                  rippleContainerBorderRadius={10}
-                  className={`self-start p-2`}
+            <View className={`p-2`}>
+              <View className={`items-center`}>
+                <View
+                  className={`p-2 justify-center flex-row bg-gray-300 rounded gap-x-2`}
                 >
-                  <Text>Catálogo</Text>
-                </Ripple>
+                  <View className={``}>
+                    <Ripple
+                      rippleContainerBorderRadius={5}
+                      className={`self-start p-2 justify-center items-center ${tarifario ? "" : "bg-white"} rounded`}
+                      onPress={() => setTarifario(false)}
+                    >
+                      <Text className={`uppercase font-semibold`}>
+                        Catálogo
+                      </Text>
+                      <Svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        height="24px"
+                        viewBox="0 -960 960 960"
+                        width="24px"
+                        fill="#010101"
+                      >
+                        <Path d="M560-564v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-600q-38 0-73 9.5T560-564Zm0 220v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-380q-38 0-73 9t-67 27Zm0-110v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-490q-38 0-73 9.5T560-454ZM260-320q47 0 91.5 10.5T440-278v-394q-41-24-87-36t-93-12q-36 0-71.5 7T120-692v396q35-12 69.5-18t70.5-6Zm260 42q44-21 88.5-31.5T700-320q36 0 70.5 6t69.5 18v-396q-33-14-68.5-21t-71.5-7q-47 0-93 12t-87 36v394Zm-40 118q-48-38-104-59t-116-21q-42 0-82.5 11T100-198q-21 11-40.5-1T40-234v-482q0-11 5.5-21T62-752q46-24 96-36t102-12q58 0 113.5 15T480-740q51-30 106.5-45T700-800q52 0 102 12t96 36q11 5 16.5 15t5.5 21v482q0 23-19.5 35t-40.5 1q-37-20-77.5-31T700-240q-60 0-116 21t-104 59ZM280-494Z" />
+                      </Svg>
+                    </Ripple>
+                  </View>
+                  <View>
+                    <Ripple
+                      rippleContainerBorderRadius={5}
+                      className={`self-start p-2 justify-center items-center ${tarifario ? "bg-white" : ""} rounded`}
+                      onPress={() => setTarifario(true)}
+                    >
+                      <Text className={`uppercase font-semibold`}>
+                        Tarifario
+                      </Text>
+                      <Svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        height="24px"
+                        viewBox="0 -960 960 960"
+                        width="24px"
+                        fill="#010101"
+                      >
+                        <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
+                      </Svg>
+                    </Ripple>
+                  </View>
+                </View>
               </View>
-              <View>
-                <Ripple className={`self-start p-2`}>
-                  <Text>Tarifario</Text>
-                </Ripple>
-              </View>
-            </ScrollView>
+
+              {tarifario ? (
+                <PagerView className={`flex-1 bg-black`} initialPage={0}>
+                  <View className={`flex-1`} key="1">
+                    <Text>Hola </Text>
+                  </View>
+                  <View key="2">
+                    <Text>Hola</Text>
+                  </View>
+                </PagerView>
+              ) : (
+                <></>
+              )}
+            </View>
           )}
         </View>
 
@@ -367,5 +349,89 @@ const BotonBusqueda = () => {
         <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
       </Svg>
     </Ripple>
+  );
+};
+
+const SeccionReportes = () => {
+  return (
+    <View className={`flex-1 p-2`}>
+      <Ripple
+        id="boton-venta"
+        rippleContainerBorderRadius={5}
+        className={`rounded bg-[#66b5ff] max-w-[20em] justify-center items-center self-start p-1 flex flex-row gap-x-1`}
+      >
+        <Svg
+          xmlns="http://www.w3.org/2000/svg"
+          height="24px"
+          viewBox="0 -960 960 960"
+          width="24px"
+          fill="#010101"
+        >
+          <Path d="M280-280h80v-200h-80v200Zm320 0h80v-400h-80v400Zm-160 0h80v-120h-80v120Zm0-200h80v-80h-80v80ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm0-560v560-560Z" />
+        </Svg>
+        <Text className={`font-semibold`}>Generar reporte</Text>
+      </Ripple>
+      <View
+        className={`flex-1 horizontal:justify-around items-center horizontal:flex-row vertical:flex-col`}
+      >
+        <View flex className={`gap-y-5`}>
+          <Text className={`uppercase font-semibold text-center`}>ventas</Text>
+          <BarChart
+            className={``}
+            roundedTop
+            hideRules
+            spacing={2}
+            showGradient
+            backgroundColor={`#F8FAFC`}
+            frontColor={`#6F09EA`}
+            gradientColor={`#A46CF5`}
+            width={`39`}
+            data={[
+              { value: 250, label: "Ene" },
+              { value: 500, label: "Feb" },
+              { value: 745, label: "Mar" },
+              { value: 320, label: "Abi" },
+              { value: 600, label: "May" },
+              { value: 256, label: "Jun" },
+              { value: 300, label: "Jul" },
+              { value: 250, label: "Ago" },
+              { value: 500, label: "Sep" },
+              { value: 745, label: "Oct" },
+              { value: 320, label: "Nov" },
+              { value: 600, label: "Dic" },
+            ]}
+          />
+        </View>
+
+        <View className={`gap-y-5`}>
+          <Text className={`uppercase font-semibold text-center`}>alúmnos</Text>
+          <BarChart
+            className={``}
+            roundedTop
+            hideRules
+            spacing={2}
+            showGradient
+            backgroundColor={`#F8FAFC`}
+            frontColor={`#6F09EA`}
+            gradientColor={`#A46CF5`}
+            width={`39`}
+            data={[
+              { value: 250, label: "Ene" },
+              { value: 500, label: "Feb" },
+              { value: 745, label: "Mar" },
+              { value: 320, label: "Abi" },
+              { value: 600, label: "May" },
+              { value: 256, label: "Jun" },
+              { value: 300, label: "Jul" },
+              { value: 250, label: "Ago" },
+              { value: 500, label: "Sep" },
+              { value: 745, label: "Oct" },
+              { value: 320, label: "Nov" },
+              { value: 600, label: "Dic" },
+            ]}
+          />
+        </View>
+      </View>
+    </View>
   );
 };
