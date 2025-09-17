@@ -11,6 +11,8 @@
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
     "@react-native-vector-icons/evil-icons": "^12.3.0",
+    "@react-navigation/drawer": "^7.5.8",
+    "@react-navigation/material-top-tabs": "^7.3.7",
     "@react-navigation/native": "^7.1.17",
     "expo": "~53.0.0",
     "expo-constants": "~17.1.7",
@@ -28,7 +30,7 @@
     "react-native-expo-viewport-units": "^0.0.8",
     "react-native-gifted-charts": "^1.4.64",
     "react-native-material-ripple": "^0.9.1",
-    "react-native-pager-view": "6.7.1",
+    "react-native-pager-view": "^6.7.1",
     "react-native-pdf-renderer": "^2.3.0",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
@@ -37,7 +39,8 @@
     "react-native-table-component": "^1.2.2",
     "react-native-viewport-units": "^0.0.5",
     "react-native-web": "^0.20.0",
-    "react-native-webview": "13.13.5"
+    "react-native-webview": "13.13.5",
+    "react-native-gesture-handler": "~2.24.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

@@ -1,5 +1,5 @@
+import "react-native-gesture-handler";
 import {
-  StyleSheet,
   Text,
   View,
   Pressable,
@@ -7,179 +7,268 @@ import {
   TouchableOpacity,
 } from "react-native";
 import "./global.css";
-import { useState, useContext } from "react";
+import { useState } from "react";
 import Svg, { Path } from "react-native-svg";
 import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
 import { BarChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
-import PagerView from "react-native-pager-view";
+
+import { NavigationContainer } from "@react-navigation/native";
+import {
+  createDrawerNavigator,
+  DrawerContentScrollView,
+  DrawerItemList,
+  DrawerItem,
+} from "@react-navigation/drawer";
+
+import { WebView } from "react-native-webview";
+import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 
 import TopBar from "./components/topbar.jsx";
 
-function useTabPress(initialTab = 0) {
-  const [selected, setSelected] = useState(initialTab);
-  const isSelected = (tabIndex) => selected === tabIndex;
-  const onPress = (tabIndex) => () => setSelected(tabIndex);
-
-  return { selected, isSelected, onPress };
-}
+const Tab = createMaterialTopTabNavigator(); //Aqui se esta creando el componente
+const Drawer = createDrawerNavigator();
 
 export default function App() {
-  const { isSelected, onPress } = useTabPress(2);
-
-  const [sideBar, setSideBar] = useState("");
-
-  const [tarifario, setTarifario] = useState("");
-
   return (
     <SafeAreaProvider>
       <SafeAreaView
         style={{
-          backgroundColor: sideBar ? "#1f1f1f" : "#6F09EA",
-          background: sideBar
-            ? ""
-            : "linear-gradient(90deg,rgba(111, 9, 234, 1) 0%, rgba(112, 9, 232, 1) 100%)",
+          backgroundColor: "#6F09EA",
+          background:
+            "linear-gradient(90deg,rgba(111, 9, 234, 1) 0%, rgba(112, 9, 232, 1) 100%)",
         }}
         className={`flex-1 flex-col w-full`}
       >
-        <TopBar sideBar={sideBar} setSideBar={setSideBar} />
-
-        {}
-        <View className="flex-1 p-2 bg-slate-50">
-          <View className="flex flex-row gap-x-1 border-b border-[#dadce0]">
-            <Pressable
-              android_ripple={{
-                radius: 100,
-                color: "rgba(31, 31, 31, 0.6)",
-                foreground: true,
+        <NavigationContainer>
+          <Drawer.Navigator
+            drawerContent={(props) => <CustomDrawerContent {...props} />}
+            screenOptions={{
+              header: (props) => <TopBar {...props} />, // Usamos tu TopBar como header
+              drawerStyle: {
+                backgroundColor: "#232428",
+                width: 200,
+              },
+              drawerActiveTintColor: "white",
+              drawerInactiveTintColor: "#6b838b",
+            }}
+          >
+            <Drawer.Screen
+              name="Inicio"
+              component={ScreenInicio}
+              options={{
+                title: "Inicio",
+                drawerIcon: ({}) => (
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#ffffff"
+                  >
+                    <Path d="M240-200h120v-240h240v240h120v-360L480-740 240-560v360Zm-80 80v-480l320-240 320 240v480H520v-240h-80v240H160Zm320-350Z" />
+                  </Svg>
+                ),
               }}
-              onPress={onPress(0)}
-              className={`self-start active:rounded-none active:border-b-2 active:border-[#1f1f1f]/80 ${isSelected(0) ? "border-b-2 border-[#1f1f1f]" : "border-0"} p-2`}
-            >
-              <Text
-                className={`select-none font-semibold uppercase ${isSelected(0) ? "text-[#1f1f1f]" : "text-[#70757a]"}`}
-              >
-                Venta rápida
-              </Text>
-            </Pressable>
-            <Pressable
-              android_ripple={{
-                radius: 100,
-                color: "rgba(31, 31, 31, 0.6)",
-                foreground: true,
+            />
+
+            <Drawer.Screen
+              name="Estudiantes"
+              component={ScreenEstudiantes}
+              options={{
+                title: "Estudiantes",
+                drawerIcon: ({}) => (
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#ffffff"
+                  >
+                    <Path d="M0-240v-63q0-43 44-70t116-27q13 0 25 .5t23 2.5q-14 21-21 44t-7 48v65H0Zm240 0v-65q0-32 17.5-58.5T307-410q32-20 76.5-30t96.5-10q53 0 97.5 10t76.5 30q32 20 49 46.5t17 58.5v65H240Zm540 0v-65q0-26-6.5-49T754-397q11-2 22.5-2.5t23.5-.5q72 0 116 26.5t44 70.5v63H780Zm-455-80h311q-10-20-55.5-35T480-370q-55 0-100.5 15T325-320ZM160-440q-33 0-56.5-23.5T80-520q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T160-440Zm640 0q-33 0-56.5-23.5T720-520q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T800-440Zm-320-40q-50 0-85-35t-35-85q0-51 35-85.5t85-34.5q51 0 85.5 34.5T600-600q0 50-34.5 85T480-480Zm0-80q17 0 28.5-11.5T520-600q0-17-11.5-28.5T480-640q-17 0-28.5 11.5T440-600q0 17 11.5 28.5T480-560Zm1 240Zm-1-280Z" />
+                  </Svg>
+                ),
               }}
-              onPress={onPress(1)}
-              className={`self-start active:rounded-none active:border-b-2 active:border-[#1f1f1f]/80 ${isSelected(1) ? "border-b-2 border-[#1f1f1f]" : "border-0"} p-2`}
-            >
-              <Text
-                className={`select-none font-semibold uppercase ${isSelected(1) ? "text-[#1f1f1f]" : "text-[#70757a]"}`}
-              >
-                Reporte
-              </Text>
-            </Pressable>
-            <Pressable
-              android_ripple={{
-                radius: 100,
-                color: "rgba(31, 31, 31, 0.6)",
-                foreground: true,
+            />
+            <Drawer.Screen
+              name="Asesores"
+              component={ScreenAsesores}
+              options={{
+                title: "Asesores",
+                drawerIcon: ({}) => (
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#ffffff"
+                  >
+                    <Path d="M840-120v-640H120v320H40v-320q0-33 23.5-56.5T120-840h720q33 0 56.5 23.5T920-760v560q0 33-23.5 56.5T840-120ZM360-400q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47Zm0-80q33 0 56.5-23.5T440-560q0-33-23.5-56.5T360-640q-33 0-56.5 23.5T280-560q0 33 23.5 56.5T360-480ZM40-80v-112q0-34 17.5-62.5T104-298q62-31 126-46.5T360-360q66 0 130 15.5T616-298q29 15 46.5 43.5T680-192v112H40Zm80-80h480v-32q0-11-5.5-20T580-226q-54-27-109-40.5T360-280q-56 0-111 13.5T140-226q-9 5-14.5 14t-5.5 20v32Zm240-400Zm0 400Z" />
+                  </Svg>
+                ),
               }}
-              onPress={onPress(2)}
-              className={`self-start active:rounded-none active:border-b-2 active:border-[#1f1f1f]/80 ${isSelected(2) ? "border-b-2 border-[#1f1f1f]" : "border-0"} p-2`}
-            >
-              <Text
-                className={`select-none font-semibold uppercase ${isSelected(2) ? "text-[#1f1f1f]" : "text-[#70757a]"}`}
-              >
-                Catálogos
-              </Text>
-            </Pressable>
-          </View>
-
-          {isSelected(0) && (
-            <ScrollView className={`flex-1 p-2`}>
-              <TablaVentas />
-            </ScrollView>
-          )}
-
-          {isSelected(1) && <SeccionReportes />}
-
-          {isSelected(2) && (
-            <View className={`p-2`}>
-              <View className={`items-center`}>
-                <View
-                  className={`p-2 justify-center flex-row bg-gray-300 rounded gap-x-2`}
-                >
-                  <View className={``}>
-                    <Ripple
-                      rippleContainerBorderRadius={5}
-                      className={`self-start p-2 justify-center items-center ${tarifario ? "" : "bg-white"} rounded`}
-                      onPress={() => setTarifario(false)}
-                    >
-                      <Text className={`uppercase font-semibold`}>
-                        Catálogo
-                      </Text>
-                      <Svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        height="24px"
-                        viewBox="0 -960 960 960"
-                        width="24px"
-                        fill="#010101"
-                      >
-                        <Path d="M560-564v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-600q-38 0-73 9.5T560-564Zm0 220v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-380q-38 0-73 9t-67 27Zm0-110v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-490q-38 0-73 9.5T560-454ZM260-320q47 0 91.5 10.5T440-278v-394q-41-24-87-36t-93-12q-36 0-71.5 7T120-692v396q35-12 69.5-18t70.5-6Zm260 42q44-21 88.5-31.5T700-320q36 0 70.5 6t69.5 18v-396q-33-14-68.5-21t-71.5-7q-47 0-93 12t-87 36v394Zm-40 118q-48-38-104-59t-116-21q-42 0-82.5 11T100-198q-21 11-40.5-1T40-234v-482q0-11 5.5-21T62-752q46-24 96-36t102-12q58 0 113.5 15T480-740q51-30 106.5-45T700-800q52 0 102 12t96 36q11 5 16.5 15t5.5 21v482q0 23-19.5 35t-40.5 1q-37-20-77.5-31T700-240q-60 0-116 21t-104 59ZM280-494Z" />
-                      </Svg>
-                    </Ripple>
-                  </View>
-                  <View>
-                    <Ripple
-                      rippleContainerBorderRadius={5}
-                      className={`self-start p-2 justify-center items-center ${tarifario ? "bg-white" : ""} rounded`}
-                      onPress={() => setTarifario(true)}
-                    >
-                      <Text className={`uppercase font-semibold`}>
-                        Tarifario
-                      </Text>
-                      <Svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        height="24px"
-                        viewBox="0 -960 960 960"
-                        width="24px"
-                        fill="#010101"
-                      >
-                        <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
-                      </Svg>
-                    </Ripple>
-                  </View>
-                </View>
-              </View>
-
-              {tarifario ? (
-                <PagerView className={`flex-1 bg-black`} initialPage={0}>
-                  <View className={`flex-1`} key="1">
-                    <Text>Hola </Text>
-                  </View>
-                  <View key="2">
-                    <Text>Hola</Text>
-                  </View>
-                </PagerView>
-              ) : (
-                <></>
-              )}
-            </View>
-          )}
-        </View>
-
-        {}
-        {}
-        {}
-        {}
-        {}
-        {}
+            />
+            <Drawer.Screen
+              name="Pagos"
+              component={ScreenPagos}
+              options={{
+                title: "Pagos",
+                drawerIcon: ({}) => (
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#ffffff"
+                  >
+                    <Path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z" />
+                  </Svg>
+                ),
+              }}
+            />
+            <Drawer.Screen
+              name="Finanzas"
+              component={ScreenFinanzas}
+              options={{
+                title: "Finanzas",
+                drawerIcon: ({}) => (
+                  <Svg
+                    height="24px"
+                    viewBox="0 -960 960 960"
+                    width="24px"
+                    fill="#ffffff"
+                  >
+                    <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
+                  </Svg>
+                ),
+              }}
+            />
+            <Drawer.Screen
+              name="Calendario"
+              component={ScreenCalendario}
+              options={{
+                title: "Calendario",
+                drawerIcon: ({}) => (
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#ffffff"
+                  >
+                    <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-160 0q-17 0-28.5-11.5T280-440q0-17 11.5-28.5T320-480q17 0 28.5 11.5T360-440q0 17-11.5 28.5T320-400Zm320 0q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-160 0q-17 0-28.5-11.5T280-280q0-17 11.5-28.5T320-320q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240Zm320 0q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z" />
+                  </Svg>
+                ),
+              }}
+            />
+            <Drawer.Screen
+              name="Cursos"
+              component={ScreenCursos}
+              options={{
+                title: "Cursos",
+                drawerIcon: ({}) => (
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#ffffff"
+                  >
+                    <Path d="M480-120 200-272v-240L40-600l440-240 440 240v320h-80v-276l-80 44v240L480-120Zm0-332 274-148-274-148-274 148 274 148Zm0 241 200-108v-151L480-360 280-470v151l200 108Zm0-241Zm0 90Zm0 0Z" />
+                  </Svg>
+                ),
+              }}
+            />
+          </Drawer.Navigator>
+        </NavigationContainer>
       </SafeAreaView>
     </SafeAreaProvider>
   );
 }
 
-const TablaVentas = () => {
+const CustomDrawerContent = (props) => {
+  const { state, ...rest } = props;
+  // Filtramos la ruta 'LogOut' para que no aparezca en la lista principal
+  const newState = {
+    ...state,
+    routes: state.routes.filter((item) => item.name !== "LogOut"),
+  };
+
+  return (
+    <View style={{ flex: 1 }}>
+      <DrawerContentScrollView {...props}>
+        <DrawerItemList state={newState} {...rest} />
+      </DrawerContentScrollView>
+      <View style={{ padding: 5, borderTopColor: "#4a4a4a" }}>
+        <DrawerItem
+          label="Cerrar sesión"
+          labelStyle={{ color: "#dc2626", fontWeight: "bold" }}
+          onPress={() => {
+            // Aquí va tu lógica para cerrar sesión
+            alert("Cerrando sesión...");
+          }}
+          icon={() => (
+            <Svg
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="#dc2626"
+            >
+              <Path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h280v80H200v560h280v80H200Zm440-160-55-58 102-102H360v-80h327L585-622l55-58 200 200-200 200Z" />
+            </Svg>
+          )}
+        />
+      </View>
+    </View>
+  );
+};
+
+const ScreenInicio = () => {
+  return (
+    <Tab.Navigator
+      initialRouteName="Venta"
+      tabBarPosition="top"
+      screenOptions={{
+        tabBarActiveTintColor: "#1f1f1f",
+        tabBarInactiveTintColor: "#70757a",
+        tabBarScrollEnabled: true,
+        tabBarItemStyle: { width: "auto", paddingHorizontal: 5 },
+        tabBarLabelStyle: {
+          fontSize: 14,
+          fontWeight: "bold",
+          textTransform: "uppercase",
+        },
+        tabBarStyle: { backgroundColor: "#f8fafc" },
+        tabBarIndicatorStyle: { backgroundColor: "#1f1f1f", height: 2 },
+      }}
+    >
+      <Tab.Screen name="Venta" component={SeccionVentas} />
+      <Tab.Screen name="Reporte" component={SeccionReportes} />
+      <Tab.Screen name="Catalogos" component={SeccionCatalogos} />
+    </Tab.Navigator>
+  );
+};
+
+const ScreenEstudiantes = () => {
+  return <Text>Pantalla para estudiantes</Text>;
+};
+
+const ScreenAsesores = () => {
+  return <Text>Pantalla para asesores</Text>;
+};
+
+const ScreenPagos = () => {
+  return <Text>Pantalla para pagos</Text>;
+};
+
+const ScreenFinanzas = () => {
+  return <Text>Pantalla para finanzas</Text>;
+};
+
+const ScreenCalendario = () => {
+  return <Text>Pantalla para calendario</Text>;
+};
+
+const ScreenCursos = () => {
+  return <Text>Pantalla para cursos</Text>;
+};
+
+const SeccionVentas = () => {
   const tableData = [
     [
       1,
@@ -195,7 +284,7 @@ const TablaVentas = () => {
 
   return (
     <>
-      <View className={`w-full flex flex-row items-center justify-between`}>
+      <View className={`w-full flex flex-row items-center justify-between p-2`}>
         <Ripple
           id="boton-venta"
           rippleContainerBorderRadius={5}
@@ -238,7 +327,20 @@ const TablaVentas = () => {
         </Ripple>
       </View>
       <View className={`relative py-20`}>
-        <BotonBusqueda />
+        <Ripple
+          rippleContainerBorderRadius={100}
+          className="absolute bottom-0 right-2 z-[2] self-start rounded-full p-3 bg-sky-400/80"
+        >
+          <Svg
+            xmlns="http://www.w3.org/2000/svg"
+            height="24px"
+            viewBox="0 -960 960 960"
+            width="24px"
+            fill="#010101"
+          >
+            <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
+          </Svg>
+        </Ripple>
         <View className={`w-full flex justify-center items-center mt-4`}>
           <ScrollView
             className={`rounded`}
@@ -271,8 +373,6 @@ const TablaVentas = () => {
               />
 
               {tableData.map((rowData, index) => (
-                /**
-                 * Se agregó un presable para que*/
                 <TouchableOpacity
                   className={`border-y-[0.1em]`}
                   android_ripple={{ color: "#1f1f1f" }}
@@ -333,28 +433,9 @@ const TablaVentas = () => {
   );
 };
 
-const BotonBusqueda = () => {
-  return (
-    <Ripple
-      rippleContainerBorderRadius={100}
-      className="absolute bottom-0 right-2 z-[2] self-start rounded-full p-3 bg-sky-400/80"
-    >
-      <Svg
-        xmlns="http://www.w3.org/2000/svg"
-        height="24px"
-        viewBox="0 -960 960 960"
-        width="24px"
-        fill="#010101"
-      >
-        <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
-      </Svg>
-    </Ripple>
-  );
-};
-
 const SeccionReportes = () => {
   return (
-    <View className={`flex-1 p-2`}>
+    <View className={`flex-1 p-2 bg-slate-50`}>
       <Ripple
         id="boton-venta"
         rippleContainerBorderRadius={5}
@@ -431,6 +512,72 @@ const SeccionReportes = () => {
             ]}
           />
         </View>
+      </View>
+    </View>
+  );
+};
+
+const SeccionCatalogos = () => {
+  const [catalogos, setCatalogos] = useState("");
+
+  const catalogoUri = "https://pdfobject.com/pdf/sample.pdf";
+  const tarifarioUri = "https://pdfobject.com/pdf/sample.pdf";
+
+  const pdfUrl = catalogos ? tarifarioUri : catalogoUri;
+  return (
+    <View className={`flex-1 bg-slate-50`}>
+      <View className={`items-center p-2`}>
+        <View
+          className={`p-2 justify-center flex-row bg-gray-300 rounded gap-x-2`}
+        >
+          <View className={``}>
+            <Ripple
+              rippleContainerBorderRadius={5}
+              className={`self-start p-2 justify-center items-center rounded ${catalogos ? "" : "bg-white"}`}
+              onPress={() => setCatalogos(false)}
+            >
+              <Text className={`uppercase font-semibold`}>Catálogo</Text>
+              <Svg
+                xmlns="http://www.w3.org/2000/svg"
+                height="24px"
+                viewBox="0 -960 960 960"
+                width="24px"
+                fill="#010101"
+              >
+                <Path d="M560-564v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-600q-38 0-73 9.5T560-564Zm0 220v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-380q-38 0-73 9t-67 27Zm0-110v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-490q-38 0-73 9.5T560-454ZM260-320q47 0 91.5 10.5T440-278v-394q-41-24-87-36t-93-12q-36 0-71.5 7T120-692v396q35-12 69.5-18t70.5-6Zm260 42q44-21 88.5-31.5T700-320q36 0 70.5 6t69.5 18v-396q-33-14-68.5-21t-71.5-7q-47 0-93 12t-87 36v394Zm-40 118q-48-38-104-59t-116-21q-42 0-82.5 11T100-198q-21 11-40.5-1T40-234v-482q0-11 5.5-21T62-752q46-24 96-36t102-12q58 0 113.5 15T480-740q51-30 106.5-45T700-800q52 0 102 12t96 36q11 5 16.5 15t5.5 21v482q0 23-19.5 35t-40.5 1q-37-20-77.5-31T700-240q-60 0-116 21t-104 59ZM280-494Z" />
+              </Svg>
+            </Ripple>
+          </View>
+          <View>
+            <Ripple
+              rippleContainerBorderRadius={5}
+              className={`self-start p-2 justify-center items-center rounded ${catalogos ? "bg-white" : ""}`}
+              onPress={() => setCatalogos(true)}
+            >
+              <Text className={`uppercase font-semibold`}>Tarifario</Text>
+              <Svg
+                xmlns="http://www.w3.org/2000/svg"
+                height="24px"
+                viewBox="0 -960 960 960"
+                width="24px"
+                fill="#010101"
+              >
+                <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
+              </Svg>
+            </Ripple>
+          </View>
+        </View>
+      </View>
+      <View className={`flex-1 justify-center p-5 w-[50%] rounded`}>
+
+        <WebView
+          style={{ flex:1, alignItems:"center"}}
+          // Usamos el visor de Google Docs para una mejor experiencia en móvil
+          source={{
+            uri: `https://docs.google.com/gview?embedded=true&url=${pdfUrl}`,
+          }}
+          startInLoadingState={true}
+        />
       </View>
     </View>
   );
