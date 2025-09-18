@@ -1,7 +1,5 @@
 import { View, Text, Button, Pressable, Animated } from "react-native";
 import EvilIcons from "@expo/vector-icons/EvilIcons";
-import { useState, useEffect, useRef, createContext } from "react";
-import Svg, { Path } from "react-native-svg";
 
 const TopBar = ({ navigation, options }) => {
   return (

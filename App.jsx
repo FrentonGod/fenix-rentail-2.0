@@ -3,8 +3,11 @@ import {
   Text,
   View,
   Pressable,
+  Image,
+  Dimensions,
   ScrollView,
   TouchableOpacity,
+  StyleSheet,
 } from "react-native";
 import "./global.css";
 import { useState } from "react";
@@ -219,6 +222,7 @@ const CustomDrawerContent = (props) => {
 };
 
 const ScreenInicio = () => {
+  const [catalogos, setCatalogos] = useState(false);
   return (
     <Tab.Navigator
       initialRouteName="Venta"
@@ -226,6 +230,7 @@ const ScreenInicio = () => {
       screenOptions={{
         tabBarActiveTintColor: "#1f1f1f",
         tabBarInactiveTintColor: "#70757a",
+
         tabBarScrollEnabled: true,
         tabBarItemStyle: { width: "auto", paddingHorizontal: 5 },
         tabBarLabelStyle: {
@@ -239,7 +244,11 @@ const ScreenInicio = () => {
     >
       <Tab.Screen name="Venta" component={SeccionVentas} />
       <Tab.Screen name="Reporte" component={SeccionReportes} />
-      <Tab.Screen name="Catalogos" component={SeccionCatalogos} />
+      <Tab.Screen name="Catálogos">
+        {() => (
+          <SeccionCatalogos catalogos={catalogos} setCatalogos={setCatalogos} />
+        )}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 };
@@ -517,21 +526,36 @@ const SeccionReportes = () => {
   );
 };
 
-const SeccionCatalogos = () => {
-  const [catalogos, setCatalogos] = useState("");
+const SeccionCatalogos = ({}) => {
+  const { width } = Dimensions.get("window");
 
-  const catalogoUri = "https://pdfobject.com/pdf/sample.pdf";
-  const tarifarioUri = "https://pdfobject.com/pdf/sample.pdf";
+  const [catalogos, setCatalogos] = useState(false);
 
-  const pdfUrl = catalogos ? tarifarioUri : catalogoUri;
+  const localImages = [
+    require("./assets/Catalogo/Catalogo-01.png"),
+    require("./assets/Catalogo/Catalogo-02.png"),
+    require("./assets/Catalogo/Catalogo-03.png"),
+    require("./assets/Catalogo/Catalogo-04.png"),
+    require("./assets/Catalogo/Catalogo-05.png"),
+    require("./assets/Catalogo/Catalogo-06.png"),
+    require("./assets/Catalogo/Catalogo-07.png"),
+    require("./assets/Catalogo/Catalogo-08.png"),
+    require("./assets/Catalogo/Catalogo-09.png"),
+    require("./assets/Catalogo/Catalogo-10.png"),
+    require("./assets/Catalogo/Catalogo-11.png"),
+    require("./assets/Catalogo/Catalogo-12.png"),
+    require("./assets/Catalogo/Catalogo-13.png"),
+    require("./assets/Catalogo/Catalogo-14.png"),
+    require("./assets/Catalogo/Catalogo-15.png"),
+    require("./assets/Catalogo/Catalogo-16.png"), // Ejemplo
+  ];
+
   return (
     <View className={`flex-1 bg-slate-50`}>
-      <View className={`items-center p-2`}>
-        <View
-          className={`p-2 justify-center flex-row bg-gray-300 rounded gap-x-2`}
-        >
-          <View className={``}>
-            <Ripple
+      <View className={`items-center flex-row justify-center p-2`}>
+      <View className={`p-2 justify-center items-center flex-row bg-gray-300 rounded gap-x-2`}>
+      <View className={``}>
+        <Ripple
               rippleContainerBorderRadius={5}
               className={`self-start p-2 justify-center items-center rounded ${catalogos ? "" : "bg-white"}`}
               onPress={() => setCatalogos(false)}
@@ -565,20 +589,64 @@ const SeccionCatalogos = () => {
                 <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
               </Svg>
             </Ripple>
-          </View>
-        </View>
       </View>
-      <View className={`flex-1 justify-center p-5 w-[50%] rounded`}>
+      </View>
+      </View>
 
-        <WebView
-          style={{ flex:1, alignItems:"center"}}
-          // Usamos el visor de Google Docs para una mejor experiencia en móvil
-          source={{
-            uri: `https://docs.google.com/gview?embedded=true&url=${pdfUrl}`,
-          }}
-          startInLoadingState={true}
-        />
-      </View>
+
+      <Tab.Navigator
+        tabBarPosition="bottom"
+        screenOptions={{
+          tabBarActiveTintColor: "#1f1f1f",
+          tabBarInactiveTintColor: "#70757a",
+
+          tabBarScrollEnabled: true,
+          tabBarItemStyle: { width: "auto", paddingHorizontal: 5 },
+          tabBarLabelStyle: {
+            fontSize: 14,
+            fontWeight: "bold",
+            textTransform: "uppercase",
+          },
+          tabBarStyle: { backgroundColor: "#f8fafc" },
+          tabBarIndicatorStyle: { backgroundColor: "#1f1f1f", height: 2 },
+        }}
+      >
+        {localImages.map((imageSource, index) => (
+          <Tab.Screen
+            style={{}}
+            // Damos un nombre único a cada pestaña
+            key={index}
+            name={`Página ${index + 1}`}
+          >
+            {() => (
+              <View style={styles.carouselContainer}>
+                <Image
+                  source={imageSource}
+                  style={{
+                    width: width,
+                    height: "100%",
+                    resizeMode: "contain",
+                  }}
+                />
+              </View>
+            )}
+          </Tab.Screen>
+        ))}
+      </Tab.Navigator>
     </View>
+    
   );
 };
+
+const styles = StyleSheet.create({
+  carouselContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    padding: 40,
+  },
+  scrollView: {
+    width: "100%",
+  },
+});
