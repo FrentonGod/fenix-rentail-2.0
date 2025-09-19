@@ -10,7 +10,7 @@ import {
   StyleSheet,
 } from "react-native";
 import "./global.css";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Svg, { Path } from "react-native-svg";
 import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
@@ -25,7 +25,6 @@ import {
   DrawerItem,
 } from "@react-navigation/drawer";
 
-import { WebView } from "react-native-webview";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 
 import TopBar from "./components/topbar.jsx";
@@ -262,7 +261,141 @@ const ScreenAsesores = () => {
 };
 
 const ScreenPagos = () => {
-  return <Text>Pantalla para pagos</Text>;
+  return (
+    <Tab.Navigator
+      initialRouteName="Transferencia SPEI / Depósito"
+      tabBarPosition="top"
+      screenOptions={{
+        tabBarActiveTintColor: "#1f1f1f",
+        tabBarInactiveTintColor: "#70757a",
+
+        tabBarScrollEnabled: false,
+        tabBarItemStyle: { flex: 1 },
+        tabBarLabelStyle: {
+          fontSize: 14,
+          textAlign: "center",
+          fontWeight: "bold",
+          textTransform: "uppercase",
+        },
+        tabBarStyle: { backgroundColor: "#f8fafc" },
+        tabBarIndicatorStyle: { backgroundColor: "#1f1f1f", height: 2 },
+      }}
+    >
+      <Tab.Screen name="Transferencia SPEI / Depósito">
+        {() => (
+          <View
+            className={`flex-1 p-2 flex-col justify-evenly items-center bg-slate-50`}
+          >
+            <View
+              id="contenedor-datos"
+              className={`flex bg-[#eff6ff] min-w-[600] rounded-lg p-2`}
+            >
+              <Text
+                className={`text-[#193ca8] font-extrabold pb-4 text-center`}
+              >
+                Datos bancarios
+              </Text>
+              <View className={`flex flex-row justify-between`}>
+                <View className={`flex-col justify-between`}>
+                  <View className={`flex justify-center items-start`}>
+                    <Text className={`text-[#255ed8] font-semibold`}>
+                      Banco
+                    </Text>
+                    <Text className={`font-bold text-xl`}>Bancoppel</Text>
+                  </View>
+                  <View>
+                    <Text className={`text-[#255ed8] font-semibold`}>
+                      Beneficiario
+                    </Text>
+                    <Text className={`font-bold text-xl`}>
+                      Kelvin Valentin Gomez Ramirez
+                    </Text>
+                  </View>
+                </View>
+                <View className={`flex-col justify-between`}>
+                  <View className={`flex justify-center items-start`}>
+                    <Text className={`text-[#255ed8] font-semibold`}>
+                      Número de cuenta
+                    </Text>
+                    <TouchableOpacity>
+                      <Text className={`text-start font-bold text-xl`}>
+                        4169 1608 5392 8977
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View>
+                    <Text className={`text-[#255ed8] font-semibold`}>
+                      Clabe
+                    </Text>
+                    <TouchableOpacity>
+                      <Text className={`font-bold text-xl`}>
+                        137628103732170052
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </View>
+            <View className={`flex gap-y-2`}>
+              <View className={`flex-row items-center gap-x-3`}>
+                <Svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  height="24px"
+                  viewBox="0 -960 960 960"
+                  width="24px"
+                  fill="#1f2635"
+                >
+                  <Path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h168q13-36 43.5-58t68.5-22q38 0 68.5 22t43.5 58h168q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm80-80h280v-80H280v80Zm0-160h400v-80H280v80Zm0-160h400v-80H280v80Zm200-190q13 0 21.5-8.5T510-820q0-13-8.5-21.5T480-850q-13 0-21.5 8.5T450-820q0 13 8.5 21.5T480-790ZM200-200v-560 560Z" />
+                </Svg>
+                <Text className={`text-[#1f2635] font-bold`}>
+                  Instrucciones
+                </Text>
+              </View>
+              <View className={`gap-y-2`}>
+                <View className={`flex-row items-baseline gap-x-1`}>
+                  <View className={`rounded-full px-1.5 bg-[#297efa]`}>
+                    <Text className={`text-white font-bold`}>1</Text>
+                  </View>
+                  <Text className={`text-[#45474e]`}>
+                    Realiza una transferencia SPEI o depósito al número de
+                    cuenta/CLABE.
+                  </Text>
+                </View>
+                <View className={`flex-row items-baseline gap-x-1`}>
+                  <View className={`rounded-full px-1.5 bg-[#297efa]`}>
+                    <Text className={`text-white font-bold`}>2</Text>
+                  </View>
+                  <Text className={`text-[#45474e]`}>
+                    Asegúrate de incluir tu nombre completo en la referencia o
+                    concepto de pago.
+                  </Text>
+                </View>
+                <View className={`flex-row items-baseline gap-x-1`}>
+                  <View className={`rounded-full px-1.5 bg-[#297efa]`}>
+                    <Text className={`text-white font-bold`}>3</Text>
+                  </View>
+                  <Text className={`text-[#45474e]`}>
+                    Sube tu comprobante de transferencia para validación rápida.
+                  </Text>
+                </View>
+                <View className={`self-center`}>
+                  <Ripple className={`bg-blue-500 p-2 rounded`}>
+                    <Text className={`text-center text-white`}>
+                      Ir a la seccion de registro
+                    </Text>
+                  </Ripple>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="Efectivo">{() => <></>}</Tab.Screen>
+      <Tab.Screen name="Tarjeta de crédito / débito">
+        {() => <Text></Text>}
+      </Tab.Screen>
+    </Tab.Navigator>
+  );
 };
 
 const ScreenFinanzas = () => {
@@ -526,12 +659,27 @@ const SeccionReportes = () => {
   );
 };
 
-const SeccionCatalogos = ({}) => {
+const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
   const { width } = Dimensions.get("window");
 
-  const [catalogos, setCatalogos] = useState(false);
+  const lastTapTimeRef = useRef(null);
 
-  const localImages = [
+  const handleTap = () => {
+    const now = new Date().getTime();
+    const DOUBLE_TAP_DELAY = 300; // Adjust as needed for your use case (in milliseconds)
+
+    if (now - lastTapTimeRef.current < DOUBLE_TAP_DELAY) {
+      // Double tap detected
+      console.log(catalogos ? "Catálogo" : "Tarifario");
+      setCatalogos(!catalogos);
+      // Perform 'like' action here
+    } else {
+      ("");
+    }
+    lastTapTimeRef.current = now;
+  };
+
+  const catalogoImages = [
     require("./assets/Catalogo/Catalogo-01.png"),
     require("./assets/Catalogo/Catalogo-02.png"),
     require("./assets/Catalogo/Catalogo-03.png"),
@@ -550,12 +698,21 @@ const SeccionCatalogos = ({}) => {
     require("./assets/Catalogo/Catalogo-16.png"), // Ejemplo
   ];
 
+  const tarifarioImages = [
+    require("./assets/Catalogo/Catalogo-16.png"),
+    require("./assets/Catalogo/Catalogo-15.png"),
+  ];
+
+  const imagesToShow = catalogos ? tarifarioImages : catalogoImages;
+
   return (
     <View className={`flex-1 bg-slate-50`}>
       <View className={`items-center flex-row justify-center p-2`}>
-      <View className={`p-2 justify-center items-center flex-row bg-gray-300 rounded gap-x-2`}>
-      <View className={``}>
-        <Ripple
+        <View
+          className={`p-2 justify-center items-center flex-row bg-gray-300 rounded gap-x-2`}
+        >
+          <View className={``}>
+            <Ripple
               rippleContainerBorderRadius={5}
               className={`self-start p-2 justify-center items-center rounded ${catalogos ? "" : "bg-white"}`}
               onPress={() => setCatalogos(false)}
@@ -589,38 +746,25 @@ const SeccionCatalogos = ({}) => {
                 <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
               </Svg>
             </Ripple>
+          </View>
+        </View>
       </View>
-      </View>
-      </View>
-
 
       <Tab.Navigator
+        key={catalogos ? "tarifario" : "catalogo"} // Clave para forzar el reseteo del estado del navegador
         tabBarPosition="bottom"
-        screenOptions={{
-          tabBarActiveTintColor: "#1f1f1f",
-          tabBarInactiveTintColor: "#70757a",
-
-          tabBarScrollEnabled: true,
-          tabBarItemStyle: { width: "auto", paddingHorizontal: 5 },
-          tabBarLabelStyle: {
-            fontSize: 14,
-            fontWeight: "bold",
-            textTransform: "uppercase",
-          },
-          tabBarStyle: { backgroundColor: "#f8fafc" },
-          tabBarIndicatorStyle: { backgroundColor: "#1f1f1f", height: 2 },
-        }}
+        tabBar={(props) => <MinimalistTabBar {...props} />}
       >
-        {localImages.map((imageSource, index) => (
+        {imagesToShow.map((imageSource, index) => (
           <Tab.Screen
-            style={{}}
-            // Damos un nombre único a cada pestaña
+            className={`bg-slate-50`}
             key={index}
             name={`Página ${index + 1}`}
           >
             {() => (
-              <View style={styles.carouselContainer}>
+              <Pressable onPress={handleTap} style={styles.carouselContainer}>
                 <Image
+                  className={`bg-slate-50`}
                   source={imageSource}
                   style={{
                     width: width,
@@ -628,13 +772,34 @@ const SeccionCatalogos = ({}) => {
                     resizeMode: "contain",
                   }}
                 />
-              </View>
+              </Pressable>
             )}
           </Tab.Screen>
         ))}
       </Tab.Navigator>
     </View>
-    
+  );
+};
+
+const MinimalistTabBar = ({ state }) => {
+  const totalPages = state.routes.length;
+  const currentPage = state.index + 1;
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        backgroundColor: "#f8fafc",
+      }}
+    >
+      <Text style={{ fontWeight: "bold", color: "#334155" }}>
+        Página {currentPage} de {totalPages}
+      </Text>
+    </View>
   );
 };
 
@@ -644,7 +809,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#f8fafc",
-    padding: 40,
+    padding: 25,
   },
   scrollView: {
     width: "100%",
