@@ -8,14 +8,19 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
+  Animated,
 } from "react-native";
+import Toast from "react-native-toast-message";
+import * as Clipboard from "expo-clipboard";
 import "./global.css";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Svg, { Path } from "react-native-svg";
 import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
 import { BarChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
+
+import MapView, { Marker } from "react-native-maps";
 
 import { NavigationContainer } from "@react-navigation/native";
 import {
@@ -28,6 +33,7 @@ import {
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 
 import TopBar from "./components/topbar.jsx";
+import WebView from "react-native-webview";
 
 const Tab = createMaterialTopTabNavigator(); //Aqui se esta creando el componente
 const Drawer = createDrawerNavigator();
@@ -261,6 +267,35 @@ const ScreenAsesores = () => {
 };
 
 const ScreenPagos = () => {
+  const [copiado, setCopiado] = useState(false); //Esta es la funcion que necesito modificar
+
+  const copiarDatos = async (e) => {
+    await Clipboard.setStringAsync(e);
+    setCopiado(true);
+    setTimeout(() => {
+      setCopiado(false);
+    }, 1500);
+  };
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const datosBancarios = {
+    banco: "Bancoppel",
+    beneficiario: "Kelvin Valentin Gomez Ramirez",
+    cuenta: "4169 1608 5392 8977",
+    clabe: "137628103732170052",
+  };
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: copiado ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [copiado]);
+
+  const { width, height } = Dimensions.get("window");
+
   return (
     <Tab.Navigator
       initialRouteName="Transferencia SPEI / Depósito"
@@ -301,14 +336,16 @@ const ScreenPagos = () => {
                     <Text className={`text-[#255ed8] font-semibold`}>
                       Banco
                     </Text>
-                    <Text className={`font-bold text-xl`}>Bancoppel</Text>
+                    <Text className={`font-bold text-xl`}>
+                      {datosBancarios.banco}
+                    </Text>
                   </View>
                   <View>
                     <Text className={`text-[#255ed8] font-semibold`}>
                       Beneficiario
                     </Text>
                     <Text className={`font-bold text-xl`}>
-                      Kelvin Valentin Gomez Ramirez
+                      {datosBancarios.beneficiario}
                     </Text>
                   </View>
                 </View>
@@ -317,9 +354,11 @@ const ScreenPagos = () => {
                     <Text className={`text-[#255ed8] font-semibold`}>
                       Número de cuenta
                     </Text>
-                    <TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => copiarDatos(datosBancarios.cuenta)}
+                    >
                       <Text className={`text-start font-bold text-xl`}>
-                        4169 1608 5392 8977
+                        {datosBancarios.cuenta}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -327,9 +366,11 @@ const ScreenPagos = () => {
                     <Text className={`text-[#255ed8] font-semibold`}>
                       Clabe
                     </Text>
-                    <TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => copiarDatos(datosBancarios.clabe)}
+                    >
                       <Text className={`font-bold text-xl`}>
-                        137628103732170052
+                        {datosBancarios.clabe}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -387,10 +428,120 @@ const ScreenPagos = () => {
                 </View>
               </View>
             </View>
+
+            <Animated.View
+              style={{
+                opacity: fadeAnim,
+                backgroundColor: "rgba(75, 85, 99, 0.6);",
+                padding: 10,
+                borderRadius: 10,
+                position: "absolute",
+                bottom: 40,
+              }}
+            >
+              <Text className={`text-white/80`}>Copiado correctamente</Text>
+            </Animated.View>
           </View>
         )}
       </Tab.Screen>
-      <Tab.Screen name="Efectivo">{() => <></>}</Tab.Screen>
+      <Tab.Screen name="Efectivo">
+        {() => (
+          <View
+            className={`flex-1 flex-col justify-evenly items-center bg-slate-50 rounded-lg p-2`}
+          >
+            <View
+              className={`flex min-w-[600] bg-[#f0fdf4] rounded-lg p-3 justify-center`}
+            >
+              <Text className={`font-bold text-[#0b642e] text-lg`}>
+                📍 Punto de pago
+              </Text>
+              <View className={`flex-col`}>
+                <View className={`flex-col w-[50%] justify-center`}>
+                  <View className={`flex`}>
+                    <Text className={`font-semibold text-[#3da36c] uppercase`}>
+                      Dirección
+                    </Text>
+                    <Text className={`text-lg text-[#3e54d6]`}>
+                      📍 Calle Juárez entre Av. Independencia y 5 de Mayo, C.P.
+                      68300. En altos de COMPUMAX, Tuxtepec, Oaxaca
+                    </Text>
+                  </View>
+                  <View>
+                    <Text className={`font-semibold text-[#3da36c] uppercase`}>
+                      Horario
+                    </Text>
+                    <Text className={`text-lg`}>
+                      Lunes a Viernes, 9:00 a 17:00 h
+                    </Text>
+                  </View>
+                  <View>
+                    <Text className={`font-semibold text-[#3da36c] uppercase`}>
+                      Contacto
+                    </Text>
+                    <Text className={`text-lg`}>Tel: 287 151 5760</Text>
+                  </View>
+                </View>
+                <View>
+                  <MapView
+                    style={{ width: 300, height: 300 }}
+                    initialRegion={{
+                      latitude: 18.08122029158371, // coordenadas de tu iframe
+                      longitude: -96.12200652058925,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
+                    }}
+                  >
+                    <Marker
+                      coordinate={{
+                        latitude: 18.08122029158371,
+                        longitude: -96.12200652058925,
+                      }}
+                      title="MQerKAcademy"
+                      description="Ubicación exacta de la academia"
+                    />
+                  </MapView>
+                </View>
+              </View>
+            </View>
+
+            <View className={`gap-y-2`}>
+              <View className={`flex-row items-baseline gap-x-1`}>
+                <View className={`rounded-full px-1.5 bg-[#297efa]`}>
+                  <Text className={`text-white font-bold`}>1</Text>
+                </View>
+                <Text className={`text-[#45474e]`}>
+                  Realiza una transferencia SPEI o depósito al número de
+                  cuenta/CLABE.
+                </Text>
+              </View>
+              <View className={`flex-row items-baseline gap-x-1`}>
+                <View className={`rounded-full px-1.5 bg-[#297efa]`}>
+                  <Text className={`text-white font-bold`}>2</Text>
+                </View>
+                <Text className={`text-[#45474e]`}>
+                  Asegúrate de incluir tu nombre completo en la referencia o
+                  concepto de pago.
+                </Text>
+              </View>
+              <View className={`flex-row items-baseline gap-x-1`}>
+                <View className={`rounded-full px-1.5 bg-[#297efa]`}>
+                  <Text className={`text-white font-bold`}>3</Text>
+                </View>
+                <Text className={`text-[#45474e]`}>
+                  Sube tu comprobante de transferencia para validación rápida.
+                </Text>
+              </View>
+              <View className={`self-center`}>
+                <Ripple className={`bg-blue-500 p-2 rounded`}>
+                  <Text className={`text-center text-white`}>
+                    Ir a la seccion de registro
+                  </Text>
+                </Ripple>
+              </View>
+            </View>
+          </View>
+        )}
+      </Tab.Screen>
       <Tab.Screen name="Tarjeta de crédito / débito">
         {() => <Text></Text>}
       </Tab.Screen>
