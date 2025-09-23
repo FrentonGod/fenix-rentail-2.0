@@ -9,8 +9,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
+  Platform,
+  useWindowDimensions,
 } from "react-native";
-import Toast from "react-native-toast-message";
 import * as Clipboard from "expo-clipboard";
 import "./global.css";
 import { useState, useRef, useEffect } from "react";
@@ -20,7 +21,7 @@ import Ripple from "react-native-material-ripple";
 import { BarChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 
-import MapView, { Marker } from "react-native-maps";
+import RenderHtml from "react-native-render-html";
 
 import { NavigationContainer } from "@react-navigation/native";
 import {
@@ -33,7 +34,7 @@ import {
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 
 import TopBar from "./components/topbar.jsx";
-import WebView from "react-native-webview";
+import MapView, { Marker } from "react-native-maps";
 
 const Tab = createMaterialTopTabNavigator(); //Aqui se esta creando el componente
 const Drawer = createDrawerNavigator();
@@ -294,7 +295,6 @@ const ScreenPagos = () => {
     }).start();
   }, [copiado]);
 
-  const { width, height } = Dimensions.get("window");
 
   return (
     <Tab.Navigator
@@ -456,50 +456,71 @@ const ScreenPagos = () => {
                 📍 Punto de pago
               </Text>
               <View className={`flex-col`}>
-                <View className={`flex-col w-[50%] justify-center`}>
-                  <View className={`flex`}>
-                    <Text className={`font-semibold text-[#3da36c] uppercase`}>
-                      Dirección
-                    </Text>
-                    <Text className={`text-lg text-[#3e54d6]`}>
-                      📍 Calle Juárez entre Av. Independencia y 5 de Mayo, C.P.
-                      68300. En altos de COMPUMAX, Tuxtepec, Oaxaca
-                    </Text>
+                <View className={`flex-row`}>
+                  <View className={`flex-col justify-center`}>
+                    <View className={`flex`}>
+                      <Text
+                        className={`font-semibold text-[#3da36c] uppercase`}
+                      >
+                        Dirección
+                      </Text>
+                      <Text className={`text-lg text-[#3e54d6]`}>
+                        📍 Calle Juárez entre Av. Independencia y 5 de Mayo,
+                        C.P. 68300. En altos de COMPUMAX, Tuxtepec, Oaxaca
+                      </Text>
+                    </View>
+                    <View>
+                      <Text
+                        className={`font-semibold text-[#3da36c] uppercase`}
+                      >
+                        Horario
+                      </Text>
+                      <Text className={`text-lg`}>
+                        Lunes a Viernes, 9:00 a 17:00 h
+                      </Text>
+                    </View>
+                    <View>
+                      <Text
+                        className={`font-semibold text-[#3da36c] uppercase`}
+                      >
+                        Contacto
+                      </Text>
+                      <Text className={`text-lg`}>Tel: 287 151 5760</Text>
+                    </View>
                   </View>
-                  <View>
-                    <Text className={`font-semibold text-[#3da36c] uppercase`}>
-                      Horario
-                    </Text>
-                    <Text className={`text-lg`}>
-                      Lunes a Viernes, 9:00 a 17:00 h
-                    </Text>
-                  </View>
-                  <View>
-                    <Text className={`font-semibold text-[#3da36c] uppercase`}>
-                      Contacto
-                    </Text>
-                    <Text className={`text-lg`}>Tel: 287 151 5760</Text>
+                  <View
+                    className={`flex-1 bg-[#fdfffe] rounded-lg shadow-black p-4`}
+                  >
+                    <Text>cadsadf</Text>
                   </View>
                 </View>
-                <View>
-                  <MapView
-                    style={{ width: 300, height: 300 }}
-                    initialRegion={{
-                      latitude: 18.08122029158371, // coordenadas de tu iframe
-                      longitude: -96.12200652058925,
-                      latitudeDelta: 0.01,
-                      longitudeDelta: 0.01,
-                    }}
-                  >
-                    <Marker
-                      coordinate={{
-                        latitude: 18.08122029158371,
+                <View className={`items-center justify-center p-4`}>
+                  {Platform.OS === "web" ? (
+                    <iframe
+                      src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d237.04951234566224!2d-96.1219307!3d18.0811722!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x85c3e79a1075bcad%3A0x54b80ec3131030de!2sMQerKAcademy!5e0!3m2!1ses!2smx!4v1758650715785!5m2!1ses!2smx"
+                      width="600"
+                      height="450"
+                    ></iframe>
+                  ) : (
+                    <MapView
+                      style={{ width: 600, height: 450 }}
+                      initialRegion={{
+                        latitude: 18.08122029158371, // coordenadas de tu iframe
                         longitude: -96.12200652058925,
+                        latitudeDelta: 0.01,
+                        longitudeDelta: 0.01,
                       }}
-                      title="MQerKAcademy"
-                      description="Ubicación exacta de la academia"
-                    />
-                  </MapView>
+                    >
+                      <Marker
+                        coordinate={{
+                          latitude: 18.08122029158371,
+                          longitude: -96.12200652058925,
+                        }}
+                        title="MQerKAcademy"
+                        description="Ubicación exacta de la academia"
+                      />
+                    </MapView>
+                  )}
                 </View>
               </View>
             </View>
@@ -920,8 +941,8 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
                   style={{
                     width: width,
                     height: "100%",
-                    resizeMode: "contain",
                   }}
+                  resizeMode="contain"
                 />
               </Pressable>
             )}
