@@ -295,7 +295,6 @@ const ScreenPagos = () => {
     }).start();
   }, [copiado]);
 
-
   return (
     <Tab.Navigator
       initialRouteName="Transferencia SPEI / Depósito"
@@ -446,17 +445,23 @@ const ScreenPagos = () => {
       </Tab.Screen>
       <Tab.Screen name="Efectivo">
         {() => (
-          <View
-            className={`flex-1 flex-col justify-evenly items-center bg-slate-50 rounded-lg p-2`}
+          <ScrollView
+            contentContainerStyle={{
+              flexDirection: `column`,
+              alignItems: "center",
+            }}
+            className={`bg-slate-50 rounded-lg p-10 gap-y-8`}
           >
             <View
-              className={`flex min-w-[600] bg-[#f0fdf4] rounded-lg p-3 justify-center`}
+              className={`flex min-w-[600] max-w-[800] bg-[#f0fdf4] rounded-lg p-3 justify-center`}
             >
               <Text className={`font-bold text-[#0b642e] text-lg`}>
                 📍 Punto de pago
               </Text>
-              <View className={`flex-col`}>
-                <View className={`flex-row`}>
+              <View className={`flex-col items-center`}>
+                <View
+                  className={`flex-row w-full justify-between px-2 items-center`}
+                >
                   <View className={`flex-col justify-center`}>
                     <View className={`flex`}>
                       <Text
@@ -464,7 +469,7 @@ const ScreenPagos = () => {
                       >
                         Dirección
                       </Text>
-                      <Text className={`text-lg text-[#3e54d6]`}>
+                      <Text className={`text-lg text-[#3e54d6] max-w-60`}>
                         📍 Calle Juárez entre Av. Independencia y 5 de Mayo,
                         C.P. 68300. En altos de COMPUMAX, Tuxtepec, Oaxaca
                       </Text>
@@ -489,9 +494,38 @@ const ScreenPagos = () => {
                     </View>
                   </View>
                   <View
-                    className={`flex-1 bg-[#fdfffe] rounded-lg shadow-black p-4`}
+                    className={`flex bg-[#fdfffe] gap-y-6 rounded-lg shadow p-4`}
                   >
-                    <Text>cadsadf</Text>
+                    <View className={`flex-row items-center gap-x-2`}>
+                      <Text className={`bg-[#e5f9ed] rounded-full p-2`}>
+                        📌
+                      </Text>
+                      <Text
+                        className={`text-[#1f5035] text-xl font-bold uppercase`}
+                      >
+                        Documentación
+                      </Text>
+                    </View>
+                    <View className={`gap-y-3`}>
+                      <View className={`items-center flex-row`}>
+                        <Text className={`text-[#17bd71]`}>•</Text>
+                        <Text className={`text-[#448160]`}>
+                          Revisar documento de identificación (INE, pasaporte)
+                        </Text>
+                      </View>
+                      <View className={`items-center flex-row`}>
+                        <Text className={`text-[#17bd71]`}>•</Text>
+                        <Text className={`text-[#448160]`}>
+                          Verificar comprobante de domicilio
+                        </Text>
+                      </View>
+                      <View className={`items-center flex-row`}>
+                        <Text className={`text-[#17bd71]`}>•</Text>
+                        <Text className={`text-[#448160]`}>
+                          Informar sobre los descuentos disponibles
+                        </Text>
+                      </View>
+                    </View>
                   </View>
                 </View>
                 <View className={`items-center justify-center p-4`}>
@@ -524,49 +558,45 @@ const ScreenPagos = () => {
                 </View>
               </View>
             </View>
-
-            <View className={`gap-y-2`}>
-              <View className={`flex-row items-baseline gap-x-1`}>
-                <View className={`rounded-full px-1.5 bg-[#297efa]`}>
-                  <Text className={`text-white font-bold`}>1</Text>
-                </View>
-                <Text className={`text-[#45474e]`}>
-                  Realiza una transferencia SPEI o depósito al número de
-                  cuenta/CLABE.
-                </Text>
-              </View>
-              <View className={`flex-row items-baseline gap-x-1`}>
-                <View className={`rounded-full px-1.5 bg-[#297efa]`}>
-                  <Text className={`text-white font-bold`}>2</Text>
-                </View>
-                <Text className={`text-[#45474e]`}>
-                  Asegúrate de incluir tu nombre completo en la referencia o
-                  concepto de pago.
-                </Text>
-              </View>
-              <View className={`flex-row items-baseline gap-x-1`}>
-                <View className={`rounded-full px-1.5 bg-[#297efa]`}>
-                  <Text className={`text-white font-bold`}>3</Text>
-                </View>
-                <Text className={`text-[#45474e]`}>
-                  Sube tu comprobante de transferencia para validación rápida.
-                </Text>
-              </View>
-              <View className={`self-center`}>
-                <Ripple className={`bg-blue-500 p-2 rounded`}>
-                  <Text className={`text-center text-white`}>
-                    Ir a la seccion de registro
-                  </Text>
-                </Ripple>
-              </View>
-            </View>
-          </View>
+          </ScrollView>
         )}
       </Tab.Screen>
       <Tab.Screen name="Tarjeta de crédito / débito">
-        {() => <Text></Text>}
+        {() => <Proximamente />}
       </Tab.Screen>
     </Tab.Navigator>
+  );
+};
+
+const Proximamente = () => {
+  const [dots, setDots] = useState("");
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setDots((prevDots) => (prevDots.length < 3 ? prevDots + "." : ""));
+    }, 500);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
+  return (
+      <View className={`flex-1 justify-center items-center flex-row`}>
+        <Text style={{ fontSize: 24, fontWeight: "bold", color: "#334155" }}>
+          Próximamente
+        </Text>
+        <Text
+
+          style={{
+            fontSize: 24,
+            fontWeight: "bold",
+            color: "#334155",
+            width: 20,
+            textAlign: "left",
+          }}
+        >
+          {dots}
+        </Text>
+      </View>
   );
 };
 
@@ -660,10 +690,6 @@ const SeccionVentas = () => {
             className={`rounded`}
             contentContainerStyle={{
               backgroundColor: "#f8fafc",
-              width: "fit-content",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
             }}
             horizontal
           >
