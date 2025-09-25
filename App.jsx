@@ -664,113 +664,140 @@ const ScreenCalendario = () => {
   // Formato YYYY-MM-DD
   const minDate = sixMonthsAgo.toISOString().split("T")[0];
   const maxDate = `${today.getFullYear() + 1}-12-31`;
+  const todayDateString = today.toISOString().split("T")[0];
+
+  // Objeto para marcar la fecha de hoy con estilos personalizados
+  const marked = {
+    [todayDateString]: { selected: true, selectedColor: "#6F09EA" },
+  };
 
   return (
-    <View className={`flex-1 items-center bg-slate-50 p-2 flex-col`}>
+    <View className={`flex-1 bg-slate-50 p-2 flex-col`}>
       <View
         className={`flex-1 horizontal:flex-row vertical:flex-col p-2 vertical:gap-y-10 horizontal:gap-x-10`}
       >
-        <Calendar
-          showSixWeeks={true}
-          minDate={minDate}
-          maxDate={maxDate}
-          futureScrollRange={12}
-          enableSwipeMonths={true}
-          disableAllTouchEventsForDisabledDays={true}
-          disableAllTouchEventsForInactiveDays={false}
-          markedDates={{ today: { selected: true } }}
-          style={{
-            width: 500,
-            borderRadius: 10,
-            borderColor: "#1f1f1f",
-            borderWidth: 1,
-            boxSizing: "border-box",
-          }}
-          theme={{
-            borderWidth: 2,
-            borderColor: "#6F09EA",
-            todayButtonFontWeight: 300,
-          }}
-          renderArrow={(direction) => {
-            if (direction === "left") {
-              return (
-                <View
-                  style={{
-                    backgroundColor: "#6F09EA",
-                    background:
-                      "radial-gradient(circle, rgba(111, 9, 234, 1) 0%, rgba(112, 9, 232, 1) 100%)",
-                  }}
-                  className={`rounded-full p-1`}
-                >
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
+        <View
+          className={`horizontal:flex-col vertical:flex-col vertical:items-center horizontal:items-stretch`}
+        >
+          <Calendar
+            showSixWeeks={true}
+            markingType={"custom"}
+            markedDates={marked}
+            minDate={minDate}
+            maxDate={maxDate}
+            futureScrollRange={12}
+            enableSwipeMonths={true}
+            disabledByWeekDays={[0]}
+            disableAllTouchEventsForDisabledDays={true}
+            style={{
+              width: 400,
+              borderRadius: 10,
+              borderColor: "#1f1f1f",
+              borderWidth: 1,
+              boxSizing: "border-box",
+              backgroundColor: "#f8fafc",
+            }}
+            theme={{
+              calendarBackground: "#f8fafc",
+              textSectionTitleColor: "#1f1f1f",
+              // Ya no necesitamos todayBackgroundColor o todayTextColor
+              // porque lo manejamos con markedDates
+              "stylesheet.day.basic": {
+                selected: {
+                  backgroundColor: "#6F09EA", // Color de fondo que ya tenías
+                  borderRadius: 16,
+                  // --- Aquí agregamos la sombra ---
+                  elevation: 5, // Sombra para Android
+                  shadowColor: "#000", // Sombra para iOS
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.25,
+                  shadowRadius: 3.84,
+                },
+                todayText: {
+                  color: "#6F09EA", // Color para el número del día de hoy cuando no está seleccionado
+                  fontWeight: "bold",
+                },
+              },
+            }}
+            renderArrow={(direction) => {
+              if (direction === "left") {
+                return (
+                  <View
+                    style={{
+                      backgroundColor: "#B58EE2",
+                      // --- Sombra para los botones de flecha ---
+                      elevation: 4, // Sombra para Android
+                      shadowColor: "#000", // Sombra para iOS
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 3.84,
+                    }}
+                    className={`rounded-full p-1`}
                   >
-                    <Path d="M560-240 320-480l240-240 56 56-184 184 184 184-56 56Z" />
-                  </Svg>
-                </View>
-              );
-            } else {
-              return (
-                <View
-                  style={{
-                    backgroundColor: "#6F09EA",
-                    background:
-                      "radial-gradient(circle, rgba(111, 9, 234, 1) 0%, rgba(112, 9, 232, 1) 100%)",
-                  }}
-                  className={`rounded-full p-1`}
-                >
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
+                    <Svg
+                      height="24"
+                      viewBox="0 -960 960 960"
+                      width="24"
+                      fill="#ffffff"
+                    >
+                      <Path d="M560-240 320-480l240-240 56 56-184 184 184 184-56 56Z" />
+                    </Svg>
+                  </View>
+                );
+              } else {
+                return (
+                  <View
+                    style={{
+                      backgroundColor: "#B58EE2",
+                      // --- Sombra para los botones de flecha ---
+                      elevation: 4, // Sombra para Android
+                      shadowColor: "#000", // Sombra para iOS
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 3.84,
+                    }}
+                    className={`rounded-full p-1`}
                   >
-                    <Path d="M400-240 344-296l184-184-184-184 56-56 240 240-240 240Z" />
-                  </Svg>
-                </View>
-              );
-            }
-          }}
-          dayComponent={({ date, state }) => {
-            const isToday =
-              date.dateString === new Date().toISOString().split("T")[0];
-            return (
-              <TouchableOpacity
-                style={{
-                  backgroundColor: isToday ? "#6F09EA" : "",
-
-                  padding: 3,
-                  borderRadius: 100,
-                  borderWidth: isToday ? 2 : 0,
-                  boxSizing: "border-box",
-                  borderColor: "#6F09EA",
-                  fontWeight: isToday ? "bold" : "normal",
-                }}
-              >
-                <Text
-                  style={{
-                    color: isToday
-                      ? "ffffff"
-                      : state === "disabled"
-                        ? "gray"
-                        : "black",
-                  }}
-                >
-                  {date.day}
-                </Text>
-              </TouchableOpacity>
-            );
-          }}
-        />
-        <View className={`flex-1`}>
-          <Text className={`uppercase font-bold`}>Próximos eventos</Text>
+                    <Svg
+                      height="24"
+                      viewBox="0 -960 960 960"
+                      width="24"
+                      fill="#ffffff"
+                    >
+                      <Path d="M400-240 344-296l184-184-184-184 56-56 240 240-240 240Z" />
+                    </Svg>
+                  </View>
+                );
+              }
+            }}
+          />
+          <View
+            className={`vertical:mt-4 horizontal:mt-4 vertical:items-center horizontal:items-center`}
+          >
+            <View
+              className={`border p-1 rounded-full vertical:self-center horizontal:self-center shadow-md shadow-black bg-slate-400`}
+            >
+              <View className={`flex-row items-center gap-x-2`}>
+                <Pressable
+                  className={`p-3 shadow-md shadow-black bg-[#6F09EA] border border-white self-center rounded-full`}
+                />
+                <Text>Hoy</Text>
+              </View>
+            </View>
+          </View>
         </View>
-      </View>
-      <View className={`flex`}>
-        <Text>Eventos para el</Text>
+        <View
+          className={`flex-1 vertical:flex-row horizontal:flex-col vertical:gap-x-4 horizontal:gap-x-0`}
+        >
+          <View className={`flex-1`}>
+            <Text className={`uppercase font-bold border-b `}>
+              Próximos eventos
+            </Text>
+            <View className={`flex-1 items-center justify-center`}>
+              <Text>¡Vaya!, al parecer no quedan pedientes</Text>
+            </View>
+          </View>
+        </View>
       </View>
     </View>
   );
