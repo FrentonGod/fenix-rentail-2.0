@@ -10,7 +10,6 @@ import {
   StyleSheet,
   Animated,
   Platform,
-  useWindowDimensions,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import "./global.css";
@@ -21,7 +20,14 @@ import Ripple from "react-native-material-ripple";
 import { BarChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 
-import RenderHtml from "react-native-render-html";
+import {
+  Calendar,
+  CalendarList,
+  CalendarProvider,
+  Agenda,
+  LocaleConfig,
+  ExpandableCalendar,
+} from "react-native-calendars";
 
 import { NavigationContainer } from "@react-navigation/native";
 import {
@@ -494,7 +500,7 @@ const ScreenPagos = () => {
                     </View>
                   </View>
                   <View
-                    className={`flex bg-[#fdfffe] gap-y-6 rounded-lg shadow p-4`}
+                    className={`flex bg-[#fdfffe] vertical:max-w-[350] overflow-hidden gap-y-6 rounded-lg shadow p-4`}
                   >
                     <View className={`flex-row items-center gap-x-2`}>
                       <Text className={`bg-[#e5f9ed] rounded-full p-2`}>
@@ -507,19 +513,19 @@ const ScreenPagos = () => {
                       </Text>
                     </View>
                     <View className={`gap-y-3`}>
-                      <View className={`items-center flex-row`}>
+                      <View className={`items-baseline flex-row`}>
                         <Text className={`text-[#17bd71]`}>•</Text>
                         <Text className={`text-[#448160]`}>
                           Revisar documento de identificación (INE, pasaporte)
                         </Text>
                       </View>
-                      <View className={`items-center flex-row`}>
+                      <View className={`items-baseline flex-row`}>
                         <Text className={`text-[#17bd71]`}>•</Text>
                         <Text className={`text-[#448160]`}>
                           Verificar comprobante de domicilio
                         </Text>
                       </View>
-                      <View className={`items-center flex-row`}>
+                      <View className={`items-baseline flex-row`}>
                         <Text className={`text-[#17bd71]`}>•</Text>
                         <Text className={`text-[#448160]`}>
                           Informar sobre los descuentos disponibles
@@ -580,23 +586,22 @@ const Proximamente = () => {
   }, []);
 
   return (
-      <View className={`flex-1 justify-center items-center flex-row`}>
-        <Text style={{ fontSize: 24, fontWeight: "bold", color: "#334155" }}>
-          Próximamente
-        </Text>
-        <Text
-
-          style={{
-            fontSize: 24,
-            fontWeight: "bold",
-            color: "#334155",
-            width: 20,
-            textAlign: "left",
-          }}
-        >
-          {dots}
-        </Text>
-      </View>
+    <View className={`flex-1 justify-center items-center flex-row`}>
+      <Text style={{ fontSize: 24, fontWeight: "bold", color: "#334155" }}>
+        Próximamente
+      </Text>
+      <Text
+        style={{
+          fontSize: 24,
+          fontWeight: "bold",
+          color: "#334155",
+          width: 20,
+          textAlign: "left",
+        }}
+      >
+        {dots}
+      </Text>
+    </View>
   );
 };
 
@@ -605,7 +610,170 @@ const ScreenFinanzas = () => {
 };
 
 const ScreenCalendario = () => {
-  return <Text>Pantalla para calendario</Text>;
+  LocaleConfig.locales["es"] = {
+    monthNames: [
+      "Enero",
+      "Febrero",
+      "Marzo",
+      "Abril",
+      "Mayo",
+      "Junio",
+      "Julio",
+      "Agosto",
+      "Septiembre",
+      "Octubre",
+      "Noviembre",
+      "Diciembre",
+    ],
+    monthNamesShort: [
+      "Ene",
+      "Feb",
+      "Mar",
+      "Abr",
+      "May",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dic",
+    ],
+    dayNames: [
+      "Domingo",
+      "Lunes",
+      "Martes",
+      "Miércoles",
+      "Jueves",
+      "Viernes",
+      "Sábado",
+    ],
+    dayNamesShort: ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sab"],
+    dayNamesMin: ["D", "L", "M", "X", "J", "V", "S"],
+    today: "Hoy",
+    now: "Ahora",
+    am: "AM",
+    pm: "PM",
+  };
+
+  LocaleConfig.defaultLocale = "es";
+
+  const today = new Date();
+  const sixMonthsAgo = new Date(today);
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 3);
+  // Formato YYYY-MM-DD
+  const minDate = sixMonthsAgo.toISOString().split("T")[0];
+  const maxDate = `${today.getFullYear() + 1}-12-31`;
+
+  return (
+    <View className={`flex-1 items-center bg-slate-50 p-2 flex-col`}>
+      <View
+        className={`flex-1 horizontal:flex-row vertical:flex-col p-2 vertical:gap-y-10 horizontal:gap-x-10`}
+      >
+        <Calendar
+          showSixWeeks={true}
+          minDate={minDate}
+          maxDate={maxDate}
+          futureScrollRange={12}
+          enableSwipeMonths={true}
+          disableAllTouchEventsForDisabledDays={true}
+          disableAllTouchEventsForInactiveDays={false}
+          markedDates={{ today: { selected: true } }}
+          style={{
+            width: 500,
+            borderRadius: 10,
+            borderColor: "#1f1f1f",
+            borderWidth: 1,
+            boxSizing: "border-box",
+          }}
+          theme={{
+            borderWidth: 2,
+            borderColor: "#6F09EA",
+            todayButtonFontWeight: 300,
+          }}
+          renderArrow={(direction) => {
+            if (direction === "left") {
+              return (
+                <View
+                  style={{
+                    backgroundColor: "#6F09EA",
+                    background:
+                      "radial-gradient(circle, rgba(111, 9, 234, 1) 0%, rgba(112, 9, 232, 1) 100%)",
+                  }}
+                  className={`rounded-full p-1`}
+                >
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#ffffff"
+                  >
+                    <Path d="M560-240 320-480l240-240 56 56-184 184 184 184-56 56Z" />
+                  </Svg>
+                </View>
+              );
+            } else {
+              return (
+                <View
+                  style={{
+                    backgroundColor: "#6F09EA",
+                    background:
+                      "radial-gradient(circle, rgba(111, 9, 234, 1) 0%, rgba(112, 9, 232, 1) 100%)",
+                  }}
+                  className={`rounded-full p-1`}
+                >
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#ffffff"
+                  >
+                    <Path d="M400-240 344-296l184-184-184-184 56-56 240 240-240 240Z" />
+                  </Svg>
+                </View>
+              );
+            }
+          }}
+          dayComponent={({ date, state }) => {
+            const isToday =
+              date.dateString === new Date().toISOString().split("T")[0];
+            return (
+              <TouchableOpacity
+                style={{
+                  backgroundColor: isToday ? "#6F09EA" : "",
+
+                  padding: 3,
+                  borderRadius: 100,
+                  borderWidth: isToday ? 2 : 0,
+                  boxSizing: "border-box",
+                  borderColor: "#6F09EA",
+                  fontWeight: isToday ? "bold" : "normal",
+                }}
+              >
+                <Text
+                  style={{
+                    color: isToday
+                      ? "ffffff"
+                      : state === "disabled"
+                        ? "gray"
+                        : "black",
+                  }}
+                >
+                  {date.day}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+        />
+        <View className={`flex-1`}>
+          <Text className={`uppercase font-bold`}>Próximos eventos</Text>
+        </View>
+      </View>
+      <View className={`flex`}>
+        <Text>Eventos para el</Text>
+      </View>
+    </View>
+  );
 };
 
 const ScreenCursos = () => {
