@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Animated,
   Platform,
+  TextInput,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import "./global.css";
@@ -19,6 +20,7 @@ import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
 import { BarChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
+import { Dropdown } from "react-native-element-dropdown";
 
 import {
   Calendar,
@@ -29,7 +31,10 @@ import {
   ExpandableCalendar,
 } from "react-native-calendars";
 
-import { NavigationContainer } from "@react-navigation/native";
+import {
+  NavigationContainer,
+  NavigationIndependentTree,
+} from "@react-navigation/native";
 import {
   createDrawerNavigator,
   DrawerContentScrollView,
@@ -804,7 +809,46 @@ const ScreenCalendario = () => {
 };
 
 const ScreenCursos = () => {
-  return <Text>Pantalla para cursos</Text>;
+  const data = [
+    { label: "Nombre", value: "1" },
+    { label: "Precio", value: "2" },
+    { label: "ID", value: "3" },
+  ];
+  return (
+    <ScrollView
+      showsVerticalScrollIndicator={true}
+      className={`flex-1 bg-slate-50`}
+    >
+      <View className={`self-center p-2`}>
+        <View
+          className={`border justify-center items-center flex-row rounded-lg`}
+        >
+          <TextInput
+            placeholder="Ingrese el curso que desee buscar"
+            className={`self-start`}
+          />
+          <View className={`min-w-[15em] h-full relative bg-yellow-500`}>
+            <Text>Buscar por</Text>
+            <Dropdown
+              className={`mt-5`}
+              valueField={"value"}
+              labelField={"label"}
+              data={data}
+              value={data[0]}
+            />
+          </View>
+        </View>
+        <Text>ddcd</Text>
+        <Dropdown
+          placeholder="Buscar por:"
+          valueField={"value"}
+          labelField={"label"}
+          searchPlaceholder="dfsdfr"
+          data={data}
+        />
+      </View>
+    </ScrollView>
+  );
 };
 
 const SeccionVentas = () => {
@@ -1092,8 +1136,11 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
   ];
 
   const tarifarioImages = [
-    require("./assets/Catalogo/Catalogo-16.png"),
-    require("./assets/Catalogo/Catalogo-15.png"),
+    require("./assets/Tarifario/Tarifario-1.jpg"),
+    require("./assets/Tarifario/Tarifario-2.jpg"),
+    require("./assets/Tarifario/Tarifario-3.jpg"),
+    require("./assets/Tarifario/Tarifario-4.jpg"),
+    require("./assets/Tarifario/Tarifario-5.jpg"),
   ];
 
   const imagesToShow = catalogos ? tarifarioImages : catalogoImages;
@@ -1106,6 +1153,7 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
         >
           <View className={``}>
             <Ripple
+              style={{ elevation: catalogos ? 0 : 5 }}
               rippleContainerBorderRadius={5}
               className={`self-start p-2 justify-center items-center rounded ${catalogos ? "" : "bg-white"}`}
               onPress={() => setCatalogos(false)}
@@ -1124,6 +1172,7 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
           </View>
           <View>
             <Ripple
+              style={{ elevation: catalogos ? 5 : 0 }}
               rippleContainerBorderRadius={5}
               className={`self-start p-2 justify-center items-center rounded ${catalogos ? "bg-white" : ""}`}
               onPress={() => setCatalogos(true)}
@@ -1142,7 +1191,6 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
           </View>
         </View>
       </View>
-
       <Tab.Navigator
         key={catalogos ? "tarifario" : "catalogo"} // Clave para forzar el reseteo del estado del navegador
         tabBarPosition="bottom"
