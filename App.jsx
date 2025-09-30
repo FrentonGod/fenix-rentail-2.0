@@ -11,6 +11,9 @@ import {
   Animated,
   Platform,
   TextInput,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Modal,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import "./global.css";
@@ -21,6 +24,8 @@ import Ripple from "react-native-material-ripple";
 import { BarChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { Dropdown } from "react-native-element-dropdown";
+
+import { verifyInstallation } from "nativewind";
 
 import {
   Calendar,
@@ -45,12 +50,13 @@ import {
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 
 import TopBar from "./components/topbar.jsx";
-import MapView, { Marker } from "react-native-maps";
+// import MapView, { Marker } from "react-native-maps";
 
 const Tab = createMaterialTopTabNavigator(); //Aqui se esta creando el componente
 const Drawer = createDrawerNavigator();
 
 export default function App() {
+  verifyInstallation();
   return (
     <SafeAreaProvider>
       <SafeAreaView
@@ -271,11 +277,279 @@ const ScreenInicio = () => {
 };
 
 const ScreenEstudiantes = () => {
-  return <Text>Pantalla para estudiantes</Text>;
+  const tableDataEstudiantes = [
+    [
+      1,
+      "Juan Pérez",
+      "Curso de React Native",
+      "$500",
+      "10",
+      "Grupo A",
+      "$1500",
+    ],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+  ];
+  return (
+    <View
+      id="screen-estudiantes"
+      className={`flex-1 bg-slate-50 justify-center items-center vertical:px-2`}
+    >
+      <View className={` mt-4 justify-evenly`}>
+        <Text className={`uppercase text-center text-xl font-bold mb-10`}>
+          Estudiantes
+        </Text>
+        <ScrollView horizontal>
+          <Table style={{ borderRadius: 10 }}>
+            <Row
+              data={[
+                "#",
+                "Nombre del cliente",
+                "Curso/Asesoría",
+                "Pendiente",
+                "Sesiones",
+                "Grupo",
+                "Ingreso",
+              ]}
+              height={40}
+              widthArr={[100, 150, 200, 120, 100, 100, 120]}
+              className="flex items-center justify-center"
+              textStyle={{
+                textAlign: "center", // Estilo para el texto de la cabecera
+                fontWeight: "bold",
+              }}
+              style={{
+                backgroundColor: "#eef2f5",
+                borderWidth: 1,
+                borderColor: "#e2e4e8",
+                borderTopLeftRadius: 10,
+                borderTopRightRadius: 10,
+              }}
+            />
+            <ScrollView horizontal={false} nestedScrollEnabled={true}>
+              {tableDataEstudiantes.map((rowData, index) => (
+                <TableWrapper
+                  key={index}
+                  style={{
+                    flexDirection: "row",
+                    borderWidth: 1,
+                    borderColor: "#e2e4e8",
+                    paddingVertical: 10,
+                  }}
+                >
+                  <Cell
+                    data={index + 1}
+                    width={100}
+                    textStyle={styles.tableText}
+                  />
+                  <Cell
+                  style={{textAlign:"start"}}
+                    data={rowData[1]}
+                    width={150}
+                    textStyle={styles.tableText}
+                  />
+                  <Cell
+                    data={rowData[2]}
+                    width={200}
+                    textStyle={styles.tableText}
+                  />
+                  <Cell
+                    data={rowData[3]}
+                    width={120}
+                    textStyle={styles.tableText}
+                  />
+                  <Cell
+                    data={rowData[4]}
+                    width={100}
+                    textStyle={styles.tableText}
+                  />
+                  <Cell
+                    data={rowData[5]}
+                    width={100}
+                    textStyle={styles.tableText}
+                  />
+                  <Cell
+                    data={rowData[6]}
+                    width={120}
+                    textStyle={styles.tableText}
+                  />
+                </TableWrapper>
+              ))}
+            </ScrollView>
+          </Table>
+        </ScrollView>
+      </View>
+    </View>
+  );
 };
 
 const ScreenAsesores = () => {
-  return <Text>Pantalla para asesores</Text>;
+  const tableDataAsesores = [
+    [
+      1,
+      "Darian Reyes Romero",
+      "Informática",
+      "Municipio",
+      "Direccion",
+      "2871324476",
+      "Masculino",
+    ],
+    [
+      1,
+      "Darian Reyes Romero",
+      "Informática",
+      "Municipio",
+      "Direccion",
+      "2871324476",
+      "Masculino",
+    ],
+    [
+      1,
+      "Darian Reyes Romero",
+      "Informática",
+      "Municipio",
+      "Direccion",
+      "2871324476",
+      "Masculino",
+    ],
+    [
+      1,
+      "Darian Reyes Romero",
+      "Informática",
+      "Municipio",
+      "Direccion",
+      "2871324476",
+      "Masculino",
+    ],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+  ];
+  return (
+    <View className={`flex-1 bg-slate-50 justify-center items-center`}>
+      <View className={`mt-7`}>
+        <View className={`flex-row items-center relative`}>
+          <Pressable
+            className={`py-1 px-2 m-2 self-start flex-row justify-between items-center gap-x-2 rounded bg-[#66b5ff] overflow-hidden`}
+            android_ripple={{
+              color: "#1c1c1c",
+              borderless: false,
+              foreground: true,
+            }}
+            style={{ elevation: 5 }}
+          >
+            <Text className={`text-sm font-semibold`}>Agregar asesor</Text>
+            <Svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="#000000"
+            >
+              <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+            </Svg>
+          </Pressable>
+          <Text
+            className={`uppercase shadow-md shadow-black text-center text-xl font-bold absolute left-[50%] translate-x-[-50]`}
+          >
+            Asesores
+          </Text>
+        </View>
+        <View className={`vertical:px-2`}>
+          <ScrollView horizontal>
+            <Table style={{ borderRadius: 10 }}>
+              <Row
+                data={[
+                  "#",
+                  "Nombre",
+                  "Área",
+                  "Municipio",
+                  "Dirección",
+                  "Número",
+                  "Género",
+                ]}
+                height={40}
+                widthArr={[100, 200, 150, 100, 150, 100, 120]}
+                textStyle={{
+                  textAlign: "center",
+                  fontWeight: "bold", // Estilo para el texto de la cabecera
+                }}
+                style={{
+                  backgroundColor: "#eef2f5",
+                  borderWidth: 1,
+                  borderColor: "#e2e4e8",
+                  borderTopLeftRadius: 10,
+                  borderTopRightRadius: 10,
+                }}
+              />
+              <ScrollView horizontal={false} nestedScrollEnabled={true}>
+                {tableDataAsesores.map((rowData, index) => (
+                  <TableWrapper
+                    key={index}
+                    style={{
+                      flexDirection: "row",
+                      borderWidth: 1,
+                      borderColor: "#e2e4e8",
+                      paddingVertical: 10,
+                    }}
+                  >
+                    <Cell
+                      id="celda-numero"
+                      data={rowData[0]}
+                      width={100}
+                      textStyle={styles.tableText}
+                    />
+                    <Cell
+                      id="celda-nombre"
+                      data={rowData[1]}
+                      width={200}
+                      textStyle={styles.tableText}
+                    />
+                    <Cell
+                      id="celda-area"
+                      data={rowData[2]}
+                      width={150}
+                      textStyle={styles.tableText}
+                    />
+                    <Cell
+                      id="celda-municipio"
+                      data={rowData[3]}
+                      width={100}
+                      textStyle={styles.tableText}
+                    />
+                    <Cell
+                      id="celda-direccion"
+                      data={rowData[4]}
+                      width={150}
+                      textStyle={styles.tableText}
+                    />
+                    <Cell
+                      id="celda-numero"
+                      data={rowData[5]}
+                      width={100}
+                      textStyle={styles.tableText}
+                    />
+                    <Cell
+                      id="celda-genero"
+                      data={rowData[6]}
+                      width={120}
+                      textStyle={styles.tableText}
+                    />
+                  </TableWrapper>
+                ))}
+              </ScrollView>
+            </Table>
+          </ScrollView>
+        </View>
+      </View>
+    </View>
+  );
 };
 
 const ScreenPagos = () => {
@@ -539,7 +813,7 @@ const ScreenPagos = () => {
                     </View>
                   </View>
                 </View>
-                <View className={`items-center justify-center p-4`}>
+                {/* <View className={`items-center justify-center p-4`}>
                   {Platform.OS === "web" ? (
                     <iframe
                       src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d237.04951234566224!2d-96.1219307!3d18.0811722!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x85c3e79a1075bcad%3A0x54b80ec3131030de!2sMQerKAcademy!5e0!3m2!1ses!2smx!4v1758650715785!5m2!1ses!2smx"
@@ -566,7 +840,7 @@ const ScreenPagos = () => {
                       />
                     </MapView>
                   )}
-                </View>
+                </View> */}
               </View>
             </View>
           </ScrollView>
@@ -611,7 +885,602 @@ const Proximamente = () => {
 };
 
 const ScreenFinanzas = () => {
-  return <Text>Pantalla para finanzas</Text>;
+  const [ingresosData, setIngresosData] = useState([
+    {
+      id: 1,
+      alumno: "Kelvin Valentin",
+      curso: "Curso de React Native",
+      fechaInicio: "2024-07-20",
+      asesor: "Darian Reyes",
+      metodoPago: "Transferencia",
+      importe: 1500,
+      estatus: "Pagado",
+    },
+    // Agrega más datos de ejemplo si es necesario
+  ]);
+
+  const initialFormState = {
+    // Estado para la fila de nuevo ingreso
+    id: null,
+    alumno: "",
+    curso: "",
+    fechaInicio: "",
+    asesor: null,
+    metodoPago: null,
+    importe: "",
+    estatus: null,
+  };
+
+  const [isFormModalVisible, setFormModalVisible] = useState(false);
+  const [modalMode, setModalMode] = useState("add"); // 'add' or 'edit'
+  const [currentIngreso, setCurrentIngreso] = useState(initialFormState);
+
+  const [formErrors, setFormErrors] = useState({
+    alumno: false,
+    curso: false,
+    fechaInicio: false,
+  });
+
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth()); // 0-11
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [showAllYear, setShowAllYear] = useState(false);
+
+  const months = [
+    { label: "Enero", value: 0 },
+    { label: "Febrero", value: 1 },
+    { label: "Marzo", value: 2 },
+    { label: "Abril", value: 3 },
+    { label: "Mayo", value: 4 },
+    { label: "Junio", value: 5 },
+    { label: "Julio", value: 6 },
+    { label: "Agosto", value: 7 },
+    { label: "Septiembre", value: 8 },
+    { label: "Octubre", value: 9 },
+    { label: "Noviembre", value: 10 },
+    { label: "Diciembre", value: 11 },
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => ({
+    label: (currentYear - i).toString(),
+    value: currentYear - i,
+  }));
+
+  // Formateador de moneda
+  const currencyFormatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
+
+  const [isCalendarVisible, setCalendarVisible] = useState(false);
+  const [isFocus, setIsFocus] = useState(false);
+
+  const asesores = [
+    { label: "Darian Reyes Romero", value: "Darian Reyes Romero" },
+    { label: "María López", value: "María López" },
+    { label: "Asesor de Prueba", value: "Asesor de Prueba" },
+  ];
+
+  const metodosPago = [
+    { label: "Efectivo", value: "Efectivo" },
+    { label: "Transferencia", value: "Transferencia" },
+    { label: "Depósito", value: "Depósito" },
+  ];
+
+  const estatusOptions = [
+    { label: "Pendiente", value: "Pendiente" },
+    { label: "Pagado", value: "Pagado" },
+  ];
+
+  const cursos = [
+    {
+      label: "Entrenamiento para el examen de admision a la universidad",
+      value: "Entrenamiento para el examen de admision a la universidad",
+    },
+    {
+      label: "Entrenamiento para el examen de admision a la preparatoria",
+      value: "Entrenamiento para el examen de admision a la preparatoria",
+    },
+  ];
+
+  const handleOpenModal = (mode, rowData = null) => {
+    setModalMode(mode);
+    if (mode === "edit" && rowData) {
+      setCurrentIngreso({ ...rowData, importe: rowData.importe.toString() });
+    } else {
+      setCurrentIngreso(initialFormState);
+    }
+    setFormModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setFormModalVisible(false);
+    setCurrentIngreso(initialFormState);
+    setFormErrors({ alumno: false, curso: false, fechaInicio: false }); // Resetear errores al cerrar
+  };
+
+  const handleSave = () => {
+    const { alumno, curso, fechaInicio } = currentIngreso;
+    // Validaciones
+    if (!alumno || !curso || !fechaInicio) {
+      setFormErrors({
+        alumno: !alumno,
+        curso: !curso,
+        fechaInicio: !fechaInicio,
+      });
+      return;
+    }
+
+    if (modalMode === "add") {
+      // Crear nueva entrada
+      const newEntry = {
+        ...currentIngreso,
+        id:
+          ingresosData.length > 0
+            ? Math.max(...ingresosData.map((i) => i.id)) + 1
+            : 1,
+        importe: parseFloat(currentIngreso.importe) || 0,
+      };
+      setIngresosData([...ingresosData, newEntry]);
+    } else {
+      // Actualizar entrada existente
+      const updatedData = ingresosData.map((row) => {
+        if (row.id === currentIngreso.id) {
+          return {
+            ...currentIngreso,
+            importe: parseFloat(currentIngreso.importe) || 0,
+          };
+        }
+        return row;
+      });
+      setIngresosData(updatedData);
+    }
+
+    handleCloseModal();
+  };
+
+  const handleInputChange = (field, value) => {
+    setCurrentIngreso({ ...currentIngreso, [field]: value });
+    // Si hay un error en el campo que se está modificando, se limpia
+    if (formErrors[field]) {
+      setFormErrors((prevErrors) => ({
+        ...prevErrors,
+        [field]: false,
+      }));
+    }
+  };
+
+  const filteredIngresos = ingresosData.filter((ingreso) => {
+    // Asegurarse de que la fecha de inicio no esté vacía
+    if (!ingreso.fechaInicio) return false;
+    const ingresoDate = new Date(ingreso.fechaInicio);
+    if (showAllYear) {
+      return ingresoDate.getFullYear() === selectedYear;
+    }
+    return (
+      ingresoDate.getMonth() === selectedMonth &&
+      ingresoDate.getFullYear() === selectedYear
+    );
+  });
+  const renderCell = (data, cellInfo, index) => {
+    const field = cellInfo.field;
+
+    // Renderizado de celdas en modo de solo lectura
+    switch (field) {
+      case "importe":
+        return (
+          <Text style={styles.tableText}>
+            {currencyFormatter.format(data[field])}
+          </Text>
+        );
+      case "actions":
+        return (
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-around",
+              alignItems: "center",
+            }}
+          >
+            <TouchableOpacity onPress={() => handleOpenModal("edit", data)}>
+              <Svg
+                height="22"
+                viewBox="0 -960 960 960"
+                width="22"
+                fill="#3b82f6"
+              >
+                <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+              </Svg>
+            </TouchableOpacity>
+            {/* Aquí podrías agregar un botón de eliminar si lo necesitas */}
+          </View>
+        );
+      default:
+        return <Text style={styles.tableText}>{data[field]}</Text>;
+    }
+  };
+
+  const tableHeaders = [
+    { title: "ID", field: "id", width: 40 },
+    {
+      title: "Nombre del alumno",
+      field: "alumno",
+      width: 200,
+      placeholder: "Nombre",
+    },
+    {
+      title: "Curso/Asesoría",
+      field: "curso",
+      width: 220,
+      placeholder: "Curso",
+    },
+    { title: "Fecha de inicio", field: "fechaInicio", width: 120 },
+    {
+      title: "Asesor",
+      field: "asesor",
+      width: 150,
+      options: asesores,
+      placeholder: "Asesor",
+    },
+    {
+      title: "Método de pago",
+      field: "metodoPago",
+      width: 120,
+      options: metodosPago,
+      placeholder: "Método",
+    },
+    { title: "Importe", field: "importe", width: 100 },
+    {
+      title: "Estatus",
+      field: "estatus",
+      width: 120,
+      options: estatusOptions,
+      placeholder: "Estatus",
+    },
+    { title: "Acciones", field: "actions", width: 100 },
+  ];
+
+  return (
+    <Tab.Navigator
+      initialRouteName="Ingresos"
+      tabBarPosition="top"
+      screenOptions={{
+        tabBarActiveTintColor: "#1f1f1f",
+        tabBarInactiveTintColor: "#70757a",
+        swipeEnabled:false,
+
+        tabBarScrollEnabled: true,
+        tabBarItemStyle: { width: "auto", paddingHorizontal: 5 },
+        tabBarLabelStyle: {
+          fontSize: 14,
+          fontWeight: "bold",
+          textTransform: "uppercase",
+        },
+        tabBarStyle: { backgroundColor: "#f8fafc" },
+        tabBarIndicatorStyle: { backgroundColor: "#1f1f1f", height: 2 },
+      }}
+    >
+      <Tab.Screen name="Ingresos">
+        {() => (
+          <View id="tablas-ingresos" className={`flex-1 bg-slate-50 p-4`}>
+            <View className="flex-row mb-4 items-center gap-x-4">
+              <View>
+                <Text style={styles.label}>Mes</Text>
+                <Dropdown
+                  style={[
+                    styles.dropdownIngresos,
+                    showAllYear && styles.dropdownDisabled,
+                  ]}
+                  data={months}
+                  disable={showAllYear}
+                  labelField="label"
+                  valueField="value"
+                  value={selectedMonth}
+                  onChange={(item) => {
+                    setSelectedMonth(item.value);
+                  }}
+                />
+              </View>
+              <View>
+                <Text style={styles.label}>Año</Text>
+                <Dropdown
+                  style={styles.dropdownIngresos}
+                  data={years}
+                  labelField="label"
+                  valueField="value"
+                  value={selectedYear}
+                  onChange={(item) => setSelectedYear(item.value)}
+                />
+              </View>
+              <View className="flex-row items-center">
+                <TouchableOpacity
+                  onPress={() => setShowAllYear(!showAllYear)}
+                  className={`h-6 w-6 rounded border-2 justify-center items-center ${
+                    showAllYear
+                      ? "bg-indigo-600 border-indigo-600"
+                      : "bg-white border-gray-400"
+                  }`}
+                >
+                  {showAllYear && (
+                    <Svg
+                      height="16"
+                      viewBox="0 -960 960 960"
+                      width="16"
+                      fill="#ffffff"
+                    >
+                      <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+                    </Svg>
+                  )}
+                </TouchableOpacity>
+                <Text
+                  className="ml-2 font-medium text-slate-700"
+                  onPress={() => setShowAllYear(!showAllYear)}
+                >
+                  Ver todo el año
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={() => handleOpenModal("add")}
+              className="bg-blue-500 p-3 rounded-lg self-start mb-4 shadow-md"
+            >
+              <View className="flex-row items-center gap-x-2">
+                <Svg
+                  height="20"
+                  viewBox="0 -960 960 960"
+                  width="20"
+                  fill="#ffffff"
+                >
+                  <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+                </Svg>
+                <Text className="text-white font-bold">Agregar Ingreso</Text>
+              </View>
+            </TouchableOpacity>
+            <ScrollView horizontal>
+              <View>
+                <Table borderStyle={{ borderWidth: 1, borderColor: "#e2e4e8" }}>
+                  <Row
+                    data={tableHeaders.map((h) => h.title)}
+                    widthArr={tableHeaders.map((h) => h.width)}
+                    style={styles.head}
+                    textStyle={styles.headText}
+                  />
+                </Table>
+                <ScrollView nestedScrollEnabled={true}>
+                  <Table
+                    borderStyle={{ borderWidth: 1, borderColor: "#e2e4e8" }}
+                  >
+                    {filteredIngresos.map((rowData, index) => (
+                      <TableWrapper key={index} style={styles.row}>
+                        {tableHeaders.map((cellInfo, cellIndex) => (
+                          <Cell
+                            key={cellIndex}
+                            data={renderCell(rowData, cellInfo, index)}
+                            width={cellInfo.width}
+                            style={{ padding: 6 }}
+                          />
+                        ))}
+                      </TableWrapper>
+                    ))}
+                  </Table>
+                </ScrollView>
+              </View>
+            </ScrollView>
+            <Modal
+              transparent={true}
+              animationType="slide"
+              visible={isFormModalVisible}
+              onRequestClose={handleCloseModal}
+            >
+              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View className="flex-1 justify-center items-center fixed bg-black/60 p-4">
+                  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                    <View className="bg-slate-50 rounded-2xl p-6 w-full shadow-xl">
+                      <Text className="text-2xl font-bold mb-6 text-slate-800">
+                        {modalMode === "add"
+                          ? "Agregar Ingreso"
+                          : "Editar Ingreso"}
+                      </Text>
+                      <ScrollView>
+                        {/* Nombre del Alumno */}
+                        <View className={`flex-row gap-x-4`}>
+                          <View className={`flex-1`}>
+                            <Text style={styles.label}>Nombre</Text>
+                            <TextInput
+                              style={[
+                                styles.input,
+                                formErrors.alumno && styles.errorInput,
+                              ]}
+                              value={currentIngreso.alumno}
+                              onChangeText={(text) =>
+                                handleInputChange("alumno", text)
+                              }
+                              placeholder={
+                                formErrors.alumno ? "" : "Ej. Juan Pérez"
+                              }
+                              placeholderTextColor={
+                                formErrors.alumno ? "#ef4444" : "#9ca3af"
+                              }
+                            />
+                          </View>
+
+                          {/* Curso/Asesoría */}
+                          <View className={`flex-1`}>
+                            <Text style={styles.label}>Curso/Asesoría</Text>
+                            <Dropdown
+                              className={``}
+                              style={[
+                                styles.dropdownModal,
+                                formErrors.curso && styles.errorInput,
+                              ]}
+                              data={cursos}
+                              labelField="label"
+                              valueField="value"
+                              placeholder={
+                                formErrors.curso ? "" : "Seleccionar curso"
+                              }
+                              placeholderStyle={
+                                formErrors.curso && { color: "#ef4444" }
+                              }
+                              value={currentIngreso.curso}
+                              onChange={(item) =>
+                                handleInputChange("curso", item.value)
+                              }
+                            />
+                          </View>
+                        </View>
+
+                        <View className={`flex-row gap-x-4`}>
+                          {/* Fecha de Inicio */}
+                          <View className={`flex-1`}>
+                            <Text style={styles.label}>Fecha de Inicio</Text>
+                            <TouchableOpacity
+                              onPress={() => setCalendarVisible(true)}
+                              style={[
+                                styles.input,
+                                formErrors.fechaInicio && styles.errorInput,
+                              ]}
+                            >
+                              <Text
+                                className={
+                                  currentIngreso.fechaInicio
+                                    ? "text-black"
+                                    : "text-gray-400"
+                                }
+                                style={
+                                  formErrors.fechaInicio && { color: "#ef4444" }
+                                }
+                              >
+                                {currentIngreso.fechaInicio ||
+                                  (formErrors.fechaInicio
+                                    ? "Fecha inválida"
+                                    : "Seleccionar fecha")}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                          {/* Asesor */}
+                          <View className={`flex-1`}>
+                            <Text style={styles.label}>Asesor</Text>
+                            <Dropdown
+                              style={styles.dropdownModal}
+                              data={asesores}
+                              labelField="label"
+                              valueField="value"
+                              placeholder="Seleccionar asesor"
+                              value={currentIngreso.asesor}
+                              onChange={(item) =>
+                                handleInputChange("asesor", item.value)
+                              }
+                            />
+                          </View>
+                        </View>
+
+                        {/* Método de Pago */}
+                        <Text style={styles.label}>Método de Pago</Text>
+                        <Dropdown
+                          style={styles.dropdownModal}
+                          data={metodosPago}
+                          labelField="label"
+                          valueField="value"
+                          placeholder="Seleccionar método"
+                          value={currentIngreso.metodoPago}
+                          onChange={(item) =>
+                            handleInputChange("metodoPago", item.value)
+                          }
+                        />
+
+                        {/* Importe */}
+                        <Text style={styles.label}>Importe</Text>
+                        <View
+                          style={styles.input}
+                          className="flex-row items-center"
+                        >
+                          <Text className="mr-1">$</Text>
+                          <TextInput
+                            value={currentIngreso.importe.toString()}
+                            onChangeText={(text) => {
+                              const numericValue = text.replace(/[^0-9.]/g, "");
+                              handleInputChange("importe", numericValue);
+                            }}
+                            placeholder="0.00"
+                            keyboardType="numeric"
+                            className="flex-1"
+                          />
+                        </View>
+
+                        {/* Estatus */}
+                        <Text style={styles_modal.label}>Estatus</Text>
+                        <Dropdown
+                          style={styles.dropdownModal}
+                          data={estatusOptions}
+                          labelField="label"
+                          valueField="value"
+                          placeholder="Seleccionar estatus"
+                          value={currentIngreso.estatus}
+                          onChange={(item) =>
+                            handleInputChange("estatus", item.value)
+                          }
+                        />
+                      </ScrollView>
+                      {/* Botones */}
+                      <View className="flex-row justify-end mt-6 gap-x-4">
+                        <TouchableOpacity
+                          onPress={handleCloseModal}
+                          className="bg-slate-200 px-5 py-3 rounded-lg"
+                        >
+                          <Text className="font-bold text-slate-600">
+                            Cancelar
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={handleSave}
+                          className="bg-indigo-600 px-5 py-3 rounded-lg shadow-md shadow-indigo-600/30"
+                        >
+                          <Text className="text-white font-bold">Guardar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </TouchableWithoutFeedback>
+                </View>
+              </TouchableWithoutFeedback>
+            </Modal>
+            <Modal
+              transparent={true}
+              animationType="fade"
+              visible={isCalendarVisible}
+              onRequestClose={() => setCalendarVisible(false)}
+            >
+              <TouchableWithoutFeedback
+                onPress={() => setCalendarVisible(false)}
+              >
+                <View className="flex-1 justify-center items-center bg-black/50">
+                  <TouchableWithoutFeedback>
+                    <View className="bg-white rounded-lg p-5">
+                      <Calendar
+                        onDayPress={(day) => {
+                          handleInputChange("fechaInicio", day.dateString);
+                          setCalendarVisible(false);
+                        }}
+                        markedDates={{
+                          [currentIngreso.fechaInicio]: {
+                            selected: true,
+                            selectedColor: "#6F09EA",
+                          },
+                        }}
+                      />
+                    </View>
+                  </TouchableWithoutFeedback>
+                </View>
+              </TouchableWithoutFeedback>
+            </Modal>
+          </View>
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="Egresos" id="tablas-egresos">
+        {() => <View className={`flex-1 bg-slate-50 p-2`}></View>}
+      </Tab.Screen>
+    </Tab.Navigator>
+  );
 };
 
 const ScreenCalendario = () => {
@@ -663,34 +1532,18 @@ const ScreenCalendario = () => {
 
   LocaleConfig.defaultLocale = "es";
 
-  const today = new Date();
-  const sixMonthsAgo = new Date(today);
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 3);
-  // Formato YYYY-MM-DD
-  const minDate = sixMonthsAgo.toISOString().split("T")[0];
-  const maxDate = `${today.getFullYear() + 1}-12-31`;
-  const todayDateString = today.toISOString().split("T")[0];
-
-  // Objeto para marcar la fecha de hoy con estilos personalizados
-  const marked = {
-    [todayDateString]: { selected: true, selectedColor: "#6F09EA" },
-  };
-
   return (
     <View className={`flex-1 bg-slate-50 p-2 flex-col`}>
       <View
         className={`flex-1 horizontal:flex-row vertical:flex-col p-2 vertical:gap-y-10 horizontal:gap-x-10`}
       >
         <View
-          className={`horizontal:flex-col vertical:flex-col vertical:items-center horizontal:items-stretch`}
+          className={`horizontal:flex-col vertical:flex-col vertical:items-center horizontal:items-stretch `}
         >
           <Calendar
             showSixWeeks={true}
-            markingType={"custom"}
-            markedDates={marked}
-            minDate={minDate}
-            maxDate={maxDate}
-            futureScrollRange={12}
+            pastScrollRange={1} // Limita a 1 mes en el pasado
+            futureScrollRange={1} // Limita a 1 mes en el futuro
             enableSwipeMonths={true}
             disabledByWeekDays={[0]}
             disableAllTouchEventsForDisabledDays={true}
@@ -704,25 +1557,6 @@ const ScreenCalendario = () => {
             }}
             theme={{
               calendarBackground: "#f8fafc",
-              textSectionTitleColor: "#1f1f1f",
-              // Ya no necesitamos todayBackgroundColor o todayTextColor
-              // porque lo manejamos con markedDates
-              "stylesheet.day.basic": {
-                selected: {
-                  backgroundColor: "#6F09EA", // Color de fondo que ya tenías
-                  borderRadius: 16,
-                  // --- Aquí agregamos la sombra ---
-                  elevation: 5, // Sombra para Android
-                  shadowColor: "#000", // Sombra para iOS
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 3.84,
-                },
-                todayText: {
-                  color: "#6F09EA", // Color para el número del día de hoy cuando no está seleccionado
-                  fontWeight: "bold",
-                },
-              },
             }}
             renderArrow={(direction) => {
               if (direction === "left") {
@@ -776,20 +1610,6 @@ const ScreenCalendario = () => {
               }
             }}
           />
-          <View
-            className={`vertical:mt-4 horizontal:mt-4 vertical:items-center horizontal:items-center`}
-          >
-            <View
-              className={`border p-1 rounded-full vertical:self-center horizontal:self-center shadow-md shadow-black bg-slate-400`}
-            >
-              <View className={`flex-row items-center gap-x-2`}>
-                <Pressable
-                  className={`p-3 shadow-md shadow-black bg-[#6F09EA] border border-white self-center rounded-full`}
-                />
-                <Text>Hoy</Text>
-              </View>
-            </View>
-          </View>
         </View>
         <View
           className={`flex-1 vertical:flex-row horizontal:flex-col vertical:gap-x-4 horizontal:gap-x-0`}
@@ -809,45 +1629,156 @@ const ScreenCalendario = () => {
 };
 
 const ScreenCursos = () => {
-  const data = [
-    { label: "Nombre", value: "1" },
-    { label: "Precio", value: "2" },
-    { label: "ID", value: "3" },
+  const tableDataCursos = [
+    [
+      1,
+      "Entrenamiento para el examen de admision a la universidad",
+      "$1500",
+      ,
+    ],
+    [2, "Entrenamiento para el examen de admision a la preparatoria", "$1100"],
   ];
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredData, setFilteredData] = useState(tableDataCursos);
+
+  useEffect(() => {
+    if (searchTerm === "") {
+      setFilteredData(tableDataCursos);
+    } else {
+      const lowercasedFilter = searchTerm.toLowerCase();
+      const newData = tableDataCursos.filter((row) => {
+        // row[1] es el nombre, row[2] es el precio
+        const nombre = row[1]?.toString().toLowerCase() || "";
+        const precio = row[2]?.toString().toLowerCase() || "";
+
+        return (
+          nombre.includes(lowercasedFilter) || precio.includes(lowercasedFilter)
+        );
+      });
+      setFilteredData(newData);
+    }
+  }, [searchTerm]);
+
   return (
-    <ScrollView
-      showsVerticalScrollIndicator={true}
-      className={`flex-1 bg-slate-50`}
-    >
-      <View className={`self-center p-2`}>
-        <View
-          className={`border justify-center items-center flex-row rounded-lg`}
-        >
-          <TextInput
-            placeholder="Ingrese el curso que desee buscar"
-            className={`self-start`}
-          />
-          <View className={`min-w-[15em] h-full relative bg-yellow-500`}>
-            <Text>Buscar por</Text>
-            <Dropdown
-              className={`mt-5`}
-              valueField={"value"}
-              labelField={"label"}
-              data={data}
-              value={data[0]}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View className={`flex-1 bg-slate-50`}>
+        <View className={`self-center p-2 box-content mb-7`}>
+          <View
+            style={{
+              boxShadow:
+                "inset 0 4px 6px -1px rgba(0, 0, 0, 0.1), inset 0 2px 4px -2px rgba(0, 0, 0, 0.1), inset 0 0 0 1px #282C30",
+            }}
+            className={`border border-[#eef2f5] justify-center items-center  flex-row gap-x-5 rounded-lg`}
+          >
+            <TextInput
+              id="buscador-cursos"
+              placeholder="Nombre del curso, precio"
+              className={`h-full min-w-[20em]`}
+              value={searchTerm}
+              onChangeText={setSearchTerm}
             />
           </View>
         </View>
-        <Text>ddcd</Text>
-        <Dropdown
-          placeholder="Buscar por:"
-          valueField={"value"}
-          labelField={"label"}
-          searchPlaceholder="dfsdfr"
-          data={data}
-        />
+        <View className={`vertical:px-2 flex-1 justify-center items-center`}>
+          <ScrollView horizontal>
+            <Table style={{ borderRadius: 10 }}>
+              <Row
+                data={["#", "Nombre", "Precio", "Acciones"]}
+                height={40}
+                widthArr={[100, 200, 150, 100]}
+                textStyle={{
+                  textAlign: "center",
+                  fontWeight: "bold", // Estilo para el texto de la cabecera
+                }}
+                style={{
+                  backgroundColor: "#eef2f5",
+                  borderWidth: 1,
+                  borderColor: "#e2e4e8",
+                  borderTopLeftRadius: 10,
+                  borderTopRightRadius: 10,
+                }}
+              />
+              <ScrollView horizontal={false} nestedScrollEnabled={true}>
+                {filteredData.map((rowData, index) => (
+                  <TableWrapper
+                    key={index}
+                    style={{
+                      flexDirection: "row",
+                      borderWidth: 1,
+                      borderColor: "#e2e4e8",
+                      paddingVertical: 10,
+                    }}
+                  >
+                    <Cell
+                      id="celda-id"
+                      data={rowData[0]}
+                      width={100}
+                      textStyle={styles.tableText}
+                    />
+                    <Cell
+                      id="celda-nombre-curso"
+                      data={rowData[1]}
+                      width={200}
+                      textStyle={styles.tableText}
+                    />
+                    <Cell
+                      id="celda-precio"
+                      data={rowData[2]}
+                      width={150}
+                      textStyle={styles.tableText}
+                    />
+                    <Cell
+                      id="celda-acciones"
+                      data={
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            justifyContent: "space-around",
+                            alignItems: "center",
+                            flex: 1,
+                            paddingHorizontal: 5,
+                          }}
+                        >
+                          <TouchableOpacity
+                            onPress={() => alert(`Editar curso: ${rowData[1]}`)}
+                          >
+                            <Svg
+                              height="22"
+                              viewBox="0 -960 960 960"
+                              width="22"
+                              fill="#3b82f6"
+                            >
+                              <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                            </Svg>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() =>
+                              alert(`Eliminar curso: ${rowData[1]}`)
+                            }
+                          >
+                            <Svg
+                              height="22"
+                              viewBox="0 -960 960 960"
+                              width="22"
+                              fill="#ef4444"
+                            >
+                              <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                            </Svg>
+                          </TouchableOpacity>
+                        </View>
+                      }
+                      width={100}
+                      textStyle={styles.tableText}
+                    />
+                  </TableWrapper>
+                ))}
+              </ScrollView>
+            </Table>
+          </ScrollView>
+        </View>
       </View>
-    </ScrollView>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -855,13 +1786,19 @@ const SeccionVentas = () => {
   const tableData = [
     [
       1,
-      "Juan Pérez",
+      "Brhadaranyakopanishadvivekachudamani Erreh Muñoz",
       "Curso de React Native",
       "$500",
       "10",
       "Grupo A",
       "$1500",
     ],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
     [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
   ];
 
@@ -909,7 +1846,7 @@ const SeccionVentas = () => {
           </Svg>
         </Ripple>
       </View>
-      <View className={`relative py-20`}>
+      <View className={`relative`}>
         <Ripple
           rippleContainerBorderRadius={100}
           className="absolute bottom-0 right-2 z-[2] self-start rounded-full p-3 bg-sky-400/80"
@@ -924,86 +1861,85 @@ const SeccionVentas = () => {
             <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
           </Svg>
         </Ripple>
-        <View className={`w-full flex justify-center items-center mt-4`}>
-          <ScrollView
-            className={`rounded`}
-            contentContainerStyle={{
-              backgroundColor: "#f8fafc",
-            }}
-            horizontal
-          >
-            <Table borderStyle={{ borderColor: "#1f1f1f", borderWidth: 2 }}>
+        <View
+          className={`w-full flex justify-center items-center vertical:px-2 mt-4`}
+        >
+          <ScrollView horizontal>
+            <Table className={``} style={{ borderRadius: 10 }}>
               <Row
                 data={[
-                  "Número de transacción",
-                  "Nombre del cliente",
+                  "#",
+                  "Cliente",
                   "Curso/Asesoría",
-                  "Pendiente",
+                  "Adeudo",
                   "Sesiones",
                   "Grupo",
                   "Ingreso",
                 ]}
-                widthArr={[150, 200, 200, 120, 120, 150, 150]}
+                height={40}
+                widthArr={[100, 200, 200, 120, 100, 100, 120]}
                 className="flex items-center justify-center"
                 textStyle={{
-                  textAlign: "center",
+                  textAlign: "center", // Estilo para el texto de la cabecera
                   fontWeight: "bold",
                 }}
+                style={{
+                  backgroundColor: "#eef2f5",
+                  borderWidth: 1,
+                  borderColor: "#e2e4e8",
+                  borderTopLeftRadius: 10,
+                  borderTopRightRadius: 10,
+                }}
               />
-
-              {tableData.map((rowData, index) => (
-                <TouchableOpacity
-                  className={`border-y-[0.1em]`}
-                  android_ripple={{ color: "#1f1f1f" }}
-                  key={index}
-                  onPress={() => {
-                    if (rowData[1] === "Juan Pérez") {
-                      alert("¡Fila de Juan Pérez!");
-                    } else if (rowData[1] === "María López") {
-                      alert("¡Fila de María López!");
-                    }
-                  }}
-                  style={{ flexDirection: "row" }}
-                >
-                  <TableWrapper style={{ flexDirection: "row", flex: 1 }}>
+              <ScrollView horizontal={false} nestedScrollEnabled={true}>
+                {tableData.map((rowData, index) => (
+                  <TableWrapper
+                    key={index}
+                    style={{
+                      flexDirection: "row",
+                      borderWidth: 1,
+                      borderColor: "#e2e4e8",
+                      paddingVertical: 10,
+                    }}
+                  >
                     <Cell
                       data={rowData[0]}
-                      width={150}
-                      textStyle={{ textAlign: "center", paddingVertical: 15 }}
+                      width={100}
+                      textStyle={styles.tableText}
                     />
                     <Cell
                       data={rowData[1]}
                       width={200}
-                      textStyle={{ textAlign: "center" }}
+                      textStyle={styles.tableText}
                     />
                     <Cell
                       data={rowData[2]}
                       width={200}
-                      textStyle={{ textAlign: "center" }}
+                      textStyle={styles.tableText}
                     />
                     <Cell
                       data={rowData[3]}
                       width={120}
-                      textStyle={{ textAlign: "center" }}
+                      textStyle={styles.tableText}
                     />
                     <Cell
                       data={rowData[4]}
-                      width={120}
-                      textStyle={{ textAlign: "center" }}
+                      width={100}
+                      textStyle={styles.tableText}
                     />
                     <Cell
                       data={rowData[5]}
-                      width={150}
-                      textStyle={{ textAlign: "center" }}
+                      width={100}
+                      textStyle={styles.tableText}
                     />
                     <Cell
                       data={rowData[6]}
-                      width={150}
-                      textStyle={{ textAlign: "center" }}
+                      width={120}
+                      textStyle={styles.tableText}
                     />
                   </TableWrapper>
-                </TouchableOpacity>
-              ))}
+                ))}
+              </ScrollView>
             </Table>
           </ScrollView>
         </View>
@@ -1255,4 +2191,73 @@ const styles = StyleSheet.create({
   scrollView: {
     width: "100%",
   },
+  head: { height: 40, backgroundColor: "#eef2f5" },
+  headText: { textAlign: "center", fontWeight: "bold", fontSize: 13 },
+  row: { flexDirection: "row", backgroundColor: "#f8fafc" },
+  tableText: {
+    textAlign: "center",
+    fontSize: 12,
+  },
+  dropdown: {
+    height: 40,
+    borderColor: "gray",
+    borderWidth: 0.5,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    width: "100%",
+  },
+  icon: {
+    marginRight: 5,
+  },
+  label: {
+    position: "absolute",
+    backgroundColor: "white",
+    left: 22,
+    top: 8,
+    zIndex: 999,
+    paddingHorizontal: 8,
+    fontSize: 14,
+  },
+  input: {
+    height: 50,
+    borderColor: "gray",
+    borderWidth: 0.5,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 15,
+    justifyContent: "center",
+  },
+  dropdownModal: {
+    height: 50,
+    borderColor: "gray",
+    borderWidth: 0.5,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    marginBottom: 15,
+  },
+  dropdownIngresos: {
+    height: 40,
+    width: 150,
+    borderColor: "gray",
+    borderWidth: 0.5,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 14,
+    color: "#334155",
+    marginBottom: 5,
+    fontWeight: "500",
+  },
+  errorInput: {
+    borderColor: "#ef4444", // Rojo para el borde
+    borderWidth: 1,
+  },
+  dropdownDisabled: {
+    backgroundColor: "#e5e7eb",
+    borderColor: "#d1d5db",
+  },
 });
+
+const styles_modal = StyleSheet.create({ ...styles });
