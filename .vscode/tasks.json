@@ -1,0 +1,43 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "install-deps",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install"
+			],
+			"isBackground": false,
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"group": "build"
+		},
+		{
+			"label": "expo-start-web",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"web"
+			],
+			"isBackground": true,
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"group": "build"
+		},
+		{
+			"label": "dev:web",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"web"
+			],
+			"isBackground": true,
+			"group": "build"
+		}
+	]
+}

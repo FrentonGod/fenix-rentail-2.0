@@ -1,7 +1,10 @@
 {
   "expo": {
+    "orientation": "landscape",
+    "scheme": "fenixrentail",
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-secure-store"
     ],
     "name": "fenix-rentail-2.0",
     "slug": "fenix-rentail-2.0",

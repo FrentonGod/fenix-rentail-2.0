@@ -10,15 +10,18 @@ import {
   StyleSheet,
   Animated,
   Platform,
+  TextInput,
+  LogBox,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import "./global.css";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Svg, { Path } from "react-native-svg";
 import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
 import { BarChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 import {
   Calendar,
@@ -39,13 +42,24 @@ import {
 
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 
-import TopBar from "./components/topbar.jsx";
-import MapView, { Marker } from "react-native-maps";
+import HeaderAdmin from "./components/HeaderAdmin";
+import PagoTarjetaStripe from './components/pagos/PagoTarjetaStripe';
+import MapViewWrapper from './components/MapViewWrapper';
+import { supabase } from './lib/supabase';
+import { useAuthContext } from './hooks/use-auth-context';
+import RegistroAsesor from './components/asesores/RegistroAsesor';
 
 const Tab = createMaterialTopTabNavigator(); //Aqui se esta creando el componente
 const Drawer = createDrawerNavigator();
 
 export default function App() {
+  useEffect(() => {
+    // Bloquear orientación en horizontal en dispositivos nativos
+    if (Platform.OS !== 'web') {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE)
+        .catch(() => {});
+    }
+  }, []);
   return (
     <SafeAreaProvider>
       <SafeAreaView
@@ -56,11 +70,10 @@ export default function App() {
         }}
         className={`flex-1 flex-col w-full`}
       >
-        <NavigationContainer>
-          <Drawer.Navigator
+        <Drawer.Navigator
             drawerContent={(props) => <CustomDrawerContent {...props} />}
             screenOptions={{
-              header: (props) => <TopBar {...props} />, // Usamos tu TopBar como header
+              header: (props) => <AppHeader {...props} />, // Nuevo HeaderAdmin
               drawerStyle: {
                 backgroundColor: "#232428",
                 width: 200,
@@ -190,9 +203,44 @@ export default function App() {
               }}
             />
           </Drawer.Navigator>
-        </NavigationContainer>
       </SafeAreaView>
     </SafeAreaProvider>
+  );
+}
+
+function AppHeader({ navigation, route }) {
+  const { profile } = useAuthContext();
+  // Títulos de sección según la ruta actual del Drawer
+  const routeTitles = {
+    Inicio: 'Panel Principal',
+    Estudiantes: 'Lista de Estudiantes',
+    Asesores: 'Panel Administrativo',
+    Pagos: 'Comprobantes de Pago',
+    Finanzas: 'Reportes de Pagos',
+    Calendario: 'Calendario',
+    Cursos: 'Cursos',
+  };
+  const currentSectionTitle = routeTitles[route?.name] || route?.name || '';
+  return (
+    <HeaderAdmin
+      logoSource={require('./assets/MQerK_logo.png')}
+      onLogoPress={() => navigation?.toggleDrawer?.()}
+      showMenuButton={true}
+      onMenuPress={() => navigation?.toggleDrawer?.()}
+      title="MQerKAcademy"
+      subtitle={currentSectionTitle}
+      adminProfile={{
+        name: profile?.full_name || 'Usuario',
+        email: profile?.email || '',
+        role: 'Admin',
+        lastLogin: new Date().toLocaleString(),
+      }}
+      unreadCount={0}
+      notifications={[]}
+      onNotificationPress={() => {}}
+      onMarkAllAsRead={() => {}}
+      onLogout={() => supabase.auth.signOut().catch((e) => console.error('Sign out error', e))}
+    />
   );
 }
 
@@ -214,8 +262,7 @@ const CustomDrawerContent = (props) => {
           label="Cerrar sesión"
           labelStyle={{ color: "#dc2626", fontWeight: "bold" }}
           onPress={() => {
-            // Aquí va tu lógica para cerrar sesión
-            alert("Cerrando sesión...");
+            supabase.auth.signOut().catch((e) => console.error('Sign out error', e));
           }}
           icon={() => (
             <Svg
@@ -270,7 +317,7 @@ const ScreenEstudiantes = () => {
 };
 
 const ScreenAsesores = () => {
-  return <Text>Pantalla para asesores</Text>;
+  return <RegistroAsesor />;
 };
 
 const ScreenPagos = () => {
@@ -535,32 +582,7 @@ const ScreenPagos = () => {
                   </View>
                 </View>
                 <View className={`items-center justify-center p-4`}>
-                  {Platform.OS === "web" ? (
-                    <iframe
-                      src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d237.04951234566224!2d-96.1219307!3d18.0811722!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x85c3e79a1075bcad%3A0x54b80ec3131030de!2sMQerKAcademy!5e0!3m2!1ses!2smx!4v1758650715785!5m2!1ses!2smx"
-                      width="600"
-                      height="450"
-                    ></iframe>
-                  ) : (
-                    <MapView
-                      style={{ width: 600, height: 450 }}
-                      initialRegion={{
-                        latitude: 18.08122029158371, // coordenadas de tu iframe
-                        longitude: -96.12200652058925,
-                        latitudeDelta: 0.01,
-                        longitudeDelta: 0.01,
-                      }}
-                    >
-                      <Marker
-                        coordinate={{
-                          latitude: 18.08122029158371,
-                          longitude: -96.12200652058925,
-                        }}
-                        title="MQerKAcademy"
-                        description="Ubicación exacta de la academia"
-                      />
-                    </MapView>
-                  )}
+                  <MapViewWrapper width={600} height={450} />
                 </View>
               </View>
             </View>
@@ -568,7 +590,7 @@ const ScreenPagos = () => {
         )}
       </Tab.Screen>
       <Tab.Screen name="Tarjeta de crédito / débito">
-        {() => <Proximamente />}
+        {() => <PagoTarjetaStripe />}
       </Tab.Screen>
     </Tab.Navigator>
   );
@@ -781,163 +803,112 @@ const ScreenCursos = () => {
 };
 
 const SeccionVentas = () => {
-  const tableData = [
-    [
-      1,
-      "Juan Pérez",
-      "Curso de React Native",
-      "$500",
-      "10",
-      "Grupo A",
-      "$1500",
-    ],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-  ];
+  const [query, setQuery] = useState('');
+  const [sortKey, setSortKey] = useState('id');
+  const [sortDir, setSortDir] = useState('desc');
+
+  const data = useMemo(() => ([
+    { id: 1, cliente: 'Juan Pérez', concepto: 'Curso de React Native', pendiente: 500, sesiones: 10, grupo: 'Grupo A', ingreso: 1500 },
+    { id: 2, cliente: 'María López', concepto: 'Asesoría Personal', pendiente: 0, sesiones: 5, grupo: 'Grupo B', ingreso: 2000 },
+  ]), []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const arr = data.filter((r) => !q || r.cliente.toLowerCase().includes(q) || r.concepto.toLowerCase().includes(q) || r.grupo.toLowerCase().includes(q));
+    const sorted = [...arr].sort((a, b) => {
+      let va = a[sortKey];
+      let vb = b[sortKey];
+      if (typeof va === 'string') va = va.toLowerCase();
+      if (typeof vb === 'string') vb = vb.toLowerCase();
+      if (va < vb) return sortDir === 'asc' ? -1 : 1;
+      if (va > vb) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [data, query, sortKey, sortDir]);
+
+  const SortHeader = ({ label, k, flex = 1, center }) => (
+    <Pressable
+      onPress={() => {
+        setSortKey(k);
+        setSortDir((d) => (sortKey === k ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+      }}
+      className="py-3 px-3"
+      style={{ flex, alignItems: center ? 'center' : 'flex-start' }}
+      android_ripple={{ color: 'rgba(0,0,0,0.05)' }}
+    >
+      <View className="flex-row items-center gap-1">
+        <Text className="text-slate-800 font-semibold text-xs sm:text-sm uppercase tracking-wide">{label}</Text>
+        {sortKey === k && (
+          <Svg width={12} height={12} viewBox="0 -960 960 960" fill="#334155">
+            {sortDir === 'asc' ? (
+              <Path d="M480-680 240-440h480L480-680Z" />
+            ) : (
+              <Path d="M240-520h480L480-280 240-520Z" />
+            )}
+          </Svg>
+        )}
+      </View>
+    </Pressable>
+  );
+
+  const ActionButton = ({ color = '#66b5ff', text, icon }) => (
+    <Pressable className="rounded-xl px-3 py-2.5 flex-row items-center gap-2" style={{ backgroundColor: color }} android_ripple={{ color: 'rgba(0,0,0,0.08)' }} hitSlop={8}>
+      <Text className="text-[#0b0f19] font-semibold">{text}</Text>
+      {icon}
+    </Pressable>
+  );
 
   return (
-    <>
-      <View className={`w-full flex flex-row items-center justify-between p-2`}>
-        <Ripple
-          id="boton-venta"
-          rippleContainerBorderRadius={5}
-          className={`rounded bg-[#66b5ff] max-w-[20em] justify-center items-center self-start p-1 flex flex-row gap-x-1`}
-        >
-          <Text
-            className={`text-[#010101] capitalize text-nowrap font-semibold text-sm text-center`}
-          >
-            Generar venta
-          </Text>
-          <Svg
-            xmlns="http://www.w3.org/2000/svg"
-            height="24px"
-            viewBox="0 -960 960 960"
-            width="24px"
-            fill="#010101"
-          >
-            <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
-          </Svg>
-        </Ripple>
-        <Ripple
-          rippleContainerBorderRadius={5}
-          id="reimprimir-ticket"
-          className={`rounded bg-yellow-400 max-w-[20em] justify-center items-center self-start p-1 flex flex-row gap-x-2`}
-        >
-          <Text
-            className={`text-[#010101] capitalize text-nowrap font-semibold text-sm text-center`}
-          >
-            Reimprimir ticket
-          </Text>
-          <Svg
-            xmlns="http://www.w3.org/2000/svg"
-            height="24px"
-            viewBox="0 -960 960 960"
-            width="24px"
-            fill="#010101"
-          >
-            <Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z" />
-          </Svg>
-        </Ripple>
+    <View className="flex-1 bg-slate-50">
+      <View className="w-full flex-row flex-wrap items-center justify-between gap-2 p-2">
+        <View className="flex-row items-center gap-2">
+          <ActionButton
+            text="Generar venta"
+            icon={<Svg width={20} height={20} viewBox="0 -960 960 960" fill="#0b0f19"><Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z"/></Svg>}
+          />
+          <ActionButton
+            color="#facc15"
+            text="Reimprimir ticket"
+            icon={<Svg width={20} height={20} viewBox="0 -960 960 960" fill="#0b0f19"><Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z"/></Svg>}
+          />
+        </View>
+        <View className="flex-row items-center gap-2">
+          <View className="flex-row items-center bg-white border border-slate-200 rounded-xl px-3 py-2">
+            <Svg width={18} height={18} viewBox="0 -960 960 960" fill="#64748b"><Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/></Svg>
+            <TextInput value={query} onChangeText={setQuery} placeholder="Buscar" placeholderTextColor="#94a3b8" className="min-w-[160px] sm:min-w-[240px] ml-2 text-slate-800" />
+          </View>
+        </View>
       </View>
-      <View className={`relative py-20`}>
-        <Ripple
-          rippleContainerBorderRadius={100}
-          className="absolute bottom-0 right-2 z-[2] self-start rounded-full p-3 bg-sky-400/80"
-        >
-          <Svg
-            xmlns="http://www.w3.org/2000/svg"
-            height="24px"
-            viewBox="0 -960 960 960"
-            width="24px"
-            fill="#010101"
-          >
-            <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
-          </Svg>
-        </Ripple>
-        <View className={`w-full flex justify-center items-center mt-4`}>
-          <ScrollView
-            className={`rounded`}
-            contentContainerStyle={{
-              backgroundColor: "#f8fafc",
-            }}
-            horizontal
-          >
-            <Table borderStyle={{ borderColor: "#1f1f1f", borderWidth: 2 }}>
-              <Row
-                data={[
-                  "Número de transacción",
-                  "Nombre del cliente",
-                  "Curso/Asesoría",
-                  "Pendiente",
-                  "Sesiones",
-                  "Grupo",
-                  "Ingreso",
-                ]}
-                widthArr={[150, 200, 200, 120, 120, 150, 150]}
-                className="flex items-center justify-center"
-                textStyle={{
-                  textAlign: "center",
-                  fontWeight: "bold",
-                }}
-              />
 
-              {tableData.map((rowData, index) => (
-                <TouchableOpacity
-                  className={`border-y-[0.1em]`}
-                  android_ripple={{ color: "#1f1f1f" }}
-                  key={index}
-                  onPress={() => {
-                    if (rowData[1] === "Juan Pérez") {
-                      alert("¡Fila de Juan Pérez!");
-                    } else if (rowData[1] === "María López") {
-                      alert("¡Fila de María López!");
-                    }
-                  }}
-                  style={{ flexDirection: "row" }}
-                >
-                  <TableWrapper style={{ flexDirection: "row", flex: 1 }}>
-                    <Cell
-                      data={rowData[0]}
-                      width={150}
-                      textStyle={{ textAlign: "center", paddingVertical: 15 }}
-                    />
-                    <Cell
-                      data={rowData[1]}
-                      width={200}
-                      textStyle={{ textAlign: "center" }}
-                    />
-                    <Cell
-                      data={rowData[2]}
-                      width={200}
-                      textStyle={{ textAlign: "center" }}
-                    />
-                    <Cell
-                      data={rowData[3]}
-                      width={120}
-                      textStyle={{ textAlign: "center" }}
-                    />
-                    <Cell
-                      data={rowData[4]}
-                      width={120}
-                      textStyle={{ textAlign: "center" }}
-                    />
-                    <Cell
-                      data={rowData[5]}
-                      width={150}
-                      textStyle={{ textAlign: "center" }}
-                    />
-                    <Cell
-                      data={rowData[6]}
-                      width={150}
-                      textStyle={{ textAlign: "center" }}
-                    />
-                  </TableWrapper>
-                </TouchableOpacity>
-              ))}
-            </Table>
+      <View className="px-2 pb-4">
+        <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+          <ScrollView stickyHeaderIndices={[0]}>
+            <View className="bg-slate-100 border-b border-slate-200 flex-row">
+              <SortHeader label="#" k="id" flex={0.8} center />
+              <SortHeader label="Cliente" k="cliente" flex={2} />
+              <SortHeader label="Curso/Asesoría" k="concepto" flex={2} />
+              <SortHeader label="Pendiente" k="pendiente" flex={1} center />
+              <SortHeader label="Sesiones" k="sesiones" flex={1} center />
+              <SortHeader label="Grupo" k="grupo" flex={1.2} center />
+              <SortHeader label="Ingreso" k="ingreso" flex={1.2} center />
+            </View>
+
+            {filtered.map((r, idx) => (
+              <Pressable key={r.id} className={`flex-row items-center ${idx % 2 ? 'bg-white' : 'bg-slate-50'}`} android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
+                <View style={{ flex: 0.8 }} className="py-3 px-3 items-center"><Text className="text-slate-700">{r.id}</Text></View>
+                <View style={{ flex: 2 }} className="py-3 px-3"><Text numberOfLines={1} className="text-slate-800 font-medium">{r.cliente}</Text></View>
+                <View style={{ flex: 2 }} className="py-3 px-3"><Text numberOfLines={1} className="text-slate-700">{r.concepto}</Text></View>
+                <View style={{ flex: 1 }} className="py-3 px-3 items-center"><Text className={`${r.pendiente > 0 ? 'text-amber-700' : 'text-emerald-700'} font-medium`}>{r.pendiente > 0 ? `$${r.pendiente}` : '$0'}</Text></View>
+                <View style={{ flex: 1 }} className="py-3 px-3 items-center"><Text className="text-slate-700">{r.sesiones}</Text></View>
+                <View style={{ flex: 1.2 }} className="py-3 px-3 items-center"><Text className="text-slate-700" numberOfLines={1}>{r.grupo}</Text></View>
+                <View style={{ flex: 1.2 }} className="py-3 px-3 items-center"><Text className="text-slate-900 font-semibold">${r.ingreso}</Text></View>
+              </Pressable>
+            ))}
           </ScrollView>
         </View>
       </View>
-    </>
+    </View>
   );
 };
 
@@ -1045,29 +1016,11 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
     lastTapTimeRef.current = now;
   };
 
-  const catalogoImages = [
-    require("./assets/Catalogo/Catalogo-01.png"),
-    require("./assets/Catalogo/Catalogo-02.png"),
-    require("./assets/Catalogo/Catalogo-03.png"),
-    require("./assets/Catalogo/Catalogo-04.png"),
-    require("./assets/Catalogo/Catalogo-05.png"),
-    require("./assets/Catalogo/Catalogo-06.png"),
-    require("./assets/Catalogo/Catalogo-07.png"),
-    require("./assets/Catalogo/Catalogo-08.png"),
-    require("./assets/Catalogo/Catalogo-09.png"),
-    require("./assets/Catalogo/Catalogo-10.png"),
-    require("./assets/Catalogo/Catalogo-11.png"),
-    require("./assets/Catalogo/Catalogo-12.png"),
-    require("./assets/Catalogo/Catalogo-13.png"),
-    require("./assets/Catalogo/Catalogo-14.png"),
-    require("./assets/Catalogo/Catalogo-15.png"),
-    require("./assets/Catalogo/Catalogo-16.png"), // Ejemplo
-  ];
-
-  const tarifarioImages = [
-    require("./assets/Catalogo/Catalogo-16.png"),
-    require("./assets/Catalogo/Catalogo-15.png"),
-  ];
+  // Nota: Las imágenes del catálogo no existen en el repositorio actual.
+  // Para evitar errores de bundling, usamos un placeholder existente.
+  const placeholder = require("./assets/icon.png");
+  const catalogoImages = Array.from({ length: 8 }, () => placeholder);
+  const tarifarioImages = Array.from({ length: 2 }, () => placeholder);
 
   const imagesToShow = catalogos ? tarifarioImages : catalogoImages;
 
@@ -1181,3 +1134,29 @@ const styles = StyleSheet.create({
     width: "100%",
   },
 });
+
+// Silenciar advertencias específicas de RN Web de terceros (no corregibles desde nuestro código)
+if (Platform.OS === 'web') {
+  LogBox.ignoreLogs([
+    'props.pointerEvents is deprecated',
+    'TouchableWithoutFeedback is deprecated',
+    '@supabase/gotrue-js: Navigator LockManager returned a null lock',
+    'LockManager returned a null lock',
+  ]);
+  // Filtro defensivo para mensajes en consola del entorno web
+  const originalWarn = console.warn;
+  console.warn = (...args) => {
+    try {
+      const msg = typeof args[0] === 'string' ? args[0] : '';
+      if (
+        msg.includes('props.pointerEvents is deprecated') ||
+        msg.includes('TouchableWithoutFeedback is deprecated') ||
+        msg.includes('@supabase/gotrue-js: Navigator LockManager returned a null lock') ||
+        msg.includes('LockManager returned a null lock')
+      ) {
+        return; // omitir sólo estos mensajes
+      }
+    } catch {}
+    originalWarn(...args);
+  };
+}
