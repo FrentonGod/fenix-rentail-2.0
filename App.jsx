@@ -12,7 +12,11 @@ import {
   Platform,
   TextInput,
   LogBox,
+  Modal,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
 import "./global.css";
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -21,8 +25,7 @@ import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
 import { BarChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
-import * as ScreenOrientation from 'expo-screen-orientation';
-
+import { Dropdown } from "react-native-element-dropdown";
 import {
   Calendar,
   CalendarList,
@@ -43,167 +46,164 @@ import {
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 
 import HeaderAdmin from "./components/HeaderAdmin";
-import PagoTarjetaStripe from './components/pagos/PagoTarjetaStripe';
-import MapViewWrapper from './components/MapViewWrapper';
-import { supabase } from './lib/supabase';
-import { useAuthContext } from './hooks/use-auth-context';
-import RegistroAsesor from './components/asesores/RegistroAsesor';
+import PagoTarjetaStripe from "./components/pagos/PagoTarjetaStripe";
+import MapViewWrapper from "./components/MapViewWrapper";
+import { supabase } from "./lib/supabase";
+import { useAuthContext } from "./hooks/use-auth-context";
+import RegistroAsesor from "./components/asesores/RegistroAsesor";
 
 const Tab = createMaterialTopTabNavigator(); //Aqui se esta creando el componente
 const Drawer = createDrawerNavigator();
 
 export default function App() {
-  useEffect(() => {
-    // Bloquear orientación en horizontal en dispositivos nativos
-    if (Platform.OS !== 'web') {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE)
-        .catch(() => {});
-    }
-  }, []);
   return (
     <SafeAreaProvider>
+      <LinearGradient
+        colors={["#3d18c3", "#4816bf"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={{ flex: 1 }}
+      >
       <SafeAreaView
         style={{
-          backgroundColor: "#6F09EA",
-          background:
-            "linear-gradient(90deg,rgba(111, 9, 234, 1) 0%, rgba(112, 9, 232, 1) 100%)",
         }}
-        className={`flex-1 flex-col w-full`}
+        className={`flex-1`}
       >
         <Drawer.Navigator
-            drawerContent={(props) => <CustomDrawerContent {...props} />}
-            screenOptions={{
-              header: (props) => <AppHeader {...props} />, // Nuevo HeaderAdmin
-              drawerStyle: {
-                backgroundColor: "#232428",
-                width: 200,
-              },
-              drawerActiveTintColor: "white",
-              drawerInactiveTintColor: "#6b838b",
+          drawerContent={(props) => <CustomDrawerContent {...props} />}
+          screenOptions={{
+            header: (props) => <AppHeader {...props} />, // Nuevo HeaderAdmin
+            drawerStyle: {
+              backgroundColor: "#232428",
+              width: 200,
+            },
+            drawerActiveTintColor: "white",
+            drawerInactiveTintColor: "#6b838b",
+          }}
+        >
+          <Drawer.Screen
+            name="Inicio"
+            component={ScreenInicio}
+            options={{
+              title: "Inicio",
+              drawerIcon: ({}) => (
+                <Svg
+                  height="24"
+                  viewBox="0 -960 960 960"
+                  width="24"
+                  fill="#ffffff"
+                >
+                  <Path d="M240-200h120v-240h240v240h120v-360L480-740 240-560v360Zm-80 80v-480l320-240 320 240v480H520v-240h-80v240H160Zm320-350Z" />
+                </Svg>
+              ),
             }}
-          >
-            <Drawer.Screen
-              name="Inicio"
-              component={ScreenInicio}
-              options={{
-                title: "Inicio",
-                drawerIcon: ({}) => (
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
-                  >
-                    <Path d="M240-200h120v-240h240v240h120v-360L480-740 240-560v360Zm-80 80v-480l320-240 320 240v480H520v-240h-80v240H160Zm320-350Z" />
-                  </Svg>
-                ),
-              }}
-            />
+          />
 
-            <Drawer.Screen
-              name="Estudiantes"
-              component={ScreenEstudiantes}
-              options={{
-                title: "Estudiantes",
-                drawerIcon: ({}) => (
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
-                  >
-                    <Path d="M0-240v-63q0-43 44-70t116-27q13 0 25 .5t23 2.5q-14 21-21 44t-7 48v65H0Zm240 0v-65q0-32 17.5-58.5T307-410q32-20 76.5-30t96.5-10q53 0 97.5 10t76.5 30q32 20 49 46.5t17 58.5v65H240Zm540 0v-65q0-26-6.5-49T754-397q11-2 22.5-2.5t23.5-.5q72 0 116 26.5t44 70.5v63H780Zm-455-80h311q-10-20-55.5-35T480-370q-55 0-100.5 15T325-320ZM160-440q-33 0-56.5-23.5T80-520q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T160-440Zm640 0q-33 0-56.5-23.5T720-520q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T800-440Zm-320-40q-50 0-85-35t-35-85q0-51 35-85.5t85-34.5q51 0 85.5 34.5T600-600q0 50-34.5 85T480-480Zm0-80q17 0 28.5-11.5T520-600q0-17-11.5-28.5T480-640q-17 0-28.5 11.5T440-600q0 17 11.5 28.5T480-560Zm1 240Zm-1-280Z" />
-                  </Svg>
-                ),
-              }}
-            />
-            <Drawer.Screen
-              name="Asesores"
-              component={ScreenAsesores}
-              options={{
-                title: "Asesores",
-                drawerIcon: ({}) => (
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
-                  >
-                    <Path d="M840-120v-640H120v320H40v-320q0-33 23.5-56.5T120-840h720q33 0 56.5 23.5T920-760v560q0 33-23.5 56.5T840-120ZM360-400q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47Zm0-80q33 0 56.5-23.5T440-560q0-33-23.5-56.5T360-640q-33 0-56.5 23.5T280-560q0 33 23.5 56.5T360-480ZM40-80v-112q0-34 17.5-62.5T104-298q62-31 126-46.5T360-360q66 0 130 15.5T616-298q29 15 46.5 43.5T680-192v112H40Zm80-80h480v-32q0-11-5.5-20T580-226q-54-27-109-40.5T360-280q-56 0-111 13.5T140-226q-9 5-14.5 14t-5.5 20v32Zm240-400Zm0 400Z" />
-                  </Svg>
-                ),
-              }}
-            />
-            <Drawer.Screen
-              name="Pagos"
-              component={ScreenPagos}
-              options={{
-                title: "Pagos",
-                drawerIcon: ({}) => (
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
-                  >
-                    <Path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z" />
-                  </Svg>
-                ),
-              }}
-            />
-            <Drawer.Screen
-              name="Finanzas"
-              component={ScreenFinanzas}
-              options={{
-                title: "Finanzas",
-                drawerIcon: ({}) => (
-                  <Svg
-                    height="24px"
-                    viewBox="0 -960 960 960"
-                    width="24px"
-                    fill="#ffffff"
-                  >
-                    <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
-                  </Svg>
-                ),
-              }}
-            />
-            <Drawer.Screen
-              name="Calendario"
-              component={ScreenCalendario}
-              options={{
-                title: "Calendario",
-                drawerIcon: ({}) => (
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
-                  >
-                    <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-160 0q-17 0-28.5-11.5T280-440q0-17 11.5-28.5T320-480q17 0 28.5 11.5T360-440q0 17-11.5 28.5T320-400Zm320 0q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-160 0q-17 0-28.5-11.5T280-280q0-17 11.5-28.5T320-320q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240Zm320 0q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z" />
-                  </Svg>
-                ),
-              }}
-            />
-            <Drawer.Screen
-              name="Cursos"
-              component={ScreenCursos}
-              options={{
-                title: "Cursos",
-                drawerIcon: ({}) => (
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
-                  >
-                    <Path d="M480-120 200-272v-240L40-600l440-240 440 240v320h-80v-276l-80 44v240L480-120Zm0-332 274-148-274-148-274 148 274 148Zm0 241 200-108v-151L480-360 280-470v151l200 108Zm0-241Zm0 90Zm0 0Z" />
-                  </Svg>
-                ),
-              }}
-            />
-          </Drawer.Navigator>
+          <Drawer.Screen
+            name="Estudiantes"
+            component={ScreenEstudiantes}
+            options={{
+              title: "Estudiantes",
+              drawerIcon: ({}) => (
+                <Svg
+                  height="24"
+                  viewBox="0 -960 960 960"
+                  width="24"
+                  fill="#ffffff"
+                >
+                  <Path d="M0-240v-63q0-43 44-70t116-27q13 0 25 .5t23 2.5q-14 21-21 44t-7 48v65H0Zm240 0v-65q0-32 17.5-58.5T307-410q32-20 76.5-30t96.5-10q53 0 97.5 10t76.5 30q32 20 49 46.5t17 58.5v65H240Zm540 0v-65q0-26-6.5-49T754-397q11-2 22.5-2.5t23.5-.5q72 0 116 26.5t44 70.5v63H780Zm-455-80h311q-10-20-55.5-35T480-370q-55 0-100.5 15T325-320ZM160-440q-33 0-56.5-23.5T80-520q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T160-440Zm640 0q-33 0-56.5-23.5T720-520q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T800-440Zm-320-40q-50 0-85-35t-35-85q0-51 35-85.5t85-34.5q51 0 85.5 34.5T600-600q0 50-34.5 85T480-480Zm0-80q17 0 28.5-11.5T520-600q0-17-11.5-28.5T480-640q-17 0-28.5 11.5T440-600q0 17 11.5 28.5T480-560Zm1 240Zm-1-280Z" />
+                </Svg>
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="Asesores"
+            component={ScreenAsesores}
+            options={{
+              title: "Asesores",
+              drawerIcon: ({}) => (
+                <Svg
+                  height="24"
+                  viewBox="0 -960 960 960"
+                  width="24"
+                  fill="#ffffff"
+                >
+                  <Path d="M840-120v-640H120v320H40v-320q0-33 23.5-56.5T120-840h720q33 0 56.5 23.5T920-760v560q0 33-23.5 56.5T840-120ZM360-400q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47Zm0-80q33 0 56.5-23.5T440-560q0-33-23.5-56.5T360-640q-33 0-56.5 23.5T280-560q0 33 23.5 56.5T360-480ZM40-80v-112q0-34 17.5-62.5T104-298q62-31 126-46.5T360-360q66 0 130 15.5T616-298q29 15 46.5 43.5T680-192v112H40Zm80-80h480v-32q0-11-5.5-20T580-226q-54-27-109-40.5T360-280q-56 0-111 13.5T140-226q-9 5-14.5 14t-5.5 20v32Zm240-400Zm0 400Z" />
+                </Svg>
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="Pagos"
+            component={ScreenPagos}
+            options={{
+              title: "Pagos",
+              drawerIcon: ({}) => (
+                <Svg
+                  height="24"
+                  viewBox="0 -960 960 960"
+                  width="24"
+                  fill="#ffffff"
+                >
+                  <Path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z" />
+                </Svg>
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="Finanzas"
+            component={ScreenFinanzas}
+            options={{
+              title: "Finanzas",
+              drawerIcon: ({}) => (
+                <Svg
+                  height="24px"
+                  viewBox="0 -960 960 960"
+                  width="24px"
+                  fill="#ffffff"
+                >
+                  <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
+                </Svg>
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="Calendario"
+            component={ScreenCalendario}
+            options={{
+              title: "Calendario",
+              drawerIcon: ({}) => (
+                <Svg
+                  height="24"
+                  viewBox="0 -960 960 960"
+                  width="24"
+                  fill="#ffffff"
+                >
+                  <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-160 0q-17 0-28.5-11.5T280-440q0-17 11.5-28.5T320-480q17 0 28.5 11.5T360-440q0 17-11.5 28.5T320-400Zm320 0q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-160 0q-17 0-28.5-11.5T280-280q0-17 11.5-28.5T320-320q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240Zm320 0q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z" />
+                </Svg>
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="Cursos"
+            component={ScreenCursos}
+            options={{
+              title: "Cursos",
+              drawerIcon: ({}) => (
+                <Svg
+                  height="24"
+                  viewBox="0 -960 960 960"
+                  width="24"
+                  fill="#ffffff"
+                >
+                  <Path d="M480-120 200-272v-240L40-600l440-240 440 240v320h-80v-276l-80 44v240L480-120Zm0-332 274-148-274-148-274 148 274 148Zm0 241 200-108v-151L480-360 280-470v151l200 108Zm0-241Zm0 90Zm0 0Z" />
+                </Svg>
+              ),
+            }}
+          />
+        </Drawer.Navigator>
       </SafeAreaView>
+      </LinearGradient>
     </SafeAreaProvider>
   );
 }
@@ -212,34 +212,36 @@ function AppHeader({ navigation, route }) {
   const { profile } = useAuthContext();
   // Títulos de sección según la ruta actual del Drawer
   const routeTitles = {
-    Inicio: 'Panel Principal',
-    Estudiantes: 'Lista de Estudiantes',
-    Asesores: 'Panel Administrativo',
-    Pagos: 'Comprobantes de Pago',
-    Finanzas: 'Reportes de Pagos',
-    Calendario: 'Calendario',
-    Cursos: 'Cursos',
+    Inicio: "Panel Principal",
+    Estudiantes: "Lista de Estudiantes",
+    Asesores: "Panel Administrativo",
+    Pagos: "Comprobantes de Pago",
+    Finanzas: "Reportes de Pagos",
+    Calendario: "Calendario",
+    Cursos: "Cursos",
   };
-  const currentSectionTitle = routeTitles[route?.name] || route?.name || '';
+  const currentSectionTitle = routeTitles[route?.name] || route?.name || "";
   return (
     <HeaderAdmin
-      logoSource={require('./assets/MQerK_logo.png')}
+      logoSource={require("./assets/MQerK_logo.png")}
       onLogoPress={() => navigation?.toggleDrawer?.()}
       showMenuButton={true}
       onMenuPress={() => navigation?.toggleDrawer?.()}
-      title="MQerKAcademy"
+      title="Fenix Rentail"
       subtitle={currentSectionTitle}
       adminProfile={{
-        name: profile?.full_name || 'Usuario',
-        email: profile?.email || '',
-        role: 'Admin',
+        name: profile?.full_name || "Usuario",
+        email: profile?.email || "",
+        role: "Admin",
         lastLogin: new Date().toLocaleString(),
       }}
       unreadCount={0}
       notifications={[]}
       onNotificationPress={() => {}}
       onMarkAllAsRead={() => {}}
-      onLogout={() => supabase.auth.signOut().catch((e) => console.error('Sign out error', e))}
+      onLogout={() =>
+        supabase.auth.signOut().catch((e) => console.error("Sign out error", e))
+      }
     />
   );
 }
@@ -262,7 +264,9 @@ const CustomDrawerContent = (props) => {
           label="Cerrar sesión"
           labelStyle={{ color: "#dc2626", fontWeight: "bold" }}
           onPress={() => {
-            supabase.auth.signOut().catch((e) => console.error('Sign out error', e));
+            supabase.auth
+              .signOut()
+              .catch((e) => console.error("Sign out error", e));
           }}
           icon={() => (
             <Svg
@@ -313,7 +317,112 @@ const ScreenInicio = () => {
 };
 
 const ScreenEstudiantes = () => {
-  return <Text>Pantalla para estudiantes</Text>;
+  const tableDataEstudiantes = [
+    [
+      1,
+      "Juan Pérez",
+      "Curso de React Native",
+      "$500",
+      "10",
+      "Grupo A",
+      "$1500",
+    ],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
+  ];
+  return (
+    <View
+      id="screen-estudiantes"
+      className={`flex-1 bg-slate-50 justify-center items-center vertical:px-2`}
+    >
+      <View className={`mt-4`}>
+        <ScrollView horizontal>
+          <Table style={{ borderRadius: 10 }}>
+            <Row
+              data={[
+                "#",
+                "Nombre del cliente",
+                "Curso/Asesoría",
+                "Pendiente",
+                "Sesiones",
+                "Grupo",
+                "Ingreso",
+              ]}
+              height={40}
+              widthArr={[100, 150, 200, 120, 100, 100, 120]}
+              className="flex items-center justify-center"
+              textStyle={{
+                textAlign: "center", // Estilo para el texto de la cabecera
+                fontWeight: "bold",
+              }}
+              style={{
+                backgroundColor: "#eef2f5",
+                borderWidth: 1,
+                borderColor: "#e2e4e8",
+                borderTopLeftRadius: 10,
+                borderTopRightRadius: 10,
+              }}
+            />
+            <ScrollView horizontal={false} nestedScrollEnabled={true}>
+              {tableDataEstudiantes.map((rowData, index) => (
+                <TableWrapper
+                  key={index}
+                  style={{
+                    flexDirection: "row",
+                    borderWidth: 1,
+                    borderColor: "#e2e4e8",
+                    paddingVertical: 10,
+                  }}
+                >
+                  <Cell
+                    data={index + 1}
+                    width={100}
+                    textStyle={styles.tableText}
+                  />
+                  <Cell
+                    style={{ textAlign: "start" }}
+                    data={rowData[1]}
+                    width={150}
+                    textStyle={styles.tableText}
+                  />
+                  <Cell
+                    data={rowData[2]}
+                    width={200}
+                    textStyle={styles.tableText}
+                  />
+                  <Cell
+                    data={rowData[3]}
+                    width={120}
+                    textStyle={styles.tableText}
+                  />
+                  <Cell
+                    data={rowData[4]}
+                    width={100}
+                    textStyle={styles.tableText}
+                  />
+                  <Cell
+                    data={rowData[5]}
+                    width={100}
+                    textStyle={styles.tableText}
+                  />
+                  <Cell
+                    data={rowData[6]}
+                    width={120}
+                    textStyle={styles.tableText}
+                  />
+                </TableWrapper>
+              ))}
+            </ScrollView>
+          </Table>
+        </ScrollView>
+      </View>
+    </View>
+  );
 };
 
 const ScreenAsesores = () => {
@@ -628,7 +737,602 @@ const Proximamente = () => {
 };
 
 const ScreenFinanzas = () => {
-  return <Text>Pantalla para finanzas</Text>;
+  const [ingresosData, setIngresosData] = useState([
+    {
+      id: 1,
+      alumno: "Kelvin Valentin",
+      curso: "Curso de React Native",
+      fechaInicio: "2024-07-20",
+      asesor: "Darian Reyes",
+      metodoPago: "Transferencia",
+      importe: 1500,
+      estatus: "Pagado",
+    },
+    // Agrega más datos de ejemplo si es necesario
+  ]);
+
+  const initialFormState = {
+    // Estado para la fila de nuevo ingreso
+    id: null,
+    alumno: "",
+    curso: "",
+    fechaInicio: "",
+    asesor: null,
+    metodoPago: null,
+    importe: "",
+    estatus: null,
+  };
+
+  const [isFormModalVisible, setFormModalVisible] = useState(false);
+  const [modalMode, setModalMode] = useState("add"); // 'add' or 'edit'
+  const [currentIngreso, setCurrentIngreso] = useState(initialFormState);
+
+  const [formErrors, setFormErrors] = useState({
+    alumno: false,
+    curso: false,
+    fechaInicio: false,
+  });
+
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth()); // 0-11
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [showAllYear, setShowAllYear] = useState(false);
+
+  const months = [
+    { label: "Enero", value: 0 },
+    { label: "Febrero", value: 1 },
+    { label: "Marzo", value: 2 },
+    { label: "Abril", value: 3 },
+    { label: "Mayo", value: 4 },
+    { label: "Junio", value: 5 },
+    { label: "Julio", value: 6 },
+    { label: "Agosto", value: 7 },
+    { label: "Septiembre", value: 8 },
+    { label: "Octubre", value: 9 },
+    { label: "Noviembre", value: 10 },
+    { label: "Diciembre", value: 11 },
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => ({
+    label: (currentYear - i).toString(),
+    value: currentYear - i,
+  }));
+
+  // Formateador de moneda
+  const currencyFormatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
+
+  const [isCalendarVisible, setCalendarVisible] = useState(false);
+  const [isFocus, setIsFocus] = useState(false);
+
+  const asesores = [
+    { label: "Darian Reyes Romero", value: "Darian Reyes Romero" },
+    { label: "María López", value: "María López" },
+    { label: "Asesor de Prueba", value: "Asesor de Prueba" },
+  ];
+
+  const metodosPago = [
+    { label: "Efectivo", value: "Efectivo" },
+    { label: "Transferencia", value: "Transferencia" },
+    { label: "Depósito", value: "Depósito" },
+  ];
+
+  const estatusOptions = [
+    { label: "Pendiente", value: "Pendiente" },
+    { label: "Pagado", value: "Pagado" },
+  ];
+
+  const cursos = [
+    {
+      label: "Entrenamiento para el examen de admision a la universidad",
+      value: "Entrenamiento para el examen de admision a la universidad",
+    },
+    {
+      label: "Entrenamiento para el examen de admision a la preparatoria",
+      value: "Entrenamiento para el examen de admision a la preparatoria",
+    },
+  ];
+
+  const handleOpenModal = (mode, rowData = null) => {
+    setModalMode(mode);
+    if (mode === "edit" && rowData) {
+      setCurrentIngreso({ ...rowData, importe: rowData.importe.toString() });
+    } else {
+      setCurrentIngreso(initialFormState);
+    }
+    setFormModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setFormModalVisible(false);
+    setCurrentIngreso(initialFormState);
+    setFormErrors({ alumno: false, curso: false, fechaInicio: false }); // Resetear errores al cerrar
+  };
+
+  const handleSave = () => {
+    const { alumno, curso, fechaInicio } = currentIngreso;
+    // Validaciones
+    if (!alumno || !curso || !fechaInicio) {
+      setFormErrors({
+        alumno: !alumno,
+        curso: !curso,
+        fechaInicio: !fechaInicio,
+      });
+      return;
+    }
+
+    if (modalMode === "add") {
+      // Crear nueva entrada
+      const newEntry = {
+        ...currentIngreso,
+        id:
+          ingresosData.length > 0
+            ? Math.max(...ingresosData.map((i) => i.id)) + 1
+            : 1,
+        importe: parseFloat(currentIngreso.importe) || 0,
+      };
+      setIngresosData([...ingresosData, newEntry]);
+    } else {
+      // Actualizar entrada existente
+      const updatedData = ingresosData.map((row) => {
+        if (row.id === currentIngreso.id) {
+          return {
+            ...currentIngreso,
+            importe: parseFloat(currentIngreso.importe) || 0,
+          };
+        }
+        return row;
+      });
+      setIngresosData(updatedData);
+    }
+
+    handleCloseModal();
+  };
+
+  const handleInputChange = (field, value) => {
+    setCurrentIngreso({ ...currentIngreso, [field]: value });
+    // Si hay un error en el campo que se está modificando, se limpia
+    if (formErrors[field]) {
+      setFormErrors((prevErrors) => ({
+        ...prevErrors,
+        [field]: false,
+      }));
+    }
+  };
+
+  const filteredIngresos = ingresosData.filter((ingreso) => {
+    // Asegurarse de que la fecha de inicio no esté vacía
+    if (!ingreso.fechaInicio) return false;
+    const ingresoDate = new Date(ingreso.fechaInicio);
+    if (showAllYear) {
+      return ingresoDate.getFullYear() === selectedYear;
+    }
+    return (
+      ingresoDate.getMonth() === selectedMonth &&
+      ingresoDate.getFullYear() === selectedYear
+    );
+  });
+  const renderCell = (data, cellInfo, index) => {
+    const field = cellInfo.field;
+
+    // Renderizado de celdas en modo de solo lectura
+    switch (field) {
+      case "importe":
+        return (
+          <Text style={styles.tableText}>
+            {currencyFormatter.format(data[field])}
+          </Text>
+        );
+      case "actions":
+        return (
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-around",
+              alignItems: "center",
+            }}
+          >
+            <TouchableOpacity onPress={() => handleOpenModal("edit", data)}>
+              <Svg
+                height="22"
+                viewBox="0 -960 960 960"
+                width="22"
+                fill="#3b82f6"
+              >
+                <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+              </Svg>
+            </TouchableOpacity>
+            {/* Aquí podrías agregar un botón de eliminar si lo necesitas */}
+          </View>
+        );
+      default:
+        return <Text style={styles.tableText}>{data[field]}</Text>;
+    }
+  };
+
+  const tableHeaders = [
+    { title: "ID", field: "id", width: 40 },
+    {
+      title: "Nombre del alumno",
+      field: "alumno",
+      width: 200,
+      placeholder: "Nombre",
+    },
+    {
+      title: "Curso/Asesoría",
+      field: "curso",
+      width: 220,
+      placeholder: "Curso",
+    },
+    { title: "Fecha de inicio", field: "fechaInicio", width: 120 },
+    {
+      title: "Asesor",
+      field: "asesor",
+      width: 150,
+      options: asesores,
+      placeholder: "Asesor",
+    },
+    {
+      title: "Método de pago",
+      field: "metodoPago",
+      width: 120,
+      options: metodosPago,
+      placeholder: "Método",
+    },
+    { title: "Importe", field: "importe", width: 100 },
+    {
+      title: "Estatus",
+      field: "estatus",
+      width: 120,
+      options: estatusOptions,
+      placeholder: "Estatus",
+    },
+    { title: "Acciones", field: "actions", width: 100 },
+  ];
+
+  return (
+    <Tab.Navigator
+      initialRouteName="Ingresos"
+      tabBarPosition="top"
+      screenOptions={{
+        tabBarActiveTintColor: "#1f1f1f",
+        tabBarInactiveTintColor: "#70757a",
+        swipeEnabled: false,
+
+        tabBarScrollEnabled: true,
+        tabBarItemStyle: { width: "auto", paddingHorizontal: 5 },
+        tabBarLabelStyle: {
+          fontSize: 14,
+          fontWeight: "bold",
+          textTransform: "uppercase",
+        },
+        tabBarStyle: { backgroundColor: "#f8fafc" },
+        tabBarIndicatorStyle: { backgroundColor: "#1f1f1f", height: 2 },
+      }}
+    >
+      <Tab.Screen name="Ingresos">
+        {() => (
+          <View id="tablas-ingresos" className={`flex-1 bg-slate-50 p-4`}>
+            <View className="flex-row mb-4 items-center gap-x-4">
+              <View>
+                <Text style={styles.label}>Mes</Text>
+                <Dropdown
+                  style={[
+                    styles.dropdownIngresos,
+                    showAllYear && styles.dropdownDisabled,
+                  ]}
+                  data={months}
+                  disable={showAllYear}
+                  labelField="label"
+                  valueField="value"
+                  value={selectedMonth}
+                  onChange={(item) => {
+                    setSelectedMonth(item.value);
+                  }}
+                />
+              </View>
+              <View>
+                <Text style={styles.label}>Año</Text>
+                <Dropdown
+                  style={styles.dropdownIngresos}
+                  data={years}
+                  labelField="label"
+                  valueField="value"
+                  value={selectedYear}
+                  onChange={(item) => setSelectedYear(item.value)}
+                />
+              </View>
+              <View className="flex-row items-center">
+                <TouchableOpacity
+                  onPress={() => setShowAllYear(!showAllYear)}
+                  className={`h-6 w-6 rounded border-2 justify-center items-center ${
+                    showAllYear
+                      ? "bg-indigo-600 border-indigo-600"
+                      : "bg-white border-gray-400"
+                  }`}
+                >
+                  {showAllYear && (
+                    <Svg
+                      height="16"
+                      viewBox="0 -960 960 960"
+                      width="16"
+                      fill="#ffffff"
+                    >
+                      <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+                    </Svg>
+                  )}
+                </TouchableOpacity>
+                <Text
+                  className="ml-2 font-medium text-slate-700"
+                  onPress={() => setShowAllYear(!showAllYear)}
+                >
+                  Ver todo el año
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={() => handleOpenModal("add")}
+              className="bg-blue-500 p-3 rounded-lg self-start mb-4 shadow-md"
+            >
+              <View className="flex-row items-center gap-x-2">
+                <Svg
+                  height="20"
+                  viewBox="0 -960 960 960"
+                  width="20"
+                  fill="#ffffff"
+                >
+                  <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+                </Svg>
+                <Text className="text-white font-bold">Agregar Ingreso</Text>
+              </View>
+            </TouchableOpacity>
+            <ScrollView horizontal>
+              <View>
+                <Table borderStyle={{ borderWidth: 1, borderColor: "#e2e4e8" }}>
+                  <Row
+                    data={tableHeaders.map((h) => h.title)}
+                    widthArr={tableHeaders.map((h) => h.width)}
+                    style={styles.head}
+                    textStyle={styles.headText}
+                  />
+                </Table>
+                <ScrollView nestedScrollEnabled={true}>
+                  <Table
+                    borderStyle={{ borderWidth: 1, borderColor: "#e2e4e8" }}
+                  >
+                    {filteredIngresos.map((rowData, index) => (
+                      <TableWrapper key={index} style={styles.row}>
+                        {tableHeaders.map((cellInfo, cellIndex) => (
+                          <Cell
+                            key={cellIndex}
+                            data={renderCell(rowData, cellInfo, index)}
+                            width={cellInfo.width}
+                            style={{ padding: 6 }}
+                          />
+                        ))}
+                      </TableWrapper>
+                    ))}
+                  </Table>
+                </ScrollView>
+              </View>
+            </ScrollView>
+            <Modal
+              transparent={true}
+              animationType="slide"
+              visible={isFormModalVisible}
+              onRequestClose={handleCloseModal}
+            >
+              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View className="flex-1 justify-center items-center fixed bg-black/60 p-4">
+                  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                    <View className="bg-slate-50 rounded-2xl p-6 w-full shadow-xl">
+                      <Text className="text-2xl font-bold mb-6 text-slate-800">
+                        {modalMode === "add"
+                          ? "Agregar Ingreso"
+                          : "Editar Ingreso"}
+                      </Text>
+                      <ScrollView>
+                        {/* Nombre del Alumno */}
+                        <View className={`flex-row gap-x-4`}>
+                          <View className={`flex-1`}>
+                            <Text style={styles.label}>Nombre</Text>
+                            <TextInput
+                              style={[
+                                styles.input,
+                                formErrors.alumno && styles.errorInput,
+                              ]}
+                              value={currentIngreso.alumno}
+                              onChangeText={(text) =>
+                                handleInputChange("alumno", text)
+                              }
+                              placeholder={
+                                formErrors.alumno ? "" : "Ej. Juan Pérez"
+                              }
+                              placeholderTextColor={
+                                formErrors.alumno ? "#ef4444" : "#9ca3af"
+                              }
+                            />
+                          </View>
+
+                          {/* Curso/Asesoría */}
+                          <View className={`flex-1`}>
+                            <Text style={styles.label}>Curso/Asesoría</Text>
+                            <Dropdown
+                              className={``}
+                              style={[
+                                styles.dropdownModal,
+                                formErrors.curso && styles.errorInput,
+                              ]}
+                              data={cursos}
+                              labelField="label"
+                              valueField="value"
+                              placeholder={
+                                formErrors.curso ? "" : "Seleccionar curso"
+                              }
+                              placeholderStyle={
+                                formErrors.curso && { color: "#ef4444" }
+                              }
+                              value={currentIngreso.curso}
+                              onChange={(item) =>
+                                handleInputChange("curso", item.value)
+                              }
+                            />
+                          </View>
+                        </View>
+
+                        <View className={`flex-row gap-x-4`}>
+                          {/* Fecha de Inicio */}
+                          <View className={`flex-1`}>
+                            <Text style={styles.label}>Fecha de Inicio</Text>
+                            <TouchableOpacity
+                              onPress={() => setCalendarVisible(true)}
+                              style={[
+                                styles.input,
+                                formErrors.fechaInicio && styles.errorInput,
+                              ]}
+                            >
+                              <Text
+                                className={
+                                  currentIngreso.fechaInicio
+                                    ? "text-black"
+                                    : "text-gray-400"
+                                }
+                                style={
+                                  formErrors.fechaInicio && { color: "#ef4444" }
+                                }
+                              >
+                                {currentIngreso.fechaInicio ||
+                                  (formErrors.fechaInicio
+                                    ? "Fecha inválida"
+                                    : "Seleccionar fecha")}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                          {/* Asesor */}
+                          <View className={`flex-1`}>
+                            <Text style={styles.label}>Asesor</Text>
+                            <Dropdown
+                              style={styles.dropdownModal}
+                              data={asesores}
+                              labelField="label"
+                              valueField="value"
+                              placeholder="Seleccionar asesor"
+                              value={currentIngreso.asesor}
+                              onChange={(item) =>
+                                handleInputChange("asesor", item.value)
+                              }
+                            />
+                          </View>
+                        </View>
+
+                        {/* Método de Pago */}
+                        <Text style={styles.label}>Método de Pago</Text>
+                        <Dropdown
+                          style={styles.dropdownModal}
+                          data={metodosPago}
+                          labelField="label"
+                          valueField="value"
+                          placeholder="Seleccionar método"
+                          value={currentIngreso.metodoPago}
+                          onChange={(item) =>
+                            handleInputChange("metodoPago", item.value)
+                          }
+                        />
+
+                        {/* Importe */}
+                        <Text style={styles.label}>Importe</Text>
+                        <View
+                          style={styles.input}
+                          className="flex-row items-center"
+                        >
+                          <Text className="mr-1">$</Text>
+                          <TextInput
+                            value={currentIngreso.importe.toString()}
+                            onChangeText={(text) => {
+                              const numericValue = text.replace(/[^0-9.]/g, "");
+                              handleInputChange("importe", numericValue);
+                            }}
+                            placeholder="0.00"
+                            keyboardType="numeric"
+                            className="flex-1"
+                          />
+                        </View>
+
+                        {/* Estatus */}
+                        <Text style={styles_modal.label}>Estatus</Text>
+                        <Dropdown
+                          style={styles.dropdownModal}
+                          data={estatusOptions}
+                          labelField="label"
+                          valueField="value"
+                          placeholder="Seleccionar estatus"
+                          value={currentIngreso.estatus}
+                          onChange={(item) =>
+                            handleInputChange("estatus", item.value)
+                          }
+                        />
+                      </ScrollView>
+                      {/* Botones */}
+                      <View className="flex-row justify-end mt-6 gap-x-4">
+                        <TouchableOpacity
+                          onPress={handleCloseModal}
+                          className="bg-slate-200 px-5 py-3 rounded-lg"
+                        >
+                          <Text className="font-bold text-slate-600">
+                            Cancelar
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={handleSave}
+                          className="bg-indigo-600 px-5 py-3 rounded-lg shadow-md shadow-indigo-600/30"
+                        >
+                          <Text className="text-white font-bold">Guardar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </TouchableWithoutFeedback>
+                </View>
+              </TouchableWithoutFeedback>
+            </Modal>
+            <Modal
+              transparent={true}
+              animationType="fade"
+              visible={isCalendarVisible}
+              onRequestClose={() => setCalendarVisible(false)}
+            >
+              <TouchableWithoutFeedback
+                onPress={() => setCalendarVisible(false)}
+              >
+                <View className="flex-1 justify-center items-center bg-black/50">
+                  <TouchableWithoutFeedback>
+                    <View className="bg-white rounded-lg p-5">
+                      <Calendar
+                        onDayPress={(day) => {
+                          handleInputChange("fechaInicio", day.dateString);
+                          setCalendarVisible(false);
+                        }}
+                        markedDates={{
+                          [currentIngreso.fechaInicio]: {
+                            selected: true,
+                            selectedColor: "#6F09EA",
+                          },
+                        }}
+                      />
+                    </View>
+                  </TouchableWithoutFeedback>
+                </View>
+              </TouchableWithoutFeedback>
+            </Modal>
+          </View>
+        )}
+      </Tab.Screen>
+      <Tab.Screen name="Egresos" id="tablas-egresos">
+        {() => <View className={`flex-1 bg-slate-50 p-2`}></View>}
+      </Tab.Screen>
+    </Tab.Navigator>
+  );
 };
 
 const ScreenCalendario = () => {
@@ -680,148 +1384,301 @@ const ScreenCalendario = () => {
 
   LocaleConfig.defaultLocale = "es";
 
-  const today = new Date();
-  const sixMonthsAgo = new Date(today);
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 3);
-  // Formato YYYY-MM-DD
-  const minDate = sixMonthsAgo.toISOString().split("T")[0];
-  const maxDate = `${today.getFullYear() + 1}-12-31`;
-
   return (
-    <View className={`flex-1 items-center bg-slate-50 p-2 flex-col`}>
+    <View className={`flex-1 bg-slate-50 p-2 flex-col`}>
       <View
         className={`flex-1 horizontal:flex-row vertical:flex-col p-2 vertical:gap-y-10 horizontal:gap-x-10`}
       >
-        <Calendar
-          showSixWeeks={true}
-          minDate={minDate}
-          maxDate={maxDate}
-          futureScrollRange={12}
-          enableSwipeMonths={true}
-          disableAllTouchEventsForDisabledDays={true}
-          disableAllTouchEventsForInactiveDays={false}
-          markedDates={{ today: { selected: true } }}
-          style={{
-            width: 500,
-            borderRadius: 10,
-            borderColor: "#1f1f1f",
-            borderWidth: 1,
-            boxSizing: "border-box",
-          }}
-          theme={{
-            borderWidth: 2,
-            borderColor: "#6F09EA",
-            todayButtonFontWeight: 300,
-          }}
-          renderArrow={(direction) => {
-            if (direction === "left") {
-              return (
-                <View
-                  style={{
-                    backgroundColor: "#6F09EA",
-                    background:
-                      "radial-gradient(circle, rgba(111, 9, 234, 1) 0%, rgba(112, 9, 232, 1) 100%)",
-                  }}
-                  className={`rounded-full p-1`}
-                >
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
+        <View
+          className={`horizontal:flex-col vertical:flex-col vertical:items-center horizontal:items-stretch `}
+        >
+          <Calendar
+            showSixWeeks={true}
+            pastScrollRange={1} // Limita a 1 mes en el pasado
+            futureScrollRange={1} // Limita a 1 mes en el futuro
+            enableSwipeMonths={true}
+            disabledByWeekDays={[0]}
+            disableAllTouchEventsForDisabledDays={true}
+            style={{
+              width: 400,
+              borderRadius: 10,
+              borderColor: "#1f1f1f",
+              borderWidth: 1,
+              boxSizing: "border-box",
+              backgroundColor: "#f8fafc",
+            }}
+            theme={{
+              calendarBackground: "#f8fafc",
+            }}
+            renderArrow={(direction) => {
+              if (direction === "left") {
+                return (
+                  <View
+                    style={{
+                      backgroundColor: "#B58EE2",
+                      // --- Sombra para los botones de flecha ---
+                      elevation: 4, // Sombra para Android
+                      shadowColor: "#000", // Sombra para iOS
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 3.84,
+                    }}
+                    className={`rounded-full p-1`}
                   >
-                    <Path d="M560-240 320-480l240-240 56 56-184 184 184 184-56 56Z" />
-                  </Svg>
-                </View>
-              );
-            } else {
-              return (
-                <View
-                  style={{
-                    backgroundColor: "#6F09EA",
-                    background:
-                      "radial-gradient(circle, rgba(111, 9, 234, 1) 0%, rgba(112, 9, 232, 1) 100%)",
-                  }}
-                  className={`rounded-full p-1`}
-                >
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
+                    <Svg
+                      height="24"
+                      viewBox="0 -960 960 960"
+                      width="24"
+                      fill="#ffffff"
+                    >
+                      <Path d="M560-240 320-480l240-240 56 56-184 184 184 184-56 56Z" />
+                    </Svg>
+                  </View>
+                );
+              } else {
+                return (
+                  <View
+                    style={{
+                      backgroundColor: "#B58EE2",
+                      // --- Sombra para los botones de flecha ---
+                      elevation: 4, // Sombra para Android
+                      shadowColor: "#000", // Sombra para iOS
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 3.84,
+                    }}
+                    className={`rounded-full p-1`}
                   >
-                    <Path d="M400-240 344-296l184-184-184-184 56-56 240 240-240 240Z" />
-                  </Svg>
-                </View>
-              );
-            }
-          }}
-          dayComponent={({ date, state }) => {
-            const isToday =
-              date.dateString === new Date().toISOString().split("T")[0];
-            return (
-              <TouchableOpacity
-                style={{
-                  backgroundColor: isToday ? "#6F09EA" : "",
-
-                  padding: 3,
-                  borderRadius: 100,
-                  borderWidth: isToday ? 2 : 0,
-                  boxSizing: "border-box",
-                  borderColor: "#6F09EA",
-                  fontWeight: isToday ? "bold" : "normal",
-                }}
-              >
-                <Text
-                  style={{
-                    color: isToday
-                      ? "ffffff"
-                      : state === "disabled"
-                        ? "gray"
-                        : "black",
-                  }}
-                >
-                  {date.day}
-                </Text>
-              </TouchableOpacity>
-            );
-          }}
-        />
-        <View className={`flex-1`}>
-          <Text className={`uppercase font-bold`}>Próximos eventos</Text>
+                    <Svg
+                      height="24"
+                      viewBox="0 -960 960 960"
+                      width="24"
+                      fill="#ffffff"
+                    >
+                      <Path d="M400-240 344-296l184-184-184-184 56-56 240 240-240 240Z" />
+                    </Svg>
+                  </View>
+                );
+              }
+            }}
+          />
         </View>
-      </View>
-      <View className={`flex`}>
-        <Text>Eventos para el</Text>
+        <View
+          className={`flex-1 vertical:flex-row horizontal:flex-col vertical:gap-x-4 horizontal:gap-x-0`}
+        >
+          <View className={`flex-1`}>
+            <Text className={`uppercase font-bold border-b `}>
+              Próximos eventos
+            </Text>
+            <View className={`flex-1 items-center justify-center`}>
+              <Text>¡Vaya!, al parecer no quedan pedientes</Text>
+            </View>
+          </View>
+        </View>
       </View>
     </View>
   );
 };
 
 const ScreenCursos = () => {
-  return <Text>Pantalla para cursos</Text>;
+  const tableDataCursos = [
+    [
+      1,
+      "Entrenamiento para el examen de admision a la universidad",
+      "$1500",
+      ,
+    ],
+    [2, "Entrenamiento para el examen de admision a la preparatoria", "$1100"],
+  ];
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredData, setFilteredData] = useState(tableDataCursos);
+
+  useEffect(() => {
+    if (searchTerm === "") {
+      setFilteredData(tableDataCursos);
+    } else {
+      const lowercasedFilter = searchTerm.toLowerCase();
+      const newData = tableDataCursos.filter((row) => {
+        // row[1] es el nombre, row[2] es el precio
+        const nombre = row[1]?.toString().toLowerCase() || "";
+        const precio = row[2]?.toString().toLowerCase() || "";
+
+        return (
+          nombre.includes(lowercasedFilter) || precio.includes(lowercasedFilter)
+        );
+      });
+      setFilteredData(newData);
+    }
+  }, [searchTerm]);
+
+  return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View className={`flex-1 bg-slate-50`}>
+        <View className={`self-center p-2 box-content mb-7`}>
+          <View
+            style={{
+              boxShadow:
+                "inset 0 4px 6px -1px rgba(0, 0, 0, 0.1), inset 0 2px 4px -2px rgba(0, 0, 0, 0.1), inset 0 0 0 1px #282C30",
+            }}
+            className={`border border-[#eef2f5] justify-center items-center  flex-row gap-x-5 rounded-lg`}
+          >
+            <TextInput
+              id="buscador-cursos"
+              placeholder="Nombre del curso, precio"
+              className={`h-full min-w-[20em]`}
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+            />
+          </View>
+        </View>
+        <View className={`vertical:px-2 flex-1 justify-center items-center`}>
+          <ScrollView horizontal>
+            <Table style={{ borderRadius: 10 }}>
+              <Row
+                data={["#", "Nombre", "Precio", "Acciones"]}
+                height={40}
+                widthArr={[100, 200, 150, 100]}
+                textStyle={{
+                  textAlign: "center",
+                  fontWeight: "bold", // Estilo para el texto de la cabecera
+                }}
+                style={{
+                  backgroundColor: "#eef2f5",
+                  borderWidth: 1,
+                  borderColor: "#e2e4e8",
+                  borderTopLeftRadius: 10,
+                  borderTopRightRadius: 10,
+                }}
+              />
+              <ScrollView horizontal={false} nestedScrollEnabled={true}>
+                {filteredData.map((rowData, index) => (
+                  <TableWrapper
+                    key={index}
+                    style={{
+                      flexDirection: "row",
+                      borderWidth: 1,
+                      borderColor: "#e2e4e8",
+                      paddingVertical: 10,
+                    }}
+                  >
+                    <Cell
+                      id="celda-id"
+                      data={rowData[0]}
+                      width={100}
+                      textStyle={styles.tableText}
+                    />
+                    <Cell
+                      id="celda-nombre-curso"
+                      data={rowData[1]}
+                      width={200}
+                      textStyle={styles.tableText}
+                    />
+                    <Cell
+                      id="celda-precio"
+                      data={rowData[2]}
+                      width={150}
+                      textStyle={styles.tableText}
+                    />
+                    <Cell
+                      id="celda-acciones"
+                      data={
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            justifyContent: "space-around",
+                            alignItems: "center",
+                            flex: 1,
+                            paddingHorizontal: 5,
+                          }}
+                        >
+                          <TouchableOpacity
+                            onPress={() => alert(`Editar curso: ${rowData[1]}`)}
+                          >
+                            <Svg
+                              height="22"
+                              viewBox="0 -960 960 960"
+                              width="22"
+                              fill="#3b82f6"
+                            >
+                              <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                            </Svg>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() =>
+                              alert(`Eliminar curso: ${rowData[1]}`)
+                            }
+                          >
+                            <Svg
+                              height="22"
+                              viewBox="0 -960 960 960"
+                              width="22"
+                              fill="#ef4444"
+                            >
+                              <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                            </Svg>
+                          </TouchableOpacity>
+                        </View>
+                      }
+                      width={100}
+                      textStyle={styles.tableText}
+                    />
+                  </TableWrapper>
+                ))}
+              </ScrollView>
+            </Table>
+          </ScrollView>
+        </View>
+      </View>
+    </TouchableWithoutFeedback>
+  );
 };
 
 const SeccionVentas = () => {
-  const [query, setQuery] = useState('');
-  const [sortKey, setSortKey] = useState('id');
-  const [sortDir, setSortDir] = useState('desc');
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState("id");
+  const [sortDir, setSortDir] = useState("desc");
 
-  const data = useMemo(() => ([
-    { id: 1, cliente: 'Juan Pérez', concepto: 'Curso de React Native', pendiente: 500, sesiones: 10, grupo: 'Grupo A', ingreso: 1500 },
-    { id: 2, cliente: 'María López', concepto: 'Asesoría Personal', pendiente: 0, sesiones: 5, grupo: 'Grupo B', ingreso: 2000 },
-  ]), []);
+  const data = useMemo(
+    () => [
+      {
+        id: 1,
+        cliente: "Juan Pérez",
+        concepto: "Curso de React Native",
+        pendiente: 500,
+        sesiones: 10,
+        grupo: "Grupo A",
+        ingreso: 1500,
+      },
+      {
+        id: 2,
+        cliente: "María López",
+        concepto: "Asesoría Personal",
+        pendiente: 0,
+        sesiones: 5,
+        grupo: "Grupo B",
+        ingreso: 2000,
+      },
+    ],
+    []
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const arr = data.filter((r) => !q || r.cliente.toLowerCase().includes(q) || r.concepto.toLowerCase().includes(q) || r.grupo.toLowerCase().includes(q));
+    const arr = data.filter(
+      (r) =>
+        !q ||
+        r.cliente.toLowerCase().includes(q) ||
+        r.concepto.toLowerCase().includes(q) ||
+        r.grupo.toLowerCase().includes(q)
+    );
     const sorted = [...arr].sort((a, b) => {
       let va = a[sortKey];
       let vb = b[sortKey];
-      if (typeof va === 'string') va = va.toLowerCase();
-      if (typeof vb === 'string') vb = vb.toLowerCase();
-      if (va < vb) return sortDir === 'asc' ? -1 : 1;
-      if (va > vb) return sortDir === 'asc' ? 1 : -1;
+      if (typeof va === "string") va = va.toLowerCase();
+      if (typeof vb === "string") vb = vb.toLowerCase();
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
     return sorted;
@@ -831,17 +1688,21 @@ const SeccionVentas = () => {
     <Pressable
       onPress={() => {
         setSortKey(k);
-        setSortDir((d) => (sortKey === k ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+        setSortDir((d) =>
+          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"
+        );
       }}
       className="py-3 px-3"
-      style={{ flex, alignItems: center ? 'center' : 'flex-start' }}
-      android_ripple={{ color: 'rgba(0,0,0,0.05)' }}
+      style={{ flex, alignItems: center ? "center" : "flex-start" }}
+      android_ripple={{ color: "rgba(0,0,0,0.05)" }}
     >
       <View className="flex-row items-center gap-1">
-        <Text className="text-slate-800 font-semibold text-xs sm:text-sm uppercase tracking-wide">{label}</Text>
+        <Text className="text-slate-800 font-semibold text-xs sm:text-sm uppercase tracking-wide">
+          {label}
+        </Text>
         {sortKey === k && (
           <Svg width={12} height={12} viewBox="0 -960 960 960" fill="#334155">
-            {sortDir === 'asc' ? (
+            {sortDir === "asc" ? (
               <Path d="M480-680 240-440h480L480-680Z" />
             ) : (
               <Path d="M240-520h480L480-280 240-520Z" />
@@ -852,8 +1713,13 @@ const SeccionVentas = () => {
     </Pressable>
   );
 
-  const ActionButton = ({ color = '#66b5ff', text, icon }) => (
-    <Pressable className="rounded-xl px-3 py-2.5 flex-row items-center gap-2" style={{ backgroundColor: color }} android_ripple={{ color: 'rgba(0,0,0,0.08)' }} hitSlop={8}>
+  const ActionButton = ({ color = "#66b5ff", text, icon }) => (
+    <Pressable
+      className="rounded-xl px-3 py-2.5 flex-row items-center gap-2"
+      style={{ backgroundColor: color, elevation: 5 }}
+      android_ripple={{ color: "rgba(0,0,0,0.08)" }}
+      hitSlop={8}
+    >
       <Text className="text-[#0b0f19] font-semibold">{text}</Text>
       {icon}
     </Pressable>
@@ -865,18 +1731,44 @@ const SeccionVentas = () => {
         <View className="flex-row items-center gap-2">
           <ActionButton
             text="Generar venta"
-            icon={<Svg width={20} height={20} viewBox="0 -960 960 960" fill="#0b0f19"><Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z"/></Svg>}
+            icon={
+              <Svg
+                width={20}
+                height={20}
+                viewBox="0 -960 960 960"
+                fill="#0b0f19"
+              >
+                <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+              </Svg>
+            }
           />
           <ActionButton
             color="#facc15"
             text="Reimprimir ticket"
-            icon={<Svg width={20} height={20} viewBox="0 -960 960 960" fill="#0b0f19"><Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z"/></Svg>}
+            icon={
+              <Svg
+                width={20}
+                height={20}
+                viewBox="0 -960 960 960"
+                fill="#0b0f19"
+              >
+                <Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z" />
+              </Svg>
+            }
           />
         </View>
         <View className="flex-row items-center gap-2">
           <View className="flex-row items-center bg-white border border-slate-200 rounded-xl px-3 py-2">
-            <Svg width={18} height={18} viewBox="0 -960 960 960" fill="#64748b"><Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/></Svg>
-            <TextInput value={query} onChangeText={setQuery} placeholder="Buscar" placeholderTextColor="#94a3b8" className="min-w-[160px] sm:min-w-[240px] ml-2 text-slate-800" />
+            <Svg width={18} height={18} viewBox="0 -960 960 960" fill="#64748b">
+              <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
+            </Svg>
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Buscar"
+              placeholderTextColor="#94a3b8"
+              className="min-w-[160px] sm:min-w-[240px] ml-2 text-slate-800"
+            />
           </View>
         </View>
       </View>
@@ -895,14 +1787,47 @@ const SeccionVentas = () => {
             </View>
 
             {filtered.map((r, idx) => (
-              <Pressable key={r.id} className={`flex-row items-center ${idx % 2 ? 'bg-white' : 'bg-slate-50'}`} android_ripple={{ color: 'rgba(0,0,0,0.04)' }}>
-                <View style={{ flex: 0.8 }} className="py-3 px-3 items-center"><Text className="text-slate-700">{r.id}</Text></View>
-                <View style={{ flex: 2 }} className="py-3 px-3"><Text numberOfLines={1} className="text-slate-800 font-medium">{r.cliente}</Text></View>
-                <View style={{ flex: 2 }} className="py-3 px-3"><Text numberOfLines={1} className="text-slate-700">{r.concepto}</Text></View>
-                <View style={{ flex: 1 }} className="py-3 px-3 items-center"><Text className={`${r.pendiente > 0 ? 'text-amber-700' : 'text-emerald-700'} font-medium`}>{r.pendiente > 0 ? `$${r.pendiente}` : '$0'}</Text></View>
-                <View style={{ flex: 1 }} className="py-3 px-3 items-center"><Text className="text-slate-700">{r.sesiones}</Text></View>
-                <View style={{ flex: 1.2 }} className="py-3 px-3 items-center"><Text className="text-slate-700" numberOfLines={1}>{r.grupo}</Text></View>
-                <View style={{ flex: 1.2 }} className="py-3 px-3 items-center"><Text className="text-slate-900 font-semibold">${r.ingreso}</Text></View>
+              <Pressable
+                key={r.id}
+                className={`flex-row items-center ${idx % 2 ? "bg-white" : "bg-slate-50"}`}
+                android_ripple={{ color: "rgba(0,0,0,0.04)" }}
+              >
+                <View style={{ flex: 0.8 }} className="py-3 px-3 items-center">
+                  <Text className="text-slate-700">{r.id}</Text>
+                </View>
+                <View style={{ flex: 2 }} className="py-3 px-3">
+                  <Text
+                    numberOfLines={1}
+                    className="text-slate-800 font-medium"
+                  >
+                    {r.cliente}
+                  </Text>
+                </View>
+                <View style={{ flex: 2 }} className="py-3 px-3">
+                  <Text numberOfLines={1} className="text-slate-700">
+                    {r.concepto}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }} className="py-3 px-3 items-center">
+                  <Text
+                    className={`${r.pendiente > 0 ? "text-amber-700" : "text-emerald-700"} font-medium`}
+                  >
+                    {r.pendiente > 0 ? `$${r.pendiente}` : "$0"}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }} className="py-3 px-3 items-center">
+                  <Text className="text-slate-700">{r.sesiones}</Text>
+                </View>
+                <View style={{ flex: 1.2 }} className="py-3 px-3 items-center">
+                  <Text className="text-slate-700" numberOfLines={1}>
+                    {r.grupo}
+                  </Text>
+                </View>
+                <View style={{ flex: 1.2 }} className="py-3 px-3 items-center">
+                  <Text className="text-slate-900 font-semibold">
+                    ${r.ingreso}
+                  </Text>
+                </View>
               </Pressable>
             ))}
           </ScrollView>
@@ -1016,13 +1941,36 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
     lastTapTimeRef.current = now;
   };
 
-  // Nota: Las imágenes del catálogo no existen en el repositorio actual.
-  // Para evitar errores de bundling, usamos un placeholder existente.
-  const placeholder = require("./assets/icon.png");
-  const catalogoImages = Array.from({ length: 8 }, () => placeholder);
-  const tarifarioImages = Array.from({ length: 2 }, () => placeholder);
+  const catalogoImages = [
+    require("./assets/Catalogo/Catalogo-01.png"),
+    require("./assets/Catalogo/Catalogo-02.png"),
+    require("./assets/Catalogo/Catalogo-03.png"),
+    require("./assets/Catalogo/Catalogo-04.png"),
+    require("./assets/Catalogo/Catalogo-05.png"),
+    require("./assets/Catalogo/Catalogo-06.png"),
+    require("./assets/Catalogo/Catalogo-07.png"),
+    require("./assets/Catalogo/Catalogo-08.png"),
+    require("./assets/Catalogo/Catalogo-09.png"),
+    require("./assets/Catalogo/Catalogo-10.png"),
+    require("./assets/Catalogo/Catalogo-11.png"),
+    require("./assets/Catalogo/Catalogo-12.png"),
+    require("./assets/Catalogo/Catalogo-13.png"),
+    require("./assets/Catalogo/Catalogo-14.png"),
+    require("./assets/Catalogo/Catalogo-15.png"),
+    require("./assets/Catalogo/Catalogo-16.png"), // Ejemplo
+  ];
+
+  const tarifarioImages = [
+    require("./assets/Tarifario/Tarifario-1.jpg"),
+    require("./assets/Tarifario/Tarifario-2.jpg"),
+    require("./assets/Tarifario/Tarifario-3.jpg"),
+    require("./assets/Tarifario/Tarifario-4.jpg"),
+    require("./assets/Tarifario/Tarifario-5.jpg"),
+  ];
 
   const imagesToShow = catalogos ? tarifarioImages : catalogoImages;
+
+  // const imagesToShow = catalogos ? tarifarioImages : catalogoImages;
 
   return (
     <View className={`flex-1 bg-slate-50`}>
@@ -1032,6 +1980,7 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
         >
           <View className={``}>
             <Ripple
+              style={{ elevation: catalogos ? 0 : 5 }}
               rippleContainerBorderRadius={5}
               className={`self-start p-2 justify-center items-center rounded ${catalogos ? "" : "bg-white"}`}
               onPress={() => setCatalogos(false)}
@@ -1050,6 +1999,7 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
           </View>
           <View>
             <Ripple
+              style={{ elevation: catalogos ? 5 : 0 }}
               rippleContainerBorderRadius={5}
               className={`self-start p-2 justify-center items-center rounded ${catalogos ? "bg-white" : ""}`}
               onPress={() => setCatalogos(true)}
@@ -1122,6 +2072,34 @@ const MinimalistTabBar = ({ state }) => {
   );
 };
 
+// Silenciar advertencias específicas de RN Web de terceros (no corregibles desde nuestro código)
+if (Platform.OS === "web") {
+  LogBox.ignoreLogs([
+    "props.pointerEvents is deprecated",
+    "TouchableWithoutFeedback is deprecated",
+    "@supabase/gotrue-js: Navigator LockManager returned a null lock",
+    "LockManager returned a null lock",
+  ]);
+  // Filtro defensivo para mensajes en consola del entorno web
+  const originalWarn = console.warn;
+  console.warn = (...args) => {
+    try {
+      const msg = typeof args[0] === "string" ? args[0] : "";
+      if (
+        msg.includes("props.pointerEvents is deprecated") ||
+        msg.includes("TouchableWithoutFeedback is deprecated") ||
+        msg.includes(
+          "@supabase/gotrue-js: Navigator LockManager returned a null lock"
+        ) ||
+        msg.includes("LockManager returned a null lock")
+      ) {
+        return; // omitir sólo estos mensajes
+      }
+    } catch {}
+    originalWarn(...args);
+  };
+}
+
 const styles = StyleSheet.create({
   carouselContainer: {
     flex: 1,
@@ -1133,30 +2111,73 @@ const styles = StyleSheet.create({
   scrollView: {
     width: "100%",
   },
+  head: { height: 40, backgroundColor: "#eef2f5" },
+  headText: { textAlign: "center", fontWeight: "bold", fontSize: 13 },
+  row: { flexDirection: "row", backgroundColor: "#f8fafc" },
+  tableText: {
+    textAlign: "center",
+    fontSize: 12,
+  },
+  dropdown: {
+    height: 40,
+    borderColor: "gray",
+    borderWidth: 0.5,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    width: "100%",
+  },
+  icon: {
+    marginRight: 5,
+  },
+  label: {
+    position: "absolute",
+    backgroundColor: "white",
+    left: 22,
+    top: 8,
+    zIndex: 999,
+    paddingHorizontal: 8,
+    fontSize: 14,
+  },
+  input: {
+    height: 50,
+    borderColor: "gray",
+    borderWidth: 0.5,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 15,
+    justifyContent: "center",
+  },
+  dropdownModal: {
+    height: 50,
+    borderColor: "gray",
+    borderWidth: 0.5,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    marginBottom: 15,
+  },
+  dropdownIngresos: {
+    height: 40,
+    width: 150,
+    borderColor: "gray",
+    borderWidth: 0.5,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 14,
+    color: "#334155",
+    marginBottom: 5,
+    fontWeight: "500",
+  },
+  errorInput: {
+    borderColor: "#ef4444", // Rojo para el borde
+    borderWidth: 1,
+  },
+  dropdownDisabled: {
+    backgroundColor: "#e5e7eb",
+    borderColor: "#d1d5db",
+  },
 });
 
-// Silenciar advertencias específicas de RN Web de terceros (no corregibles desde nuestro código)
-if (Platform.OS === 'web') {
-  LogBox.ignoreLogs([
-    'props.pointerEvents is deprecated',
-    'TouchableWithoutFeedback is deprecated',
-    '@supabase/gotrue-js: Navigator LockManager returned a null lock',
-    'LockManager returned a null lock',
-  ]);
-  // Filtro defensivo para mensajes en consola del entorno web
-  const originalWarn = console.warn;
-  console.warn = (...args) => {
-    try {
-      const msg = typeof args[0] === 'string' ? args[0] : '';
-      if (
-        msg.includes('props.pointerEvents is deprecated') ||
-        msg.includes('TouchableWithoutFeedback is deprecated') ||
-        msg.includes('@supabase/gotrue-js: Navigator LockManager returned a null lock') ||
-        msg.includes('LockManager returned a null lock')
-      ) {
-        return; // omitir sólo estos mensajes
-      }
-    } catch {}
-    originalWarn(...args);
-  };
-}
+const styles_modal = StyleSheet.create({ ...styles });

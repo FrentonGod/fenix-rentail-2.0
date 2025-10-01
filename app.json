@@ -1,6 +1,6 @@
 {
   "expo": {
-    "orientation": "landscape",
+    "orientation": "default",
     "scheme": "fenixrentail",
     "plugins": [
       "expo-router",

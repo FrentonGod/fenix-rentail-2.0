@@ -7,7 +7,6 @@ import App from './App';
 import AuthProvider from './providers/auth-provider';
 import { SplashScreenController } from './components/splash-screen-controller';
 import LoginScreen from './screens/Login';
-import PreRegistroScreen from './screens/PreRegistro';
 import RegisterScreen from './screens/Register';
 import { useAuthContext } from './hooks/use-auth-context';
 
@@ -31,9 +30,7 @@ function RootNavigator() {
 						<Stack.Screen name="Login" component={LoginScreen} />
 						<Stack.Screen name="Register" component={RegisterScreen} />
 					</>
-				) : needsPreRegistro ? (
-					<Stack.Screen name="PreRegistro" component={PreRegistroScreen} />
-				) : (
+				): (
 					<Stack.Screen name="Main" component={App} />
 				)}
 			</Stack.Navigator>
