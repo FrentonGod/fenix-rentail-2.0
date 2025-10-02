@@ -26,8 +26,6 @@
       "requireFullScreen": true
     },
     "android": {
-      "package": "com.example.fenixrentail20",
-      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

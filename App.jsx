@@ -15,10 +15,6 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Keyboard,
-  TextInput,
-  TouchableWithoutFeedback,
-  Keyboard,
-  Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
@@ -29,10 +25,7 @@ import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
 import { BarChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
-import { Dropdown } from "react-native-element-dropdown";import { Dropdown } from "react-native-element-dropdown";
-
-import { verifyInstallation } from "nativewind";
-
+import { Dropdown } from "react-native-element-dropdown";
 import {
   Calendar,
   CalendarList,
@@ -42,10 +35,7 @@ import {
   ExpandableCalendar,
 } from "react-native-calendars";
 
-import {
-  NavigationContainer,
-  NavigationIndependentTree,
-} from "@react-navigation/native";
+import { NavigationContainer } from "@react-navigation/native";
 import {
   createDrawerNavigator,
   DrawerContentScrollView,
@@ -57,7 +47,7 @@ import { createMaterialTopTabNavigator } from "@react-navigation/material-top-ta
 
 import HeaderAdmin from "./components/HeaderAdmin";
 import PagoTarjetaStripe from "./components/pagos/PagoTarjetaStripe";
-// import MapViewWrapper from "./components/MapViewWrapper";
+import MapViewWrapper from "./components/MapViewWrapper";
 import { supabase } from "./lib/supabase";
 import { useAuthContext } from "./hooks/use-auth-context";
 import RegistroAsesor from "./components/asesores/RegistroAsesor";
@@ -66,7 +56,6 @@ const Tab = createMaterialTopTabNavigator(); //Aqui se esta creando el component
 const Drawer = createDrawerNavigator();
 
 export default function App() {
-  verifyInstallation();
   return (
     <SafeAreaProvider>
       <LinearGradient
@@ -701,9 +690,9 @@ const ScreenPagos = () => {
                     </View>
                   </View>
                 </View>
-                {/* <View className={`items-center justify-center p-4`}>
+                <View className={`items-center justify-center p-4`}>
                   <MapViewWrapper width={600} height={450} />
-                </View> */}
+                </View>
               </View>
             </View>
           </ScrollView>
@@ -1492,18 +1481,10 @@ const ScreenCalendario = () => {
 };
 
 const ScreenCursos = () => {
-  return <Text>Pantalla para cursos</Text>;
-};
-
-const SeccionVentas = () => {
-  const tableData = [
+  const tableDataCursos = [
     [
       1,
-      "Juan Pérez",
-      "Curso de React Native",
-      "$500",
-      "10",
-      "Grupo A",
+      "Entrenamiento para el examen de admision a la universidad",
       "$1500",
       ,
     ],
@@ -1555,38 +1536,32 @@ const SeccionVentas = () => {
           <ScrollView horizontal>
             <Table style={{ borderRadius: 10 }}>
               <Row
-                data={[
-                  "Número de transacción",
-                  "Nombre del cliente",
-                  "Curso/Asesoría",
-                  "Pendiente",
-                  "Sesiones",
-                  "Grupo",
-                  "Ingreso",
-                ]}
-                widthArr={[150, 200, 200, 120, 120, 150, 150]}
-                className="flex items-center justify-center"
+                data={["#", "Nombre", "Precio", "Acciones"]}
+                height={40}
+                widthArr={[100, 200, 150, 100]}
                 textStyle={{
                   textAlign: "center",
-                  fontWeight: "bold",
+                  fontWeight: "bold", // Estilo para el texto de la cabecera
+                }}
+                style={{
+                  backgroundColor: "#eef2f5",
+                  borderWidth: 1,
+                  borderColor: "#e2e4e8",
+                  borderTopLeftRadius: 10,
+                  borderTopRightRadius: 10,
                 }}
               />
-
-              {tableData.map((rowData, index) => (
-                <TouchableOpacity
-                  className={`border-y-[0.1em]`}
-                  android_ripple={{ color: "#1f1f1f" }}
-                  key={index}
-                  onPress={() => {
-                    if (rowData[1] === "Juan Pérez") {
-                      alert("¡Fila de Juan Pérez!");
-                    } else if (rowData[1] === "María López") {
-                      alert("¡Fila de María López!");
-                    }
-                  }}
-                  style={{ flexDirection: "row" }}
-                >
-                  <TableWrapper style={{ flexDirection: "row", flex: 1 }}>
+              <ScrollView horizontal={false} nestedScrollEnabled={true}>
+                {filteredData.map((rowData, index) => (
+                  <TableWrapper
+                    key={index}
+                    style={{
+                      flexDirection: "row",
+                      borderWidth: 1,
+                      borderColor: "#e2e4e8",
+                      paddingVertical: 10,
+                    }}
+                  >
                     <Cell
                       id="celda-id"
                       data={rowData[0]}
@@ -1606,9 +1581,47 @@ const SeccionVentas = () => {
                       textStyle={styles.tableText}
                     />
                     <Cell
-                      data={rowData[6]}
-                      width={150}
-                      textStyle={{ textAlign: "center" }}
+                      id="celda-acciones"
+                      data={
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            justifyContent: "space-around",
+                            alignItems: "center",
+                            flex: 1,
+                            paddingHorizontal: 5,
+                          }}
+                        >
+                          <TouchableOpacity
+                            onPress={() => alert(`Editar curso: ${rowData[1]}`)}
+                          >
+                            <Svg
+                              height="22"
+                              viewBox="0 -960 960 960"
+                              width="22"
+                              fill="#3b82f6"
+                            >
+                              <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                            </Svg>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() =>
+                              alert(`Eliminar curso: ${rowData[1]}`)
+                            }
+                          >
+                            <Svg
+                              height="22"
+                              viewBox="0 -960 960 960"
+                              width="22"
+                              fill="#ef4444"
+                            >
+                              <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                            </Svg>
+                          </TouchableOpacity>
+                        </View>
+                      }
+                      width={100}
+                      textStyle={styles.tableText}
                     />
                   </TableWrapper>
                 ))}
@@ -2005,6 +2018,7 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
           </View>
         </View>
       </View>
+
       <Tab.Navigator
         key={catalogos ? "tarifario" : "catalogo"} // Clave para forzar el reseteo del estado del navegador
         tabBarPosition="bottom"

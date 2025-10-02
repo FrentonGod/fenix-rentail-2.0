@@ -3,7 +3,7 @@ import EvilIcons from "@expo/vector-icons/EvilIcons";
 
 const TopBar = ({ navigation, options }) => {
   return (
-    <View className={""}>
+    <View>
       <View
         style={{
           backgroundColor: "#6F09EA",
@@ -13,17 +13,18 @@ const TopBar = ({ navigation, options }) => {
         className="h-fit flex items-center py-5"
       >
         <View className="w-[100%] flex flex-row items-center justify-between px-10 relative">
-          <EvilIcons
-            className="opacity-100"
-            name="navicon"
-            size={30}
-            color={"white"}
-          />
+          
+
           <Pressable
-            className={`border-2 px-20 py-7 absolute left-0`}
-            onPress={() => navigation.toggleDrawer()}
-          ></Pressable>
-          {/* El borde es para resaltar el hitbox del componente */}
+            onPress={()=> navigation.toggleDrawer()}
+          >
+            <EvilIcons
+              className="opacity-100"
+              name="navicon"
+              size={30}
+              color={"white"}
+            />
+          </Pressable>
 
           <Text className="text-white uppercase w-fit">
             Sistema de Control de Ventas MQerk Academy

@@ -1,0 +1,16 @@
+Entrenamiento para el ecamen de admision a la universidad 1500
+Entrenamiento para el ecamen de admision a la preparatoria 1100
+Verano STEAM: ciencia, tecnología y diversión creativa 1200
+Verano Kids: Palabras, colores y aventuras 1100
+Curso de nivelación en ciencias exactas 800
+Curso de regularización en ciencias exactas 800
+Curso de Inglés elemental 900
+Asesoría en Ciencias exactas 250
+Asesoría en Lenguas Extranjeras 250
+Asesoría en Español y Escritura 250
+Asesoría en Desarrollo cognitivo y conductual 250
+Asesoría en Desarrollo de proyectos de negocios 500
+Asesoría en Desarrollo de proyectos académicos 500
+Asesoria en general 250
+Asesoria para el EGEL - CENEVAL 500
+Asesoria para desarrollo de tesis 500
