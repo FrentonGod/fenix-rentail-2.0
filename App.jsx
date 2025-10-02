@@ -11,19 +11,25 @@ import {
   Animated,
   Platform,
   TextInput,
+  LogBox,
+  Modal,
+  TouchableWithoutFeedback,
+  Keyboard,
+  TextInput,
   TouchableWithoutFeedback,
   Keyboard,
   Modal,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
 import "./global.css";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Svg, { Path } from "react-native-svg";
 import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
 import { BarChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
-import { Dropdown } from "react-native-element-dropdown";
+import { Dropdown } from "react-native-element-dropdown";import { Dropdown } from "react-native-element-dropdown";
 
 import { verifyInstallation } from "nativewind";
 
@@ -49,8 +55,12 @@ import {
 
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 
-import TopBar from "./components/topbar.jsx";
-// import MapView, { Marker } from "react-native-maps";
+import HeaderAdmin from "./components/HeaderAdmin";
+import PagoTarjetaStripe from "./components/pagos/PagoTarjetaStripe";
+// import MapViewWrapper from "./components/MapViewWrapper";
+import { supabase } from "./lib/supabase";
+import { useAuthContext } from "./hooks/use-auth-context";
+import RegistroAsesor from "./components/asesores/RegistroAsesor";
 
 const Tab = createMaterialTopTabNavigator(); //Aqui se esta creando el componente
 const Drawer = createDrawerNavigator();
@@ -59,151 +69,191 @@ export default function App() {
   verifyInstallation();
   return (
     <SafeAreaProvider>
+      <LinearGradient
+        colors={["#3d18c3", "#4816bf"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={{ flex: 1 }}
+      >
       <SafeAreaView
         style={{
-          backgroundColor: "#6F09EA",
-          background:
-            "linear-gradient(90deg,rgba(111, 9, 234, 1) 0%, rgba(112, 9, 232, 1) 100%)",
         }}
-        className={`flex-1 flex-col w-full`}
+        className={`flex-1`}
       >
-        <NavigationContainer>
-          <Drawer.Navigator
-            drawerContent={(props) => <CustomDrawerContent {...props} />}
-            screenOptions={{
-              header: (props) => <TopBar {...props} />, // Usamos tu TopBar como header
-              drawerStyle: {
-                backgroundColor: "#232428",
-                width: 200,
-              },
-              drawerActiveTintColor: "white",
-              drawerInactiveTintColor: "#6b838b",
+        <Drawer.Navigator
+          drawerContent={(props) => <CustomDrawerContent {...props} />}
+          screenOptions={{
+            header: (props) => <AppHeader {...props} />, // Nuevo HeaderAdmin
+            drawerStyle: {
+              backgroundColor: "#232428",
+              width: 200,
+            },
+            drawerActiveTintColor: "white",
+            drawerInactiveTintColor: "#6b838b",
+          }}
+        >
+          <Drawer.Screen
+            name="Inicio"
+            component={ScreenInicio}
+            options={{
+              title: "Inicio",
+              drawerIcon: ({}) => (
+                <Svg
+                  height="24"
+                  viewBox="0 -960 960 960"
+                  width="24"
+                  fill="#ffffff"
+                >
+                  <Path d="M240-200h120v-240h240v240h120v-360L480-740 240-560v360Zm-80 80v-480l320-240 320 240v480H520v-240h-80v240H160Zm320-350Z" />
+                </Svg>
+              ),
             }}
-          >
-            <Drawer.Screen
-              name="Inicio"
-              component={ScreenInicio}
-              options={{
-                title: "Inicio",
-                drawerIcon: ({}) => (
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
-                  >
-                    <Path d="M240-200h120v-240h240v240h120v-360L480-740 240-560v360Zm-80 80v-480l320-240 320 240v480H520v-240h-80v240H160Zm320-350Z" />
-                  </Svg>
-                ),
-              }}
-            />
+          />
 
-            <Drawer.Screen
-              name="Estudiantes"
-              component={ScreenEstudiantes}
-              options={{
-                title: "Estudiantes",
-                drawerIcon: ({}) => (
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
-                  >
-                    <Path d="M0-240v-63q0-43 44-70t116-27q13 0 25 .5t23 2.5q-14 21-21 44t-7 48v65H0Zm240 0v-65q0-32 17.5-58.5T307-410q32-20 76.5-30t96.5-10q53 0 97.5 10t76.5 30q32 20 49 46.5t17 58.5v65H240Zm540 0v-65q0-26-6.5-49T754-397q11-2 22.5-2.5t23.5-.5q72 0 116 26.5t44 70.5v63H780Zm-455-80h311q-10-20-55.5-35T480-370q-55 0-100.5 15T325-320ZM160-440q-33 0-56.5-23.5T80-520q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T160-440Zm640 0q-33 0-56.5-23.5T720-520q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T800-440Zm-320-40q-50 0-85-35t-35-85q0-51 35-85.5t85-34.5q51 0 85.5 34.5T600-600q0 50-34.5 85T480-480Zm0-80q17 0 28.5-11.5T520-600q0-17-11.5-28.5T480-640q-17 0-28.5 11.5T440-600q0 17 11.5 28.5T480-560Zm1 240Zm-1-280Z" />
-                  </Svg>
-                ),
-              }}
-            />
-            <Drawer.Screen
-              name="Asesores"
-              component={ScreenAsesores}
-              options={{
-                title: "Asesores",
-                drawerIcon: ({}) => (
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
-                  >
-                    <Path d="M840-120v-640H120v320H40v-320q0-33 23.5-56.5T120-840h720q33 0 56.5 23.5T920-760v560q0 33-23.5 56.5T840-120ZM360-400q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47Zm0-80q33 0 56.5-23.5T440-560q0-33-23.5-56.5T360-640q-33 0-56.5 23.5T280-560q0 33 23.5 56.5T360-480ZM40-80v-112q0-34 17.5-62.5T104-298q62-31 126-46.5T360-360q66 0 130 15.5T616-298q29 15 46.5 43.5T680-192v112H40Zm80-80h480v-32q0-11-5.5-20T580-226q-54-27-109-40.5T360-280q-56 0-111 13.5T140-226q-9 5-14.5 14t-5.5 20v32Zm240-400Zm0 400Z" />
-                  </Svg>
-                ),
-              }}
-            />
-            <Drawer.Screen
-              name="Pagos"
-              component={ScreenPagos}
-              options={{
-                title: "Pagos",
-                drawerIcon: ({}) => (
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
-                  >
-                    <Path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z" />
-                  </Svg>
-                ),
-              }}
-            />
-            <Drawer.Screen
-              name="Finanzas"
-              component={ScreenFinanzas}
-              options={{
-                title: "Finanzas",
-                drawerIcon: ({}) => (
-                  <Svg
-                    height="24px"
-                    viewBox="0 -960 960 960"
-                    width="24px"
-                    fill="#ffffff"
-                  >
-                    <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
-                  </Svg>
-                ),
-              }}
-            />
-            <Drawer.Screen
-              name="Calendario"
-              component={ScreenCalendario}
-              options={{
-                title: "Calendario",
-                drawerIcon: ({}) => (
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
-                  >
-                    <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-160 0q-17 0-28.5-11.5T280-440q0-17 11.5-28.5T320-480q17 0 28.5 11.5T360-440q0 17-11.5 28.5T320-400Zm320 0q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-160 0q-17 0-28.5-11.5T280-280q0-17 11.5-28.5T320-320q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240Zm320 0q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z" />
-                  </Svg>
-                ),
-              }}
-            />
-            <Drawer.Screen
-              name="Cursos"
-              component={ScreenCursos}
-              options={{
-                title: "Cursos",
-                drawerIcon: ({}) => (
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#ffffff"
-                  >
-                    <Path d="M480-120 200-272v-240L40-600l440-240 440 240v320h-80v-276l-80 44v240L480-120Zm0-332 274-148-274-148-274 148 274 148Zm0 241 200-108v-151L480-360 280-470v151l200 108Zm0-241Zm0 90Zm0 0Z" />
-                  </Svg>
-                ),
-              }}
-            />
-          </Drawer.Navigator>
-        </NavigationContainer>
+          <Drawer.Screen
+            name="Estudiantes"
+            component={ScreenEstudiantes}
+            options={{
+              title: "Estudiantes",
+              drawerIcon: ({}) => (
+                <Svg
+                  height="24"
+                  viewBox="0 -960 960 960"
+                  width="24"
+                  fill="#ffffff"
+                >
+                  <Path d="M0-240v-63q0-43 44-70t116-27q13 0 25 .5t23 2.5q-14 21-21 44t-7 48v65H0Zm240 0v-65q0-32 17.5-58.5T307-410q32-20 76.5-30t96.5-10q53 0 97.5 10t76.5 30q32 20 49 46.5t17 58.5v65H240Zm540 0v-65q0-26-6.5-49T754-397q11-2 22.5-2.5t23.5-.5q72 0 116 26.5t44 70.5v63H780Zm-455-80h311q-10-20-55.5-35T480-370q-55 0-100.5 15T325-320ZM160-440q-33 0-56.5-23.5T80-520q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T160-440Zm640 0q-33 0-56.5-23.5T720-520q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T800-440Zm-320-40q-50 0-85-35t-35-85q0-51 35-85.5t85-34.5q51 0 85.5 34.5T600-600q0 50-34.5 85T480-480Zm0-80q17 0 28.5-11.5T520-600q0-17-11.5-28.5T480-640q-17 0-28.5 11.5T440-600q0 17 11.5 28.5T480-560Zm1 240Zm-1-280Z" />
+                </Svg>
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="Asesores"
+            component={ScreenAsesores}
+            options={{
+              title: "Asesores",
+              drawerIcon: ({}) => (
+                <Svg
+                  height="24"
+                  viewBox="0 -960 960 960"
+                  width="24"
+                  fill="#ffffff"
+                >
+                  <Path d="M840-120v-640H120v320H40v-320q0-33 23.5-56.5T120-840h720q33 0 56.5 23.5T920-760v560q0 33-23.5 56.5T840-120ZM360-400q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47Zm0-80q33 0 56.5-23.5T440-560q0-33-23.5-56.5T360-640q-33 0-56.5 23.5T280-560q0 33 23.5 56.5T360-480ZM40-80v-112q0-34 17.5-62.5T104-298q62-31 126-46.5T360-360q66 0 130 15.5T616-298q29 15 46.5 43.5T680-192v112H40Zm80-80h480v-32q0-11-5.5-20T580-226q-54-27-109-40.5T360-280q-56 0-111 13.5T140-226q-9 5-14.5 14t-5.5 20v32Zm240-400Zm0 400Z" />
+                </Svg>
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="Pagos"
+            component={ScreenPagos}
+            options={{
+              title: "Pagos",
+              drawerIcon: ({}) => (
+                <Svg
+                  height="24"
+                  viewBox="0 -960 960 960"
+                  width="24"
+                  fill="#ffffff"
+                >
+                  <Path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z" />
+                </Svg>
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="Finanzas"
+            component={ScreenFinanzas}
+            options={{
+              title: "Finanzas",
+              drawerIcon: ({}) => (
+                <Svg
+                  height="24px"
+                  viewBox="0 -960 960 960"
+                  width="24px"
+                  fill="#ffffff"
+                >
+                  <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
+                </Svg>
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="Calendario"
+            component={ScreenCalendario}
+            options={{
+              title: "Calendario",
+              drawerIcon: ({}) => (
+                <Svg
+                  height="24"
+                  viewBox="0 -960 960 960"
+                  width="24"
+                  fill="#ffffff"
+                >
+                  <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-160 0q-17 0-28.5-11.5T280-440q0-17 11.5-28.5T320-480q17 0 28.5 11.5T360-440q0 17-11.5 28.5T320-400Zm320 0q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-160 0q-17 0-28.5-11.5T280-280q0-17 11.5-28.5T320-320q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240Zm320 0q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z" />
+                </Svg>
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="Cursos"
+            component={ScreenCursos}
+            options={{
+              title: "Cursos",
+              drawerIcon: ({}) => (
+                <Svg
+                  height="24"
+                  viewBox="0 -960 960 960"
+                  width="24"
+                  fill="#ffffff"
+                >
+                  <Path d="M480-120 200-272v-240L40-600l440-240 440 240v320h-80v-276l-80 44v240L480-120Zm0-332 274-148-274-148-274 148 274 148Zm0 241 200-108v-151L480-360 280-470v151l200 108Zm0-241Zm0 90Zm0 0Z" />
+                </Svg>
+              ),
+            }}
+          />
+        </Drawer.Navigator>
       </SafeAreaView>
+      </LinearGradient>
     </SafeAreaProvider>
+  );
+}
+
+function AppHeader({ navigation, route }) {
+  const { profile } = useAuthContext();
+  // Títulos de sección según la ruta actual del Drawer
+  const routeTitles = {
+    Inicio: "Panel Principal",
+    Estudiantes: "Lista de Estudiantes",
+    Asesores: "Panel Administrativo",
+    Pagos: "Comprobantes de Pago",
+    Finanzas: "Reportes de Pagos",
+    Calendario: "Calendario",
+    Cursos: "Cursos",
+  };
+  const currentSectionTitle = routeTitles[route?.name] || route?.name || "";
+  return (
+    <HeaderAdmin
+      logoSource={require("./assets/MQerK_logo.png")}
+      onLogoPress={() => navigation?.toggleDrawer?.()}
+      showMenuButton={true}
+      onMenuPress={() => navigation?.toggleDrawer?.()}
+      title="Fenix Rentail"
+      subtitle={currentSectionTitle}
+      adminProfile={{
+        name: profile?.full_name || "Usuario",
+        email: profile?.email || "",
+        role: "Admin",
+        lastLogin: new Date().toLocaleString(),
+      }}
+      unreadCount={0}
+      notifications={[]}
+      onNotificationPress={() => {}}
+      onMarkAllAsRead={() => {}}
+      onLogout={() =>
+        supabase.auth.signOut().catch((e) => console.error("Sign out error", e))
+      }
+    />
   );
 }
 
@@ -225,8 +275,9 @@ const CustomDrawerContent = (props) => {
           label="Cerrar sesión"
           labelStyle={{ color: "#dc2626", fontWeight: "bold" }}
           onPress={() => {
-            // Aquí va tu lógica para cerrar sesión
-            alert("Cerrando sesión...");
+            supabase.auth
+              .signOut()
+              .catch((e) => console.error("Sign out error", e));
           }}
           icon={() => (
             <Svg
@@ -300,10 +351,7 @@ const ScreenEstudiantes = () => {
       id="screen-estudiantes"
       className={`flex-1 bg-slate-50 justify-center items-center vertical:px-2`}
     >
-      <View className={` mt-4 justify-evenly`}>
-        <Text className={`uppercase text-center text-xl font-bold mb-10`}>
-          Estudiantes
-        </Text>
+      <View className={`mt-4`}>
         <ScrollView horizontal>
           <Table style={{ borderRadius: 10 }}>
             <Row
@@ -348,7 +396,7 @@ const ScreenEstudiantes = () => {
                     textStyle={styles.tableText}
                   />
                   <Cell
-                  style={{textAlign:"start"}}
+                    style={{ textAlign: "start" }}
                     data={rowData[1]}
                     width={150}
                     textStyle={styles.tableText}
@@ -389,167 +437,7 @@ const ScreenEstudiantes = () => {
 };
 
 const ScreenAsesores = () => {
-  const tableDataAsesores = [
-    [
-      1,
-      "Darian Reyes Romero",
-      "Informática",
-      "Municipio",
-      "Direccion",
-      "2871324476",
-      "Masculino",
-    ],
-    [
-      1,
-      "Darian Reyes Romero",
-      "Informática",
-      "Municipio",
-      "Direccion",
-      "2871324476",
-      "Masculino",
-    ],
-    [
-      1,
-      "Darian Reyes Romero",
-      "Informática",
-      "Municipio",
-      "Direccion",
-      "2871324476",
-      "Masculino",
-    ],
-    [
-      1,
-      "Darian Reyes Romero",
-      "Informática",
-      "Municipio",
-      "Direccion",
-      "2871324476",
-      "Masculino",
-    ],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-  ];
-  return (
-    <View className={`flex-1 bg-slate-50 justify-center items-center`}>
-      <View className={`mt-7`}>
-        <View className={`flex-row items-center relative`}>
-          <Pressable
-            className={`py-1 px-2 m-2 self-start flex-row justify-between items-center gap-x-2 rounded bg-[#66b5ff] overflow-hidden`}
-            android_ripple={{
-              color: "#1c1c1c",
-              borderless: false,
-              foreground: true,
-            }}
-            style={{ elevation: 5 }}
-          >
-            <Text className={`text-sm font-semibold`}>Agregar asesor</Text>
-            <Svg
-              xmlns="http://www.w3.org/2000/svg"
-              height="24px"
-              viewBox="0 -960 960 960"
-              width="24px"
-              fill="#000000"
-            >
-              <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
-            </Svg>
-          </Pressable>
-          <Text
-            className={`uppercase shadow-md shadow-black text-center text-xl font-bold absolute left-[50%] translate-x-[-50]`}
-          >
-            Asesores
-          </Text>
-        </View>
-        <View className={`vertical:px-2`}>
-          <ScrollView horizontal>
-            <Table style={{ borderRadius: 10 }}>
-              <Row
-                data={[
-                  "#",
-                  "Nombre",
-                  "Área",
-                  "Municipio",
-                  "Dirección",
-                  "Número",
-                  "Género",
-                ]}
-                height={40}
-                widthArr={[100, 200, 150, 100, 150, 100, 120]}
-                textStyle={{
-                  textAlign: "center",
-                  fontWeight: "bold", // Estilo para el texto de la cabecera
-                }}
-                style={{
-                  backgroundColor: "#eef2f5",
-                  borderWidth: 1,
-                  borderColor: "#e2e4e8",
-                  borderTopLeftRadius: 10,
-                  borderTopRightRadius: 10,
-                }}
-              />
-              <ScrollView horizontal={false} nestedScrollEnabled={true}>
-                {tableDataAsesores.map((rowData, index) => (
-                  <TableWrapper
-                    key={index}
-                    style={{
-                      flexDirection: "row",
-                      borderWidth: 1,
-                      borderColor: "#e2e4e8",
-                      paddingVertical: 10,
-                    }}
-                  >
-                    <Cell
-                      id="celda-numero"
-                      data={rowData[0]}
-                      width={100}
-                      textStyle={styles.tableText}
-                    />
-                    <Cell
-                      id="celda-nombre"
-                      data={rowData[1]}
-                      width={200}
-                      textStyle={styles.tableText}
-                    />
-                    <Cell
-                      id="celda-area"
-                      data={rowData[2]}
-                      width={150}
-                      textStyle={styles.tableText}
-                    />
-                    <Cell
-                      id="celda-municipio"
-                      data={rowData[3]}
-                      width={100}
-                      textStyle={styles.tableText}
-                    />
-                    <Cell
-                      id="celda-direccion"
-                      data={rowData[4]}
-                      width={150}
-                      textStyle={styles.tableText}
-                    />
-                    <Cell
-                      id="celda-numero"
-                      data={rowData[5]}
-                      width={100}
-                      textStyle={styles.tableText}
-                    />
-                    <Cell
-                      id="celda-genero"
-                      data={rowData[6]}
-                      width={120}
-                      textStyle={styles.tableText}
-                    />
-                  </TableWrapper>
-                ))}
-              </ScrollView>
-            </Table>
-          </ScrollView>
-        </View>
-      </View>
-    </View>
-  );
+  return <RegistroAsesor />;
 };
 
 const ScreenPagos = () => {
@@ -814,32 +702,7 @@ const ScreenPagos = () => {
                   </View>
                 </View>
                 {/* <View className={`items-center justify-center p-4`}>
-                  {Platform.OS === "web" ? (
-                    <iframe
-                      src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d237.04951234566224!2d-96.1219307!3d18.0811722!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x85c3e79a1075bcad%3A0x54b80ec3131030de!2sMQerKAcademy!5e0!3m2!1ses!2smx!4v1758650715785!5m2!1ses!2smx"
-                      width="600"
-                      height="450"
-                    ></iframe>
-                  ) : (
-                    <MapView
-                      style={{ width: 600, height: 450 }}
-                      initialRegion={{
-                        latitude: 18.08122029158371, // coordenadas de tu iframe
-                        longitude: -96.12200652058925,
-                        latitudeDelta: 0.01,
-                        longitudeDelta: 0.01,
-                      }}
-                    >
-                      <Marker
-                        coordinate={{
-                          latitude: 18.08122029158371,
-                          longitude: -96.12200652058925,
-                        }}
-                        title="MQerKAcademy"
-                        description="Ubicación exacta de la academia"
-                      />
-                    </MapView>
-                  )}
+                  <MapViewWrapper width={600} height={450} />
                 </View> */}
               </View>
             </View>
@@ -847,7 +710,7 @@ const ScreenPagos = () => {
         )}
       </Tab.Screen>
       <Tab.Screen name="Tarjeta de crédito / débito">
-        {() => <Proximamente />}
+        {() => <PagoTarjetaStripe />}
       </Tab.Screen>
     </Tab.Navigator>
   );
@@ -1147,7 +1010,7 @@ const ScreenFinanzas = () => {
       screenOptions={{
         tabBarActiveTintColor: "#1f1f1f",
         tabBarInactiveTintColor: "#70757a",
-        swipeEnabled:false,
+        swipeEnabled: false,
 
         tabBarScrollEnabled: true,
         tabBarItemStyle: { width: "auto", paddingHorizontal: 5 },
@@ -1629,10 +1492,18 @@ const ScreenCalendario = () => {
 };
 
 const ScreenCursos = () => {
-  const tableDataCursos = [
+  return <Text>Pantalla para cursos</Text>;
+};
+
+const SeccionVentas = () => {
+  const tableData = [
     [
       1,
-      "Entrenamiento para el examen de admision a la universidad",
+      "Juan Pérez",
+      "Curso de React Native",
+      "$500",
+      "10",
+      "Grupo A",
       "$1500",
       ,
     ],
@@ -1684,32 +1555,38 @@ const ScreenCursos = () => {
           <ScrollView horizontal>
             <Table style={{ borderRadius: 10 }}>
               <Row
-                data={["#", "Nombre", "Precio", "Acciones"]}
-                height={40}
-                widthArr={[100, 200, 150, 100]}
+                data={[
+                  "Número de transacción",
+                  "Nombre del cliente",
+                  "Curso/Asesoría",
+                  "Pendiente",
+                  "Sesiones",
+                  "Grupo",
+                  "Ingreso",
+                ]}
+                widthArr={[150, 200, 200, 120, 120, 150, 150]}
+                className="flex items-center justify-center"
                 textStyle={{
                   textAlign: "center",
-                  fontWeight: "bold", // Estilo para el texto de la cabecera
-                }}
-                style={{
-                  backgroundColor: "#eef2f5",
-                  borderWidth: 1,
-                  borderColor: "#e2e4e8",
-                  borderTopLeftRadius: 10,
-                  borderTopRightRadius: 10,
+                  fontWeight: "bold",
                 }}
               />
-              <ScrollView horizontal={false} nestedScrollEnabled={true}>
-                {filteredData.map((rowData, index) => (
-                  <TableWrapper
-                    key={index}
-                    style={{
-                      flexDirection: "row",
-                      borderWidth: 1,
-                      borderColor: "#e2e4e8",
-                      paddingVertical: 10,
-                    }}
-                  >
+
+              {tableData.map((rowData, index) => (
+                <TouchableOpacity
+                  className={`border-y-[0.1em]`}
+                  android_ripple={{ color: "#1f1f1f" }}
+                  key={index}
+                  onPress={() => {
+                    if (rowData[1] === "Juan Pérez") {
+                      alert("¡Fila de Juan Pérez!");
+                    } else if (rowData[1] === "María López") {
+                      alert("¡Fila de María López!");
+                    }
+                  }}
+                  style={{ flexDirection: "row" }}
+                >
+                  <TableWrapper style={{ flexDirection: "row", flex: 1 }}>
                     <Cell
                       id="celda-id"
                       data={rowData[0]}
@@ -1729,47 +1606,9 @@ const ScreenCursos = () => {
                       textStyle={styles.tableText}
                     />
                     <Cell
-                      id="celda-acciones"
-                      data={
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            justifyContent: "space-around",
-                            alignItems: "center",
-                            flex: 1,
-                            paddingHorizontal: 5,
-                          }}
-                        >
-                          <TouchableOpacity
-                            onPress={() => alert(`Editar curso: ${rowData[1]}`)}
-                          >
-                            <Svg
-                              height="22"
-                              viewBox="0 -960 960 960"
-                              width="22"
-                              fill="#3b82f6"
-                            >
-                              <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                            </Svg>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() =>
-                              alert(`Eliminar curso: ${rowData[1]}`)
-                            }
-                          >
-                            <Svg
-                              height="22"
-                              viewBox="0 -960 960 960"
-                              width="22"
-                              fill="#ef4444"
-                            >
-                              <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
-                            </Svg>
-                          </TouchableOpacity>
-                        </View>
-                      }
-                      width={100}
-                      textStyle={styles.tableText}
+                      data={rowData[6]}
+                      width={150}
+                      textStyle={{ textAlign: "center" }}
                     />
                   </TableWrapper>
                 ))}
@@ -1783,168 +1622,205 @@ const ScreenCursos = () => {
 };
 
 const SeccionVentas = () => {
-  const tableData = [
-    [
-      1,
-      "Brhadaranyakopanishadvivekachudamani Erreh Muñoz",
-      "Curso de React Native",
-      "$500",
-      "10",
-      "Grupo A",
-      "$1500",
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState("id");
+  const [sortDir, setSortDir] = useState("desc");
+
+  const data = useMemo(
+    () => [
+      {
+        id: 1,
+        cliente: "Juan Pérez",
+        concepto: "Curso de React Native",
+        pendiente: 500,
+        sesiones: 10,
+        grupo: "Grupo A",
+        ingreso: 1500,
+      },
+      {
+        id: 2,
+        cliente: "María López",
+        concepto: "Asesoría Personal",
+        pendiente: 0,
+        sesiones: 5,
+        grupo: "Grupo B",
+        ingreso: 2000,
+      },
     ],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-  ];
+    []
+  );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const arr = data.filter(
+      (r) =>
+        !q ||
+        r.cliente.toLowerCase().includes(q) ||
+        r.concepto.toLowerCase().includes(q) ||
+        r.grupo.toLowerCase().includes(q)
+    );
+    const sorted = [...arr].sort((a, b) => {
+      let va = a[sortKey];
+      let vb = b[sortKey];
+      if (typeof va === "string") va = va.toLowerCase();
+      if (typeof vb === "string") vb = vb.toLowerCase();
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [data, query, sortKey, sortDir]);
+
+  const SortHeader = ({ label, k, flex = 1, center }) => (
+    <Pressable
+      onPress={() => {
+        setSortKey(k);
+        setSortDir((d) =>
+          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"
+        );
+      }}
+      className="py-3 px-3"
+      style={{ flex, alignItems: center ? "center" : "flex-start" }}
+      android_ripple={{ color: "rgba(0,0,0,0.05)" }}
+    >
+      <View className="flex-row items-center gap-1">
+        <Text className="text-slate-800 font-semibold text-xs sm:text-sm uppercase tracking-wide">
+          {label}
+        </Text>
+        {sortKey === k && (
+          <Svg width={12} height={12} viewBox="0 -960 960 960" fill="#334155">
+            {sortDir === "asc" ? (
+              <Path d="M480-680 240-440h480L480-680Z" />
+            ) : (
+              <Path d="M240-520h480L480-280 240-520Z" />
+            )}
+          </Svg>
+        )}
+      </View>
+    </Pressable>
+  );
+
+  const ActionButton = ({ color = "#66b5ff", text, icon }) => (
+    <Pressable
+      className="rounded-xl px-3 py-2.5 flex-row items-center gap-2"
+      style={{ backgroundColor: color, elevation: 5 }}
+      android_ripple={{ color: "rgba(0,0,0,0.08)" }}
+      hitSlop={8}
+    >
+      <Text className="text-[#0b0f19] font-semibold">{text}</Text>
+      {icon}
+    </Pressable>
+  );
 
   return (
-    <>
-      <View className={`w-full flex flex-row items-center justify-between p-2`}>
-        <Ripple
-          id="boton-venta"
-          rippleContainerBorderRadius={5}
-          className={`rounded bg-[#66b5ff] max-w-[20em] justify-center items-center self-start p-1 flex flex-row gap-x-1`}
-        >
-          <Text
-            className={`text-[#010101] capitalize text-nowrap font-semibold text-sm text-center`}
-          >
-            Generar venta
-          </Text>
-          <Svg
-            xmlns="http://www.w3.org/2000/svg"
-            height="24px"
-            viewBox="0 -960 960 960"
-            width="24px"
-            fill="#010101"
-          >
-            <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
-          </Svg>
-        </Ripple>
-        <Ripple
-          rippleContainerBorderRadius={5}
-          id="reimprimir-ticket"
-          className={`rounded bg-yellow-400 max-w-[20em] justify-center items-center self-start p-1 flex flex-row gap-x-2`}
-        >
-          <Text
-            className={`text-[#010101] capitalize text-nowrap font-semibold text-sm text-center`}
-          >
-            Reimprimir ticket
-          </Text>
-          <Svg
-            xmlns="http://www.w3.org/2000/svg"
-            height="24px"
-            viewBox="0 -960 960 960"
-            width="24px"
-            fill="#010101"
-          >
-            <Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z" />
-          </Svg>
-        </Ripple>
+    <View className="flex-1 bg-slate-50">
+      <View className="w-full flex-row flex-wrap items-center justify-between gap-2 p-2">
+        <View className="flex-row items-center gap-2">
+          <ActionButton
+            text="Generar venta"
+            icon={
+              <Svg
+                width={20}
+                height={20}
+                viewBox="0 -960 960 960"
+                fill="#0b0f19"
+              >
+                <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+              </Svg>
+            }
+          />
+          <ActionButton
+            color="#facc15"
+            text="Reimprimir ticket"
+            icon={
+              <Svg
+                width={20}
+                height={20}
+                viewBox="0 -960 960 960"
+                fill="#0b0f19"
+              >
+                <Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z" />
+              </Svg>
+            }
+          />
+        </View>
+        <View className="flex-row items-center gap-2">
+          <View className="flex-row items-center bg-white border border-slate-200 rounded-xl px-3 py-2">
+            <Svg width={18} height={18} viewBox="0 -960 960 960" fill="#64748b">
+              <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
+            </Svg>
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Buscar"
+              placeholderTextColor="#94a3b8"
+              className="min-w-[160px] sm:min-w-[240px] ml-2 text-slate-800"
+            />
+          </View>
+        </View>
       </View>
-      <View className={`relative`}>
-        <Ripple
-          rippleContainerBorderRadius={100}
-          className="absolute bottom-0 right-2 z-[2] self-start rounded-full p-3 bg-sky-400/80"
-        >
-          <Svg
-            xmlns="http://www.w3.org/2000/svg"
-            height="24px"
-            viewBox="0 -960 960 960"
-            width="24px"
-            fill="#010101"
-          >
-            <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
-          </Svg>
-        </Ripple>
-        <View
-          className={`w-full flex justify-center items-center vertical:px-2 mt-4`}
-        >
-          <ScrollView horizontal>
-            <Table className={``} style={{ borderRadius: 10 }}>
-              <Row
-                data={[
-                  "#",
-                  "Cliente",
-                  "Curso/Asesoría",
-                  "Adeudo",
-                  "Sesiones",
-                  "Grupo",
-                  "Ingreso",
-                ]}
-                height={40}
-                widthArr={[100, 200, 200, 120, 100, 100, 120]}
-                className="flex items-center justify-center"
-                textStyle={{
-                  textAlign: "center", // Estilo para el texto de la cabecera
-                  fontWeight: "bold",
-                }}
-                style={{
-                  backgroundColor: "#eef2f5",
-                  borderWidth: 1,
-                  borderColor: "#e2e4e8",
-                  borderTopLeftRadius: 10,
-                  borderTopRightRadius: 10,
-                }}
-              />
-              <ScrollView horizontal={false} nestedScrollEnabled={true}>
-                {tableData.map((rowData, index) => (
-                  <TableWrapper
-                    key={index}
-                    style={{
-                      flexDirection: "row",
-                      borderWidth: 1,
-                      borderColor: "#e2e4e8",
-                      paddingVertical: 10,
-                    }}
+
+      <View className="px-2 pb-4">
+        <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+          <ScrollView stickyHeaderIndices={[0]}>
+            <View className="bg-slate-100 border-b border-slate-200 flex-row">
+              <SortHeader label="#" k="id" flex={0.8} center />
+              <SortHeader label="Cliente" k="cliente" flex={2} />
+              <SortHeader label="Curso/Asesoría" k="concepto" flex={2} />
+              <SortHeader label="Pendiente" k="pendiente" flex={1} center />
+              <SortHeader label="Sesiones" k="sesiones" flex={1} center />
+              <SortHeader label="Grupo" k="grupo" flex={1.2} center />
+              <SortHeader label="Ingreso" k="ingreso" flex={1.2} center />
+            </View>
+
+            {filtered.map((r, idx) => (
+              <Pressable
+                key={r.id}
+                className={`flex-row items-center ${idx % 2 ? "bg-white" : "bg-slate-50"}`}
+                android_ripple={{ color: "rgba(0,0,0,0.04)" }}
+              >
+                <View style={{ flex: 0.8 }} className="py-3 px-3 items-center">
+                  <Text className="text-slate-700">{r.id}</Text>
+                </View>
+                <View style={{ flex: 2 }} className="py-3 px-3">
+                  <Text
+                    numberOfLines={1}
+                    className="text-slate-800 font-medium"
                   >
-                    <Cell
-                      data={rowData[0]}
-                      width={100}
-                      textStyle={styles.tableText}
-                    />
-                    <Cell
-                      data={rowData[1]}
-                      width={200}
-                      textStyle={styles.tableText}
-                    />
-                    <Cell
-                      data={rowData[2]}
-                      width={200}
-                      textStyle={styles.tableText}
-                    />
-                    <Cell
-                      data={rowData[3]}
-                      width={120}
-                      textStyle={styles.tableText}
-                    />
-                    <Cell
-                      data={rowData[4]}
-                      width={100}
-                      textStyle={styles.tableText}
-                    />
-                    <Cell
-                      data={rowData[5]}
-                      width={100}
-                      textStyle={styles.tableText}
-                    />
-                    <Cell
-                      data={rowData[6]}
-                      width={120}
-                      textStyle={styles.tableText}
-                    />
-                  </TableWrapper>
-                ))}
-              </ScrollView>
-            </Table>
+                    {r.cliente}
+                  </Text>
+                </View>
+                <View style={{ flex: 2 }} className="py-3 px-3">
+                  <Text numberOfLines={1} className="text-slate-700">
+                    {r.concepto}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }} className="py-3 px-3 items-center">
+                  <Text
+                    className={`${r.pendiente > 0 ? "text-amber-700" : "text-emerald-700"} font-medium`}
+                  >
+                    {r.pendiente > 0 ? `$${r.pendiente}` : "$0"}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }} className="py-3 px-3 items-center">
+                  <Text className="text-slate-700">{r.sesiones}</Text>
+                </View>
+                <View style={{ flex: 1.2 }} className="py-3 px-3 items-center">
+                  <Text className="text-slate-700" numberOfLines={1}>
+                    {r.grupo}
+                  </Text>
+                </View>
+                <View style={{ flex: 1.2 }} className="py-3 px-3 items-center">
+                  <Text className="text-slate-900 font-semibold">
+                    ${r.ingreso}
+                  </Text>
+                </View>
+              </Pressable>
+            ))}
           </ScrollView>
         </View>
       </View>
-    </>
+    </View>
   );
 };
 
@@ -2081,6 +1957,8 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
 
   const imagesToShow = catalogos ? tarifarioImages : catalogoImages;
 
+  // const imagesToShow = catalogos ? tarifarioImages : catalogoImages;
+
   return (
     <View className={`flex-1 bg-slate-50`}>
       <View className={`items-center flex-row justify-center p-2`}>
@@ -2179,6 +2057,34 @@ const MinimalistTabBar = ({ state }) => {
     </View>
   );
 };
+
+// Silenciar advertencias específicas de RN Web de terceros (no corregibles desde nuestro código)
+if (Platform.OS === "web") {
+  LogBox.ignoreLogs([
+    "props.pointerEvents is deprecated",
+    "TouchableWithoutFeedback is deprecated",
+    "@supabase/gotrue-js: Navigator LockManager returned a null lock",
+    "LockManager returned a null lock",
+  ]);
+  // Filtro defensivo para mensajes en consola del entorno web
+  const originalWarn = console.warn;
+  console.warn = (...args) => {
+    try {
+      const msg = typeof args[0] === "string" ? args[0] : "";
+      if (
+        msg.includes("props.pointerEvents is deprecated") ||
+        msg.includes("TouchableWithoutFeedback is deprecated") ||
+        msg.includes(
+          "@supabase/gotrue-js: Navigator LockManager returned a null lock"
+        ) ||
+        msg.includes("LockManager returned a null lock")
+      ) {
+        return; // omitir sólo estos mensajes
+      }
+    } catch {}
+    originalWarn(...args);
+  };
+}
 
 const styles = StyleSheet.create({
   carouselContainer: {

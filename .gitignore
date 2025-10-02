@@ -1,8 +1,68 @@
-node_modules
+#############################################
+# Node / React / Expo / RN
+#############################################
+node_modules/
+dist/
+web-build/
+build/
+
+#############################################
+# Expo cache
+#############################################
+.expo/
+.expo-shared/
+
+#############################################
+# Env & secrets
+#############################################
+.env
+.env.local
+.env.development.local
+.env.production.local
+.env.test.local
+.env.*
+!.env.example
+
+#############################################
+# Logs
+#############################################
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+expo-error.log
+
+#############################################
+# Editor / OS
+#############################################
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+
+#############################################
+# Tests / coverage
+#############################################
+coverage/
+
+#############################################
+# Media (ignore heavy raw videos if desired)
+#############################################
+assets/**/
+
+#############################################
+# Supabase internal (adjust if created later)
+#############################################
+supabase/.branches
+
+#############################################
+# Project specific kept from original
+#############################################
 screens/detalles.txt
 assets/Catalogo
-assets/Tarifario
 info-proyecto.txt
-.idea
-Lista-cursos.txt
-EXPO_PUBLIC_.env
+
+# End
