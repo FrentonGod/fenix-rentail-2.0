@@ -65,7 +65,7 @@ function HeaderAdmin({
     >
       <View className={`flex-row justify-between relative ${onLogout ? "py-2":"py-0"} ${Platform.OS === 'web' ? 'items-center' : ''}`}>
         {/* Zona izquierda: menú + logo */}
-        <View className="flex-row items-center" style={{ gap: isSmall ? 4 : 8, minWidth: isSmall ? 72 : 92 }}>
+        <View className={`flex-row items-center`} style={{ gap: isSmall ? 4 : 8, minWidth: isSmall ? 72 : 92 }}>
           {showMenuButton && (
             <Pressable
               onPress={onMenuPress}
@@ -84,7 +84,7 @@ function HeaderAdmin({
             android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: true }}
           >
             {logoSource ? (
-              <Image source={logoSource} resizeMode="contain" style={{ width: Math.round((isSmall ? 40 : isTablet ? 52 : 56) * scale), height: Math.round((isSmall ? 40 : isTablet ? 52 : 56) * scale) }} />
+              <Image source={logoSource} resizeMode="contain" style={{ opacity: onLogout ? 1:0, width: Math.round((isSmall ? 40 : isTablet ? 52 : 56) * scale), height: Math.round((isSmall ? 40 : isTablet ? 52 : 56) * scale) }} />
             ) : (
               <View className="rounded-full bg-white/20 items-center justify-center" style={{ width: Math.round((isSmall ? 40 : isTablet ? 52 : 56) * scale), height: Math.round((isSmall ? 40 : isTablet ? 52 : 56) * scale) }}>
                 <Text className="text-white font-extrabold" style={{ fontSize: Math.round((isSmall ? 14 : isTablet ? 16 : 18) * scale) }}>MQ</Text>
@@ -94,7 +94,7 @@ function HeaderAdmin({
         </View>
 
         {/* Zona centro: títulos (sin posición absoluta) */}
-        <View className="items-center absolute left-0 right-0 m-auto">
+        <View className={`items-center ${onLogout ? "":"absolute"} left-0 right-0 m-auto`}>
           <Text
             className="text-white font-extrabold text-center tracking-wide"
             style={{ fontSize: Math.round((isSmall ? 18 : isTablet ? 22 : 26) * scale) }}

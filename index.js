@@ -1,6 +1,7 @@
 import { registerRootComponent } from 'expo';
 import './global.css';
 import { NavigationContainer } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import App from './App';
@@ -16,8 +17,6 @@ const NAV_STATE_KEY = 'NAVIGATION_STATE_V1';
 
 function RootNavigator() {
 	const { isLoggedIn, profile, isLoading } = useAuthContext();
-	// Espera a que cargue la sesión/perfil para evitar parpadeo a Login en cada refresh
-	if (isLoading) return null; // Splash sigue visible por SplashScreenController
 	const needsPreRegistro = isLoggedIn && (!profile || !profile?.full_name);
 	return (
 		<NavigationContainer
