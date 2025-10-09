@@ -22,7 +22,7 @@ import Svg, { Path } from 'react-native-svg';
  * - onLogout?: () => void
  */
 function HeaderAdmin({
-  title = 'MQerK Aca',
+  title = 'Fenix Rentail',
   subtitle = '',
   logoSource,
   onLogoPress,
@@ -45,7 +45,6 @@ function HeaderAdmin({
 
 
   const getInitials = (name) => {
-    if (!name) return 'AD';
     const parts = String(name).trim().split(/\s+/);
     return parts.length >= 2
       ? `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()

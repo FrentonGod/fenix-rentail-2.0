@@ -15,11 +15,14 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Keyboard,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
 import "./global.css";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import Svg, { Path } from "react-native-svg";
 import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
@@ -35,7 +38,7 @@ import {
   ExpandableCalendar,
 } from "react-native-calendars";
 
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, useFocusEffect } from "@react-navigation/native";
 import {
   createDrawerNavigator,
   DrawerContentScrollView,
@@ -64,145 +67,141 @@ export default function App() {
         end={{ x: 1, y: 0 }}
         style={{ flex: 1 }}
       >
-      <SafeAreaView
-        style={{
-        }}
-        className={`flex-1`}
-      >
-        <Drawer.Navigator
-          drawerContent={(props) => <CustomDrawerContent {...props} />}
-          screenOptions={{
-            header: (props) => <AppHeader {...props} />, // Nuevo HeaderAdmin
-            drawerStyle: {
-              backgroundColor: "#232428",
-              width: 200,
-            },
-            drawerActiveTintColor: "white",
-            drawerInactiveTintColor: "#6b838b",
-          }}
-        >
-          <Drawer.Screen
-            name="Inicio"
-            component={ScreenInicio}
-            options={{
-              title: "Inicio",
-              drawerIcon: ({}) => (
-                <Svg
-                  height="24"
-                  viewBox="0 -960 960 960"
-                  width="24"
-                  fill="#ffffff"
-                >
-                  <Path d="M240-200h120v-240h240v240h120v-360L480-740 240-560v360Zm-80 80v-480l320-240 320 240v480H520v-240h-80v240H160Zm320-350Z" />
-                </Svg>
-              ),
+        <SafeAreaView style={{}} className={`flex-1`}>
+          <Drawer.Navigator
+            drawerContent={(props) => <CustomDrawerContent {...props} />}
+            screenOptions={{
+              header: (props) => <AppHeader {...props} />, // Nuevo HeaderAdmin
+              drawerStyle: {
+                backgroundColor: "#232428",
+                width: 200,
+              },
+              drawerActiveTintColor: "white",
+              drawerInactiveTintColor: "#6b838b",
             }}
-          />
+          >
+            <Drawer.Screen
+              name="Inicio"
+              component={ScreenInicio}
+              options={{
+                title: "Inicio",
+                drawerIcon: ({}) => (
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#ffffff"
+                  >
+                    <Path d="M240-200h120v-240h240v240h120v-360L480-740 240-560v360Zm-80 80v-480l320-240 320 240v480H520v-240h-80v240H160Zm320-350Z" />
+                  </Svg>
+                ),
+              }}
+            />
 
-          <Drawer.Screen
-            name="Estudiantes"
-            component={ScreenEstudiantes}
-            options={{
-              title: "Estudiantes",
-              drawerIcon: ({}) => (
-                <Svg
-                  height="24"
-                  viewBox="0 -960 960 960"
-                  width="24"
-                  fill="#ffffff"
-                >
-                  <Path d="M0-240v-63q0-43 44-70t116-27q13 0 25 .5t23 2.5q-14 21-21 44t-7 48v65H0Zm240 0v-65q0-32 17.5-58.5T307-410q32-20 76.5-30t96.5-10q53 0 97.5 10t76.5 30q32 20 49 46.5t17 58.5v65H240Zm540 0v-65q0-26-6.5-49T754-397q11-2 22.5-2.5t23.5-.5q72 0 116 26.5t44 70.5v63H780Zm-455-80h311q-10-20-55.5-35T480-370q-55 0-100.5 15T325-320ZM160-440q-33 0-56.5-23.5T80-520q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T160-440Zm640 0q-33 0-56.5-23.5T720-520q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T800-440Zm-320-40q-50 0-85-35t-35-85q0-51 35-85.5t85-34.5q51 0 85.5 34.5T600-600q0 50-34.5 85T480-480Zm0-80q17 0 28.5-11.5T520-600q0-17-11.5-28.5T480-640q-17 0-28.5 11.5T440-600q0 17 11.5 28.5T480-560Zm1 240Zm-1-280Z" />
-                </Svg>
-              ),
-            }}
-          />
-          <Drawer.Screen
-            name="Asesores"
-            component={ScreenAsesores}
-            options={{
-              title: "Asesores",
-              drawerIcon: ({}) => (
-                <Svg
-                  height="24"
-                  viewBox="0 -960 960 960"
-                  width="24"
-                  fill="#ffffff"
-                >
-                  <Path d="M840-120v-640H120v320H40v-320q0-33 23.5-56.5T120-840h720q33 0 56.5 23.5T920-760v560q0 33-23.5 56.5T840-120ZM360-400q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47Zm0-80q33 0 56.5-23.5T440-560q0-33-23.5-56.5T360-640q-33 0-56.5 23.5T280-560q0 33 23.5 56.5T360-480ZM40-80v-112q0-34 17.5-62.5T104-298q62-31 126-46.5T360-360q66 0 130 15.5T616-298q29 15 46.5 43.5T680-192v112H40Zm80-80h480v-32q0-11-5.5-20T580-226q-54-27-109-40.5T360-280q-56 0-111 13.5T140-226q-9 5-14.5 14t-5.5 20v32Zm240-400Zm0 400Z" />
-                </Svg>
-              ),
-            }}
-          />
-          <Drawer.Screen
-            name="Pagos"
-            component={ScreenPagos}
-            options={{
-              title: "Pagos",
-              drawerIcon: ({}) => (
-                <Svg
-                  height="24"
-                  viewBox="0 -960 960 960"
-                  width="24"
-                  fill="#ffffff"
-                >
-                  <Path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z" />
-                </Svg>
-              ),
-            }}
-          />
-          <Drawer.Screen
-            name="Finanzas"
-            component={ScreenFinanzas}
-            options={{
-              title: "Finanzas",
-              drawerIcon: ({}) => (
-                <Svg
-                  height="24px"
-                  viewBox="0 -960 960 960"
-                  width="24px"
-                  fill="#ffffff"
-                >
-                  <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
-                </Svg>
-              ),
-            }}
-          />
-          <Drawer.Screen
-            name="Calendario"
-            component={ScreenCalendario}
-            options={{
-              title: "Calendario",
-              drawerIcon: ({}) => (
-                <Svg
-                  height="24"
-                  viewBox="0 -960 960 960"
-                  width="24"
-                  fill="#ffffff"
-                >
-                  <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-160 0q-17 0-28.5-11.5T280-440q0-17 11.5-28.5T320-480q17 0 28.5 11.5T360-440q0 17-11.5 28.5T320-400Zm320 0q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-160 0q-17 0-28.5-11.5T280-280q0-17 11.5-28.5T320-320q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240Zm320 0q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z" />
-                </Svg>
-              ),
-            }}
-          />
-          <Drawer.Screen
-            name="Cursos"
-            component={ScreenCursos}
-            options={{
-              title: "Cursos",
-              drawerIcon: ({}) => (
-                <Svg
-                  height="24"
-                  viewBox="0 -960 960 960"
-                  width="24"
-                  fill="#ffffff"
-                >
-                  <Path d="M480-120 200-272v-240L40-600l440-240 440 240v320h-80v-276l-80 44v240L480-120Zm0-332 274-148-274-148-274 148 274 148Zm0 241 200-108v-151L480-360 280-470v151l200 108Zm0-241Zm0 90Zm0 0Z" />
-                </Svg>
-              ),
-            }}
-          />
-        </Drawer.Navigator>
-      </SafeAreaView>
+            <Drawer.Screen
+              name="Estudiantes"
+              component={ScreenEstudiantes}
+              options={{
+                title: "Estudiantes",
+                drawerIcon: ({}) => (
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#ffffff"
+                  >
+                    <Path d="M0-240v-63q0-43 44-70t116-27q13 0 25 .5t23 2.5q-14 21-21 44t-7 48v65H0Zm240 0v-65q0-32 17.5-58.5T307-410q32-20 76.5-30t96.5-10q53 0 97.5 10t76.5 30q32 20 49 46.5t17 58.5v65H240Zm540 0v-65q0-26-6.5-49T754-397q11-2 22.5-2.5t23.5-.5q72 0 116 26.5t44 70.5v63H780Zm-455-80h311q-10-20-55.5-35T480-370q-55 0-100.5 15T325-320ZM160-440q-33 0-56.5-23.5T80-520q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T160-440Zm640 0q-33 0-56.5-23.5T720-520q0-34 23.5-57t56.5-23q34 0 57 23t23 57q0 33-23 56.5T800-440Zm-320-40q-50 0-85-35t-35-85q0-51 35-85.5t85-34.5q51 0 85.5 34.5T600-600q0 50-34.5 85T480-480Zm0-80q17 0 28.5-11.5T520-600q0-17-11.5-28.5T480-640q-17 0-28.5 11.5T440-600q0 17 11.5 28.5T480-560Zm1 240Zm-1-280Z" />
+                  </Svg>
+                ),
+              }}
+            />
+            <Drawer.Screen
+              name="Asesores"
+              component={ScreenAsesores}
+              options={{
+                title: "Asesores",
+                drawerIcon: ({}) => (
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#ffffff"
+                  >
+                    <Path d="M840-120v-640H120v320H40v-320q0-33 23.5-56.5T120-840h720q33 0 56.5 23.5T920-760v560q0 33-23.5 56.5T840-120ZM360-400q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47Zm0-80q33 0 56.5-23.5T440-560q0-33-23.5-56.5T360-640q-33 0-56.5 23.5T280-560q0 33 23.5 56.5T360-480ZM40-80v-112q0-34 17.5-62.5T104-298q62-31 126-46.5T360-360q66 0 130 15.5T616-298q29 15 46.5 43.5T680-192v112H40Zm80-80h480v-32q0-11-5.5-20T580-226q-54-27-109-40.5T360-280q-56 0-111 13.5T140-226q-9 5-14.5 14t-5.5 20v32Zm240-400Zm0 400Z" />
+                  </Svg>
+                ),
+              }}
+            />
+            <Drawer.Screen
+              name="Pagos"
+              component={ScreenPagos}
+              options={{
+                title: "Pagos",
+                drawerIcon: ({}) => (
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#ffffff"
+                  >
+                    <Path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z" />
+                  </Svg>
+                ),
+              }}
+            />
+            <Drawer.Screen
+              name="Finanzas"
+              component={ScreenFinanzas}
+              options={{
+                title: "Finanzas",
+                drawerIcon: ({}) => (
+                  <Svg
+                    height="24px"
+                    viewBox="0 -960 960 960"
+                    width="24px"
+                    fill="#ffffff"
+                  >
+                    <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
+                  </Svg>
+                ),
+              }}
+            />
+            <Drawer.Screen
+              name="Calendario"
+              component={ScreenCalendario}
+              options={{
+                title: "Calendario",
+                drawerIcon: ({}) => (
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#ffffff"
+                  >
+                    <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Zm280 240q-17 0-28.5-11.5T440-440q0-17 11.5-28.5T480-480q17 0 28.5 11.5T520-440q0 17-11.5 28.5T480-400Zm-160 0q-17 0-28.5-11.5T280-440q0-17 11.5-28.5T320-480q17 0 28.5 11.5T360-440q0 17-11.5 28.5T320-400Zm320 0q-17 0-28.5-11.5T600-440q0-17 11.5-28.5T640-480q17 0 28.5 11.5T680-440q0 17-11.5 28.5T640-400ZM480-240q-17 0-28.5-11.5T440-280q0-17 11.5-28.5T480-320q17 0 28.5 11.5T520-280q0 17-11.5 28.5T480-240Zm-160 0q-17 0-28.5-11.5T280-280q0-17 11.5-28.5T320-320q17 0 28.5 11.5T360-280q0 17-11.5 28.5T320-240Zm320 0q-17 0-28.5-11.5T600-280q0-17 11.5-28.5T640-320q17 0 28.5 11.5T680-280q0 17-11.5 28.5T640-240Z" />
+                  </Svg>
+                ),
+              }}
+            />
+            <Drawer.Screen
+              name="Cursos"
+              component={ScreenCursos}
+              options={{
+                title: "Cursos",
+                drawerIcon: ({}) => (
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#ffffff"
+                  >
+                    <Path d="M480-120 200-272v-240L40-600l440-240 440 240v320h-80v-276l-80 44v240L480-120Zm0-332 274-148-274-148-274 148 274 148Zm0 241 200-108v-151L480-360 280-470v151l200 108Zm0-241Zm0 90Zm0 0Z" />
+                  </Svg>
+                ),
+              }}
+            />
+          </Drawer.Navigator>
+        </SafeAreaView>
       </LinearGradient>
     </SafeAreaProvider>
   );
@@ -426,7 +425,237 @@ const ScreenEstudiantes = () => {
 };
 
 const ScreenAsesores = () => {
-  return <RegistroAsesor />;
+  const [asesores, setAsesores] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isRefetching, setIsRefetching] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Estado para controlar la vista: 'list' o 'form'
+  const [viewMode, setViewMode] = useState("list");
+  const [editingAsesor, setEditingAsesor] = useState(null);
+
+  const handleRefresh = async () => {
+    if (isRefetching || loading) return;
+    setIsRefetching(true);
+    const { data, error } = await supabase
+      .from("asesores")
+      .select("*")
+      .order("id_asesor", { ascending: false });
+    if (!error && data) {
+      setAsesores(data);
+    }
+    setTimeout(() => setIsRefetching(false), 300);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchAsesores = async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from("asesores")
+          .select("*")
+          .order("id_asesor", { ascending: false });
+        if (!error && data) {
+          setAsesores(data);
+          // Si no hay asesores, mostramos el formulario directamente
+          if (data.length === 0) {
+            setViewMode("form");
+          } else {
+            setViewMode("list");
+          }
+        }
+        setLoading(false);
+      };
+      fetchAsesores();
+    }, [])
+  );
+
+  const handleDelete = (id_asesor) => {
+    Alert.alert(
+      "Confirmar eliminación",
+      "¿Estás seguro de que quieres eliminar este asesor?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            const { error } = await supabase
+              .from("asesores")
+              .delete()
+              .eq("id_asesor", id_asesor);
+            if (error) {
+              Alert.alert("Error", "No se pudo eliminar el asesor.");
+            } else {
+              handleRefresh(); // Recargamos la lista
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Pasamos el asesor a editar y cambiamos de vista
+  const handleEdit = (asesor) => {
+    setEditingAsesor(asesor);
+    setViewMode("form");
+  };
+
+  // Cambiamos a la vista de formulario para agregar uno nuevo
+  const handleAdd = () => {
+    setEditingAsesor(null); // Nos aseguramos de que no haya datos de edición
+    setViewMode("form");
+  };
+
+  // Si estamos en modo formulario, renderizamos RegistroAsesor
+  if (viewMode === "form") {
+    return (
+      <RegistroAsesor
+        asesorToEdit={editingAsesor}
+        onFormClose={() => setViewMode("list")} // Para volver a la tabla
+      />
+    );
+  }
+
+  // Vista de la tabla de asesores
+  return (
+    <View className="flex-1 bg-slate-50">
+      {loading ? (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#6F09EA" />
+        </View>
+      ) : (
+        <>
+          <View className="flex-row items-center justify-between p-4">
+            <View className="flex-row items-center bg-white border border-slate-300 rounded-full px-3 py-1 shadow-sm">
+              <Svg
+                height="20"
+                viewBox="0 -960 960 960"
+                width="20"
+                fill="#9ca3af"
+              >
+                <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
+              </Svg>
+              <TextInput
+                placeholder="Buscar asesor..."
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+                className="ml-2 text-base"
+              />
+            </View>
+            <TouchableOpacity
+              onPress={handleAdd}
+              className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
+            >
+              <Svg
+                height="18"
+                viewBox="0 -960 960 960"
+                width="18"
+                fill="#ffffff"
+              >
+                <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+              </Svg>
+              <Text className="text-white font-bold ml-2">Agregar Asesor</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TablaAsesores
+            data={asesores}
+            query={searchTerm}
+            isRefetching={isRefetching}
+            onRefresh={handleRefresh}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        </>
+      )}
+    </View>
+  );
+};
+
+const TablaAsesores = ({
+  data,
+  query,
+  isRefetching,
+  onRefresh,
+  onEdit,
+  onDelete,
+}) => {
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return data.filter((r) => {
+      if (!q) return true;
+      return (
+        String(r.nombre_asesor).toLowerCase().includes(q) ||
+        String(r.correo_asesor).toLowerCase().includes(q) ||
+        String(r.telefono_asesor).toLowerCase().includes(q)
+      );
+    });
+  }, [data, query]);
+
+  return (
+    <ScrollView
+      className="px-2"
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefetching}
+          onRefresh={onRefresh}
+          tintColor="#6F09EA"
+        />
+      }
+    >
+      <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+        {/* Encabezados */}
+        <View className="bg-slate-100 border-b border-slate-200 flex-row">
+          <Text className="p-3 font-bold text-slate-600 w-1/4">Nombre</Text>
+          <Text className="p-3 font-bold text-slate-600 w-1/4">Correo</Text>
+          <Text className="p-3 font-bold text-slate-600 w-1/4">Teléfono</Text>
+          <Text className="p-3 font-bold text-slate-600 w-1/4 text-center">
+            Acciones
+          </Text>
+        </View>
+        {/* Filas */}
+        {filtered.map((asesor, index) => (
+          <View
+            key={asesor.id_asesor}
+            className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
+          >
+            <Text className="p-3 text-slate-800 w-1/4" numberOfLines={1}>
+              {asesor.nombre_asesor}
+            </Text>
+            <Text className="p-3 text-slate-700 w-1/4" numberOfLines={1}>
+              {asesor.correo_asesor}
+            </Text>
+            <Text className="p-3 text-slate-700 w-1/4">
+              {asesor.telefono_asesor}
+            </Text>
+            <View className="p-3 w-1/4 flex-row justify-center items-center gap-x-6">
+              <TouchableOpacity onPress={() => onEdit(asesor)}>
+                <Svg
+                  height="22"
+                  viewBox="0 -960 960 960"
+                  width="22"
+                  fill="#3b82f6"
+                >
+                  <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                </Svg>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => onDelete(asesor.id_asesor)}>
+                <Svg
+                  height="22"
+                  viewBox="0 -960 960 960"
+                  width="22"
+                  fill="#ef4444"
+                >
+                  <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                </Svg>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+      </View>
+    </ScrollView>
+  );
 };
 
 const ScreenPagos = () => {
@@ -1103,7 +1332,7 @@ const ScreenFinanzas = () => {
                     borderStyle={{ borderWidth: 1, borderColor: "#e2e4e8" }}
                   >
                     {filteredIngresos.map((rowData, index) => (
-                      <TableWrapper key={index} style={styles.row}>
+                      <TableWrapper key={rowData.id} style={styles.row}>
                         {tableHeaders.map((cellInfo, cellIndex) => (
                           <Cell
                             key={cellIndex}
@@ -1480,155 +1709,563 @@ const ScreenCalendario = () => {
   );
 };
 
-const ScreenCursos = () => {
-  const tableDataCursos = [
-    [
-      1,
-      "Entrenamiento para el examen de admision a la universidad",
-      "$1500",
-      ,
-    ],
-    [2, "Entrenamiento para el examen de admision a la preparatoria", "$1100"],
-  ];
+const TablaCursos = ({
+  data,
+  loading = loading,
+  query = "",
+  isRefetching = false,
+  onEdit,
+  onDelete,
+  onRefresh,
+}) => {
+  const [sortKey, setSortKey] = useState("id_curso");
+  const [sortDir, setSortDir] = useState("asc");
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filteredData, setFilteredData] = useState(tableDataCursos);
+  const currencyFormatter = new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+  });
 
-  useEffect(() => {
-    if (searchTerm === "") {
-      setFilteredData(tableDataCursos);
-    } else {
-      const lowercasedFilter = searchTerm.toLowerCase();
-      const newData = tableDataCursos.filter((row) => {
-        // row[1] es el nombre, row[2] es el precio
-        const nombre = row[1]?.toString().toLowerCase() || "";
-        const precio = row[2]?.toString().toLowerCase() || "";
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const arr = data.filter((r) => {
+      if (!q) return true;
+      const nombre = String(r.nombre_curso || "").toLowerCase();
+      const precio = String(r.costo_curso || "").toLowerCase();
+      const id = String(r.id_curso || "").toLowerCase();
+      return nombre.includes(q) || precio.includes(q) || id.includes(q);
+    });
+    const sorted = [...arr].sort((a, b) => {
+      let va = a[sortKey] ?? "";
+      let vb = b[sortKey];
+      if (typeof va === "string") va = va.toLowerCase();
+      if (typeof vb === "string") vb = vb.toLowerCase();
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [data, query, sortKey, sortDir]);
 
-        return (
-          nombre.includes(lowercasedFilter) || precio.includes(lowercasedFilter)
+  const SortHeader = ({ label, k, flex = 1, center }) => (
+    <Pressable
+      onPress={() => {
+        setSortKey(k);
+        setSortDir((d) =>
+          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"
         );
-      });
-      setFilteredData(newData);
-    }
-  }, [searchTerm]);
+      }}
+      className="py-3 px-3"
+      style={{ flex, alignItems: center ? "center" : "flex-start" }}
+      android_ripple={{ color: "rgba(0,0,0,0.05)" }}
+    >
+      <View className="flex-row items-center gap-1">
+        <Text className="text-slate-800 font-semibold text-xs sm:text-sm uppercase tracking-wide">
+          {label}
+        </Text>
+        {sortKey === k && (
+          <Svg width={12} height={12} viewBox="0 -960 960 960" fill="#334155">
+            {sortDir === "asc" ? (
+              <Path d="M480-680 240-440h480L480-680Z" />
+            ) : (
+              <Path d="M240-520h480L480-280 240-520Z" />
+            )}
+          </Svg>
+        )}
+      </View>
+    </Pressable>
+  );
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View className={`flex-1 bg-slate-50`}>
-        <View className={`self-center p-2 box-content mb-7`}>
+    <View className={`px-2 pb-4 relative flex-1`}>
+      <View
+        className={`rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm ${Platform.OS=="web" ? "flex-1": ""}`}
+        style={{ opacity: isRefetching ? 0.5 : 1 }}
+      >
+        <ScrollView
+          stickyHeaderIndices={[0]}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={onRefresh}
+              tintColor="#6F09EA"
+            />
+          }
+        >
+          <View className="bg-slate-100 border-b border-slate-200 flex-row">
+            <SortHeader label="#" k="id_curso" flex={0.1} center />
+            <SortHeader label="Nombre" k="nombre_curso" flex={1} />
+            <SortHeader label="Precio" k="costo_curso" flex={0.3} />
+            <SortHeader label="Acciones" k="Acciones" flex={0.2} />
+          </View>
+
+          {filtered.map((r, id_curso) => (
+            <Pressable
+              key={r.id_curso}
+              className={`flex-row items-center ${id_curso % 2 ? "bg-white" : "bg-slate-50"}`}
+              android_ripple={{ color: "rgba(0,0,0,0.04)" }}
+            >
+              <View style={{ flex: 0.1 }} className="py-3 px-3 items-center">
+                <Text className="text-slate-700">{r.id_curso}</Text>
+              </View>
+              <View style={{ flex: 1 }} className="py-3 px-3">
+                <Text numberOfLines={1} className="text-slate-800 font-medium">
+                  {r.nombre_curso}
+                </Text>
+              </View>
+              <View style={{ flex: 0.3 }} className="py-3 px-3">
+                <Text numberOfLines={1} className="text-slate-700">
+                  {currencyFormatter.format(r.costo_curso || 0)}
+                </Text>
+              </View>
+              <View
+                id="celda-acciones"
+                style={{ flex: 0.2 }}
+                className="py-3 px-3"
+              >
+                <View className="flex flex-row items-center justify-between">
+                  <TouchableOpacity onPress={() => onEdit(r)}>
+                    <Svg
+                      height="22"
+                      viewBox="0 -960 960 960"
+                      width="22"
+                      fill="#3b82f6"
+                    >
+                      <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                    </Svg>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => onDelete(r.id_curso)}>
+                    <Svg
+                      height="22"
+                      viewBox="0 -960 960 960"
+                      width="22"
+                      fill="#ef4444"
+                    >
+                      <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                    </Svg>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+      {isRefetching && (
+        <View
+          style={StyleSheet.absoluteFill}
+          className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl"
+        >
+          <ActivityIndicator size="large" color="#6F09EA" />
+        </View>
+      )}
+      {loading && (
+        <View
+          style={StyleSheet.absoluteFill}
+          className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-xl"
+        >
+          <ActivityIndicator size="large" color="#6F09EA" />
+        </View>
+      )}
+    </View>
+  );
+};
+
+const ScreenCursos = () => {
+  const [cursos, setCursos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isRefetching, setIsRefetching] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // --- Estados para el modal de edición ---
+  const [isModalVisible, setModalVisible] = useState(false);
+  const [currentCurso, setCurrentCurso] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // --- Estados para el modal de AGREGAR ---
+  const [isAddModalVisible, setAddModalVisible] = useState(false);
+  const [newCurso, setNewCurso] = useState({
+    nombre_curso: "",
+    costo_curso: "",
+  });
+
+  const currencyFormatter = new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+  });
+
+  // Función para convertir el string formateado de vuelta a un número
+  const unformatCurrency = (formattedValue) =>
+    parseFloat(String(formattedValue).replace(/[^0-9.-]+/g, "")) || 0;
+
+  const handleCancelAdd = () => {
+    // Revisa si el usuario ha escrito algo en el formulario
+    const hasData =
+      newCurso.nombre_curso.trim() !== "" || newCurso.costo_curso.trim() !== "";
+
+    if (hasData) {
+      Alert.alert(
+        "¿Descartar curso?",
+        "Si cancelas, los datos que ingresaste se perderán. ¿Estás seguro?",
+        [
+          { text: "Continuar editando", style: "cancel" },
+          {
+            text: "Sí, descartar",
+            style: "destructive",
+            onPress: () => setAddModalVisible(false), // Solo cierra si el usuario confirma
+          },
+        ]
+      );
+    } else {
+      // Si el formulario está vacío, simplemente cierra el modal
+      setAddModalVisible(false);
+    }
+  };
+
+  const handleOpenAddModal = () => {
+    setNewCurso({ nombre_curso: "", costo_curso: "" }); // Resetea el formulario
+    setAddModalVisible(true);
+  };
+  const handleOpenEditModal = (curso) => {
+    // Formateamos el costo al abrir el modal
+    const formattedCost = new Intl.NumberFormat("es-MX", {
+      minimumFractionDigits: 2,
+    }).format(curso.costo_curso || 0);
+    setCurrentCurso({ ...curso, costo_curso: formattedCost });
+    setModalVisible(true);
+  };
+
+  const handleRefresh = async () => {
+    // Si ya está cargando, no hacemos nada
+    if (isRefetching || loading) return;
+
+    setIsRefetching(true);
+    let { data, error } = await supabase.from("cursos").select("*");
+    if (!error && data) {
+      setCursos(data);
+    }
+    // Pequeño delay para que la animación del ícono sea perceptible
+    setTimeout(() => setIsRefetching(false), 300);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchCursos = async () => {
+        // Usamos isRefetching para la carga en foco, y loading para la carga inicial
+        if (cursos.length > 0) {
+          setIsRefetching(true);
+        } else {
+          setLoading(true);
+        }
+
+        const { data, error } = await supabase.from("cursos").select("*");
+        if (!error && data) {
+          setCursos(data);
+        }
+        setIsRefetching(false);
+        setLoading(false);
+      };
+      fetchCursos();
+    }, []) // El array vacío asegura que la función de fetch no se recree en cada render
+  );
+
+  const handleDelete = (id_curso) => {
+    Alert.alert(
+      "Confirmar eliminación",
+      "¿Estás seguro de que quieres eliminar este curso? Esta acción no se puede deshacer.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            const { error } = await supabase
+              .from("cursos")
+              .delete()
+              .eq("id_curso", id_curso);
+            if (error) {
+              Alert.alert("Error", "No se pudo eliminar el curso.");
+              console.error("Error deleting course:", error);
+            } else {
+              // En lugar de solo actualizar el estado local, recargamos los datos.
+              handleRefresh();
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSaveChanges = async () => {
+    if (
+      !currentCurso ||
+      !currentCurso.nombre_curso ||
+      !currentCurso.costo_curso
+    ) {
+      Alert.alert(
+        "Campos incompletos",
+        "Por favor, completa el nombre y el precio del curso."
+      );
+      return;
+    }
+    setIsSaving(true);
+    const { error } = await supabase
+      .from("cursos")
+      .update({
+        nombre_curso: currentCurso.nombre_curso,
+        costo_curso: unformatCurrency(currentCurso.costo_curso),
+      })
+      .eq("id_curso", currentCurso.id_curso);
+
+    setIsSaving(false);
+    if (error) {
+      Alert.alert("Error", "No se pudieron guardar los cambios.");
+      console.error("Error updating course:", error);
+    } else {
+      // En lugar de solo actualizar el estado local, recargamos los datos.
+      handleRefresh();
+      setModalVisible(false);
+      setCurrentCurso(null);
+    }
+  };
+
+  const handleAddCurso = async () => {
+    if (!newCurso.nombre_curso || !newCurso.costo_curso) {
+      Alert.alert(
+        "Campos incompletos",
+        "Por favor, completa el nombre y el precio del curso."
+      );
+      return;
+    }
+    setIsSaving(true);
+
+    // ADVERTENCIA: No se recomienda calcular el ID en el frontend.
+    // 1. Calcular el nuevo ID basándose en los datos actuales.
+    const newId =
+      cursos.length > 0 ? Math.max(...cursos.map((c) => c.id_curso)) + 1 : 1;
+
+    // 2. Insertar el nuevo curso incluyendo el ID calculado.
+    const { data, error } = await supabase
+      .from("cursos")
+      .insert({
+        id_curso: newId, // Se envía el ID explícitamente
+        nombre_curso: newCurso.nombre_curso,
+        costo_curso: unformatCurrency(newCurso.costo_curso),
+      })
+      .select()
+      .single();
+    setIsSaving(false);
+    if (error) {
+      Alert.alert("Error", "No se pudo crear el curso.");
+      console.error("Error creating course:", error);
+    } else {
+      // Actualizar la UI agregando el nuevo curso al estado local
+      if (data) {
+        // Añadimos el nuevo curso al principio de la lista. Es más eficiente que reordenar todo.
+        setCursos((prevCursos) => [data, ...prevCursos]);
+      }
+      setAddModalVisible(false);
+      setNewCurso({ nombre_curso: "", costo_curso: "" });
+    }
+  };
+
+  return (
+    <TouchableWithoutFeedback
+      onPress={Platform.OS === "web" ? "" : Keyboard.dismiss}
+      accessible={false}
+    >
+      <View className={`flex-1 pb-20 bg-slate-50`}>
+        <View
+          className={`self-center flex-row items-center gap-x-4 m-2 box-content mb-7`}
+        >
           <View
-            style={{
-              boxShadow:
-                "inset 0 4px 6px -1px rgba(0, 0, 0, 0.1), inset 0 2px 4px -2px rgba(0, 0, 0, 0.1), inset 0 0 0 1px #282C30",
-            }}
-            className={`border border-[#eef2f5] justify-center items-center  flex-row gap-x-5 rounded-lg`}
+            className={`border border-[#b5b8bb] justify-center items-center flex-row rounded-full`}
           >
+            <View className="pl-3" pointerEvents="none">
+              <Svg
+                xmlns="http://www.w3.org/2000/svg"
+                height="24px"
+                viewBox="0 -960 960 960"
+                width="24px"
+                fill="#b5b8bb"
+              >
+                <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
+              </Svg>
+            </View>
             <TextInput
               id="buscador-cursos"
-              placeholder="Nombre del curso, precio"
-              className={`h-full min-w-[20em]`}
+              placeholder="Buscar por ID, nombre o precio"
+              className={`py-2 px-2 pl-1 pr-4 min-w-[20em]`}
               value={searchTerm}
               onChangeText={setSearchTerm}
             />
           </View>
+          <TouchableOpacity
+            onPress={handleOpenAddModal}
+            className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
+          >
+            <Svg height="18" viewBox="0 -960 960 960" width="18" fill="#ffffff">
+              <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+            </Svg>
+            <Text className="text-white font-bold ml-2">Agregar Curso</Text>
+          </TouchableOpacity>
         </View>
-        <View className={`vertical:px-2 flex-1 justify-center items-center`}>
-          <ScrollView horizontal>
-            <Table style={{ borderRadius: 10 }}>
-              <Row
-                data={["#", "Nombre", "Precio", "Acciones"]}
-                height={40}
-                widthArr={[100, 200, 150, 100]}
-                textStyle={{
-                  textAlign: "center",
-                  fontWeight: "bold", // Estilo para el texto de la cabecera
-                }}
-                style={{
-                  backgroundColor: "#eef2f5",
-                  borderWidth: 1,
-                  borderColor: "#e2e4e8",
-                  borderTopLeftRadius: 10,
-                  borderTopRightRadius: 10,
-                }}
-              />
-              <ScrollView horizontal={false} nestedScrollEnabled={true}>
-                {filteredData.map((rowData, index) => (
-                  <TableWrapper
-                    key={index}
-                    style={{
-                      flexDirection: "row",
-                      borderWidth: 1,
-                      borderColor: "#e2e4e8",
-                      paddingVertical: 10,
-                    }}
-                  >
-                    <Cell
-                      id="celda-id"
-                      data={rowData[0]}
-                      width={100}
-                      textStyle={styles.tableText}
+        <TablaCursos
+          data={cursos}
+          loading={loading}
+          query={searchTerm}
+          isRefetching={isRefetching}
+          onEdit={handleOpenEditModal}
+          onDelete={handleDelete}
+          onRefresh={handleRefresh}
+        />
+
+        {/* --- Modal de Edición --- */}
+        <Modal
+          transparent={true}
+          animationType="fade"
+          visible={isModalVisible}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+            <View className="flex-1 justify-center items-center bg-black/60 p-4">
+              <TouchableWithoutFeedback>
+                <View className="bg-slate-50 rounded-2xl p-6 w-full max-w-lg shadow-xl">
+                  <Text className="text-2xl font-bold mb-6 text-slate-800">
+                    Editar Curso
+                  </Text>
+
+                  <Text style={styles.label}>Nombre del Curso</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={currentCurso?.nombre_curso}
+                    onChangeText={(text) =>
+                      setCurrentCurso((c) => ({ ...c, nombre_curso: text }))
+                    }
+                    placeholder="Nombre del curso"
+                  />
+
+                  <Text style={styles.label}>Precio del Curso</Text>
+                  <View style={styles.input} className="flex-row items-center">
+                    <Text className="mr-1 text-slate-500">$</Text>
+                    <TextInput
+                      value={currentCurso?.costo_curso}
+                      onChangeText={(text) => {
+                        // Limita la entrada a 2 decimales
+                        if (
+                          text.includes(".") &&
+                          text.split(".")[1].length > 2
+                        ) {
+                          return;
+                        }
+                        // Permite borrar y escribir normalmente
+                        setCurrentCurso((c) => ({ ...c, costo_curso: text }));
+                      }}
+                      placeholder="0.00"
+                      keyboardType="numeric"
+                      className="flex-1"
                     />
-                    <Cell
-                      id="celda-nombre-curso"
-                      data={rowData[1]}
-                      width={200}
-                      textStyle={styles.tableText}
+                  </View>
+
+                  <View className="flex-row justify-end mt-6 gap-x-4">
+                    <TouchableOpacity
+                      onPress={() => setModalVisible(false)}
+                      className="bg-slate-200 px-5 py-3 rounded-lg"
+                    >
+                      <Text className="font-bold text-slate-600">Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleSaveChanges}
+                      disabled={isSaving}
+                      className={`px-5 py-3 rounded-lg ${isSaving ? "bg-indigo-400" : "bg-indigo-600 shadow-md shadow-indigo-600/30"}`}
+                    >
+                      {isSaving ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text className="text-white font-bold">
+                          Guardar Cambios
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
+
+        {/* --- Modal de AGREGAR --- */}
+        <Modal
+          transparent={true}
+          animationType="fade"
+          visible={isAddModalVisible}
+          onRequestClose={handleCancelAdd}
+        >
+          <TouchableWithoutFeedback onPress={handleCancelAdd}>
+            <View className="flex-1 justify-center items-center bg-black/60 p-4">
+              <TouchableWithoutFeedback>
+                <View className="bg-slate-50 rounded-2xl p-6 w-full max-w-lg shadow-xl">
+                  <Text className="text-2xl font-bold mb-6 text-slate-800">
+                    Agregar Nuevo Curso
+                  </Text>
+
+                  <Text style={styles.label}>Nombre del Curso</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={newCurso.nombre_curso}
+                    onChangeText={(text) =>
+                      setNewCurso((c) => ({ ...c, nombre_curso: text }))
+                    }
+                    placeholder="Ej. Curso de Verano STEAM"
+                  />
+
+                  <Text style={styles.label}>Precio del Curso</Text>
+                  <View style={styles.input} className="flex-row items-center">
+                    <Text className="mr-1 text-slate-500">$</Text>
+                    <TextInput
+                      value={newCurso.costo_curso}
+                      onChangeText={(text) => {
+                        // Limita la entrada a 2 decimales
+                        if (
+                          text.includes(".") &&
+                          text.split(".")[1].length > 2
+                        ) {
+                          return;
+                        }
+                        // Permite borrar y escribir normalmente
+                        setNewCurso((c) => ({ ...c, costo_curso: text }));
+                      }}
+                      placeholder="Ej. 1200"
+                      keyboardType="numeric"
+                      className="flex-1"
                     />
-                    <Cell
-                      id="celda-precio"
-                      data={rowData[2]}
-                      width={150}
-                      textStyle={styles.tableText}
-                    />
-                    <Cell
-                      id="celda-acciones"
-                      data={
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            justifyContent: "space-around",
-                            alignItems: "center",
-                            flex: 1,
-                            paddingHorizontal: 5,
-                          }}
-                        >
-                          <TouchableOpacity
-                            onPress={() => alert(`Editar curso: ${rowData[1]}`)}
-                          >
-                            <Svg
-                              height="22"
-                              viewBox="0 -960 960 960"
-                              width="22"
-                              fill="#3b82f6"
-                            >
-                              <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                            </Svg>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() =>
-                              alert(`Eliminar curso: ${rowData[1]}`)
-                            }
-                          >
-                            <Svg
-                              height="22"
-                              viewBox="0 -960 960 960"
-                              width="22"
-                              fill="#ef4444"
-                            >
-                              <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
-                            </Svg>
-                          </TouchableOpacity>
-                        </View>
-                      }
-                      width={100}
-                      textStyle={styles.tableText}
-                    />
-                  </TableWrapper>
-                ))}
-              </ScrollView>
-            </Table>
-          </ScrollView>
-        </View>
+                  </View>
+
+                  <View className="flex-row justify-end mt-6 gap-x-4">
+                    <TouchableOpacity
+                      onPress={handleCancelAdd}
+                      className="bg-slate-200 px-5 py-3 rounded-lg"
+                    >
+                      <Text className="font-bold text-slate-600">Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleAddCurso}
+                      disabled={isSaving}
+                      className={`px-5 py-3 rounded-lg ${isSaving ? "bg-indigo-400" : "bg-indigo-600 shadow-md shadow-indigo-600/30"}`}
+                    >
+                      {isSaving ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text className="text-white font-bold">
+                          Guardar Curso
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </Modal>
       </View>
     </TouchableWithoutFeedback>
   );
