@@ -58,7 +58,25 @@ import RegistroAsesor from "./components/asesores/RegistroAsesor";
 const Tab = createMaterialTopTabNavigator(); //Aqui se esta creando el componente
 const Drawer = createDrawerNavigator();
 
-export default function App() {
+function AuthFlow() {
+  const { session, loading } = useAuthContext();
+
+  // Mientras se verifica la sesión, mostramos un indicador de carga
+  if (loading) {
+    return (
+      <View className="flex-1 justify-center items-center bg-[#3d18c3]">
+        <ActivityIndicator size="large" color="#ffffff" />
+      </View>
+    );
+  }
+
+  // Si no hay sesión, mostramos el login. Si hay, la app principal.
+  return session ? <AppScreens /> : <LoginScreen />;
+}
+
+export default AuthFlow;
+
+function AppScreens() {
   return (
     <SafeAreaProvider>
       <LinearGradient
@@ -213,7 +231,7 @@ function AppHeader({ navigation, route }) {
   const routeTitles = {
     Inicio: "Panel Principal",
     Estudiantes: "Lista de Estudiantes",
-    Asesores: "Panel Administrativo",
+    Asesores: "Asesores",
     Pagos: "Comprobantes de Pago",
     Finanzas: "Reportes de Pagos",
     Calendario: "Calendario",
@@ -316,110 +334,203 @@ const ScreenInicio = () => {
 };
 
 const ScreenEstudiantes = () => {
-  const tableDataEstudiantes = [
-    [
-      1,
-      "Juan Pérez",
-      "Curso de React Native",
-      "$500",
-      "10",
-      "Grupo A",
-      "$1500",
-    ],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-    [2, "María López", "Asesoría Personal", "$0", "5", "Grupo B", "$2000"],
-  ];
+  const [estudiantes, setEstudiantes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isRefetching, setIsRefetching] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const handleRefresh = async () => {
+    if (isRefetching || loading) return;
+    setIsRefetching(true);
+    const { data, error } = await supabase
+      .from("estudiantes")
+      .select("*")
+      .order("id_estudiante", { ascending: false });
+    if (!error && data) setEstudiantes(data);
+    setTimeout(() => setIsRefetching(false), 300);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchEstudiantes = async () => {
+        if (estudiantes.length > 0) setIsRefetching(true);
+        else setLoading(true);
+
+        const { data, error } = await supabase
+          .from("estudiantes")
+          .select("*")
+          .order("id_estudiante", { ascending: false });
+
+        if (!error && data) setEstudiantes(data);
+        setLoading(false);
+        setIsRefetching(false);
+      };
+      fetchEstudiantes();
+    }, [])
+  );
+
+  const handleDelete = (id) => {
+    Alert.alert(
+      "Confirmar eliminación",
+      "¿Estás seguro de que quieres eliminar este estudiante?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            const { error } = await supabase
+              .from("estudiantes")
+              .delete()
+              .eq("id_estudiante", id);
+            if (error) Alert.alert("Error", "No se pudo eliminar el estudiante.");
+            else handleRefresh();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleEdit = (estudiante) => {
+    console.log("Editando estudiante:", estudiante);
+    // Aquí iría la lógica para mostrar el formulario de edición
+  };
+
+  const handleAdd = () => {
+    console.log("Agregando nuevo estudiante");
+    // Aquí iría la lógica para mostrar el formulario de registro
+  };
+
   return (
-    <View
-      id="screen-estudiantes"
-      className={`flex-1 bg-slate-50 justify-center items-center vertical:px-2`}
+    <View className="flex-1 bg-slate-50">
+      {loading ? (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#6F09EA" />
+        </View>
+      ) : (
+        <>
+          <View className="flex-row items-center justify-between p-4">
+            <View className="flex-row items-center bg-white border border-slate-300 rounded-full px-3 py-1 shadow-sm">
+              <Svg height="20" viewBox="0 -960 960 960" width="20" fill="#9ca3af">
+                <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
+              </Svg>
+              <TextInput
+                placeholder="Buscar estudiante..."
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+                className="ml-2 text-base"
+              />
+            </View>
+            <TouchableOpacity
+              onPress={handleAdd}
+              className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
+            >
+              <Svg height="18" viewBox="0 -960 960 960" width="18" fill="#ffffff">
+                <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+              </Svg>
+              <Text className="text-white font-bold ml-2">Agregar Estudiante</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TablaEstudiantes
+            data={estudiantes}
+            query={searchTerm}
+            isRefetching={isRefetching}
+            onRefresh={handleRefresh}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+          />
+        </>
+      )}
+    </View>
+  );
+};
+
+const TablaEstudiantes = ({ data, query, isRefetching, onRefresh, onEdit, onDelete }) => {
+  const [sortKey, setSortKey] = useState("nombre_estudiante");
+  const [sortDir, setSortDir] = useState("asc");
+
+  const currencyFormatter = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const arr = data.filter((r) => {
+      if (!q) return true;
+      return (
+        String(r.nombre_estudiante).toLowerCase().includes(q) ||
+        String(r.curso_asignado).toLowerCase().includes(q) ||
+        String(r.grupo).toLowerCase().includes(q)
+      );
+    });
+    const sorted = [...arr].sort((a, b) => {
+      let va = a[sortKey] ?? "";
+      let vb = b[sortKey] ?? "";
+      if (typeof va === "string") va = va.toLowerCase();
+      if (typeof vb === "string") vb = vb.toLowerCase();
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [data, query, sortKey, sortDir]);
+
+  const SortHeader = ({ label, k, flex = 1, center }) => (
+    <Pressable
+      onPress={() => {
+        if (!k) return;
+        setSortKey(k);
+        setSortDir((d) => (sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"));
+      }}
+      className="py-3 px-3"
+      style={{ flex, alignItems: center ? "center" : "flex-start" }}
+      android_ripple={{ color: "rgba(0,0,0,0.05)" }}
     >
-      <View className={`mt-4`}>
-        <ScrollView horizontal>
-          <Table style={{ borderRadius: 10 }}>
-            <Row
-              data={[
-                "#",
-                "Nombre del cliente",
-                "Curso/Asesoría",
-                "Pendiente",
-                "Sesiones",
-                "Grupo",
-                "Ingreso",
-              ]}
-              height={40}
-              widthArr={[100, 150, 200, 120, 100, 100, 120]}
-              className="flex items-center justify-center"
-              textStyle={{
-                textAlign: "center", // Estilo para el texto de la cabecera
-                fontWeight: "bold",
-              }}
-              style={{
-                backgroundColor: "#eef2f5",
-                borderWidth: 1,
-                borderColor: "#e2e4e8",
-                borderTopLeftRadius: 10,
-                borderTopRightRadius: 10,
-              }}
-            />
-            <ScrollView horizontal={false} nestedScrollEnabled={true}>
-              {tableDataEstudiantes.map((rowData, index) => (
-                <TableWrapper
-                  key={index}
-                  style={{
-                    flexDirection: "row",
-                    borderWidth: 1,
-                    borderColor: "#e2e4e8",
-                    paddingVertical: 10,
-                  }}
-                >
-                  <Cell
-                    data={index + 1}
-                    width={100}
-                    textStyle={styles.tableText}
-                  />
-                  <Cell
-                    style={{ textAlign: "start" }}
-                    data={rowData[1]}
-                    width={150}
-                    textStyle={styles.tableText}
-                  />
-                  <Cell
-                    data={rowData[2]}
-                    width={200}
-                    textStyle={styles.tableText}
-                  />
-                  <Cell
-                    data={rowData[3]}
-                    width={120}
-                    textStyle={styles.tableText}
-                  />
-                  <Cell
-                    data={rowData[4]}
-                    width={100}
-                    textStyle={styles.tableText}
-                  />
-                  <Cell
-                    data={rowData[5]}
-                    width={100}
-                    textStyle={styles.tableText}
-                  />
-                  <Cell
-                    data={rowData[6]}
-                    width={120}
-                    textStyle={styles.tableText}
-                  />
-                </TableWrapper>
-              ))}
-            </ScrollView>
-          </Table>
-        </ScrollView>
+      <View className="flex-row items-center gap-1">
+        <Text className="text-slate-800 font-semibold text-xs sm:text-sm uppercase tracking-wide">{label}</Text>
+        {sortKey === k && (
+          <Svg width={12} height={12} viewBox="0 -960 960 960" fill="#334155">
+            {sortDir === "asc" ? <Path d="M480-680 240-440h480L480-680Z" /> : <Path d="M240-520h480L480-280 240-520Z" />}
+          </Svg>
+        )}
       </View>
+    </Pressable>
+  );
+
+  return (
+    <View className="px-2 flex-1">
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor="#6F09EA" />}>
+        <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+          <View className="bg-slate-100 border-b border-slate-200 flex-row">
+            <SortHeader label="Curso" k="curso_asignado" flex={3} />
+            <SortHeader label="Nombre" k="nombre_estudiante" flex={3} />
+            <SortHeader label="Pendiente" k="monto_pendiente" flex={2} center />
+            <SortHeader label="Grupo" k="grupo" flex={1.5} center />
+            <SortHeader label="Acciones" k={null} flex={1.5} center />
+          </View>
+          {filtered.map((estudiante, index) => (
+            <View key={estudiante.id_estudiante} className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}>
+              <Text style={{ flex: 3 }} className="p-3 text-slate-700" numberOfLines={1}>{estudiante.curso_asignado}</Text>
+              <Text style={{ flex: 3 }} className="p-3 text-slate-800" numberOfLines={1}>{estudiante.nombre_estudiante}</Text>
+              <Text style={{ flex: 2, textAlign: 'center' }} className="p-3 text-slate-700 font-medium">{currencyFormatter.format(estudiante.monto_pendiente || 0)}</Text>
+              <Text style={{ flex: 1.5, textAlign: 'center' }} className="p-3 text-slate-700">{estudiante.grupo}</Text>
+              <View style={{ flex: 1.5 }} className="p-3 flex-row justify-center items-center gap-x-4">
+                <TouchableOpacity onPress={() => onEdit(estudiante)}>
+                  <Svg height="22" viewBox="0 -960 960 960" width="22" fill="#3b82f6"><Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" /></Svg>
+                </TouchableOpacity>
+                {/* El botón de borrar se reemplaza por el de reimprimir ticket */}
+                <TouchableOpacity onPress={() => onReprint(estudiante.id_estudiante)}>
+                  <Svg height="22" viewBox="0 -960 960 960" width="22" fill="#475569"><Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z" /></Svg>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+      {isRefetching && (
+        <View style={StyleSheet.absoluteFill} className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl">
+          <ActivityIndicator size="large" color="#6F09EA" />
+        </View>
+      )}
     </View>
   );
 };
@@ -450,21 +561,19 @@ const ScreenAsesores = () => {
   useFocusEffect(
     useCallback(() => {
       const fetchAsesores = async () => {
-        setLoading(true);
+        // Si ya hay datos, mostramos el indicador de "refetching", si no, el de carga inicial
+        if (asesores.length > 0) {
+          setIsRefetching(true);
+        } else {
+          setLoading(true);
+        }
         const { data, error } = await supabase
           .from("asesores")
           .select("*")
           .order("id_asesor", { ascending: false });
-        if (!error && data) {
-          setAsesores(data);
-          // Si no hay asesores, mostramos el formulario directamente
-          if (data.length === 0) {
-            setViewMode("form");
-          } else {
-            setViewMode("list");
-          }
-        }
+        if (!error && data) setAsesores(data);
         setLoading(false);
+        setIsRefetching(false);
       };
       fetchAsesores();
     }, [])
@@ -581,9 +690,12 @@ const TablaAsesores = ({
   onEdit,
   onDelete,
 }) => {
+  const [sortKey, setSortKey] = useState("nombre_asesor");
+  const [sortDir, setSortDir] = useState("asc");
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return data.filter((r) => {
+    const arr = data.filter((r) => {
       if (!q) return true;
       return (
         String(r.nombre_asesor).toLowerCase().includes(q) ||
@@ -591,75 +703,111 @@ const TablaAsesores = ({
         String(r.telefono_asesor).toLowerCase().includes(q)
       );
     });
-  }, [data, query]);
+    const sorted = [...arr].sort((a, b) => {
+      let va = a[sortKey] ?? "";
+      let vb = b[sortKey] ?? "";
+      if (typeof va === "string") va = va.toLowerCase();
+      if (typeof vb === "string") vb = vb.toLowerCase();
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [data, query, sortKey, sortDir]);
+
+  const SortHeader = ({ label, k, flex = 1, center }) => (
+    <Pressable
+      onPress={() => {
+        if (!k) return;
+        setSortKey(k);
+        setSortDir((d) =>
+          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"
+        );
+      }}
+      className="py-3 px-3"
+      style={{ flex, alignItems: center ? "center" : "flex-start" }}
+      android_ripple={{ color: "rgba(0,0,0,0.05)" }}
+    >
+      <View className="flex-row items-center gap-1">
+        <Text className="text-slate-800 font-semibold text-xs sm:text-sm uppercase tracking-wide">
+          {label}
+        </Text>
+        {sortKey === k && (
+          <Svg width={12} height={12} viewBox="0 -960 960 960" fill="#334155">
+            {sortDir === "asc" ? (
+              <Path d="M480-680 240-440h480L480-680Z" />
+            ) : (
+              <Path d="M240-520h480L480-280 240-520Z" />
+            )}
+          </Svg>
+        )}
+      </View>
+    </Pressable>
+  );
 
   return (
-    <ScrollView
-      className="px-2"
-      refreshControl={
-        <RefreshControl
-          refreshing={isRefetching}
-          onRefresh={onRefresh}
-          tintColor="#6F09EA"
-        />
-      }
-    >
-      <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
-        {/* Encabezados */}
-        <View className="bg-slate-100 border-b border-slate-200 flex-row">
-          <Text className="p-3 font-bold text-slate-600 w-1/4">Nombre</Text>
-          <Text className="p-3 font-bold text-slate-600 w-1/4">Correo</Text>
-          <Text className="p-3 font-bold text-slate-600 w-1/4">Teléfono</Text>
-          <Text className="p-3 font-bold text-slate-600 w-1/4 text-center">
-            Acciones
-          </Text>
-        </View>
-        {/* Filas */}
-        {filtered.map((asesor, index) => (
-          <View
-            key={asesor.id_asesor}
-            className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
-          >
-            <Text className="p-3 text-slate-800 w-1/4" numberOfLines={1}>
-              {asesor.nombre_asesor}
-            </Text>
-            <Text className="p-3 text-slate-700 w-1/4" numberOfLines={1}>
-              {asesor.correo_asesor}
-            </Text>
-            <Text className="p-3 text-slate-700 w-1/4">
-              {asesor.telefono_asesor}
-            </Text>
-            <View className="p-3 w-1/4 flex-row justify-center items-center gap-x-6">
-              <TouchableOpacity onPress={() => onEdit(asesor)}>
-                <Svg
-                  height="22"
-                  viewBox="0 -960 960 960"
-                  width="22"
-                  fill="#3b82f6"
-                >
-                  <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                </Svg>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => onDelete(asesor.id_asesor)}>
-                <Svg
-                  height="22"
-                  viewBox="0 -960 960 960"
-                  width="22"
-                  fill="#ef4444"
-                >
-                  <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
-                </Svg>
-              </TouchableOpacity>
-            </View>
+    <View className="px-2 flex-1">
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={onRefresh}
+            tintColor="#6F09EA"
+          />
+        }
+      >
+        <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+          {/* Encabezados */}
+          <View className="bg-slate-100 border-b border-slate-200 flex-row">
+            <SortHeader label="Nombre" k="nombre_asesor" flex={3} />
+            <SortHeader label="Correo" k="correo_asesor" flex={5} />
+            <SortHeader label="Teléfono" k="telefono_asesor" flex={2} />
+            <SortHeader label="Acciones" k={null} flex={1.3} center />
           </View>
-        ))}
-      </View>
-    </ScrollView>
+          {/* Filas */}
+          {filtered.map((asesor, index) => (
+            <View
+              key={asesor.id_asesor}
+              className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
+            >
+              <Text style={{ flex: 3 }} className="p-3 text-slate-800" numberOfLines={1}>
+                {asesor.nombre_asesor}
+              </Text>
+              <Text style={{ flex: 5 }} className="p-3 text-slate-700" numberOfLines={1}>
+                {asesor.correo_asesor}
+              </Text>
+              <Text style={{ flex: 2 }} className="p-3 text-slate-700">
+                {asesor.telefono_asesor}
+              </Text>
+              <View style={{ flex: 1.3 }} className="p-3 flex-row justify-around items-center gap-x-6">
+                <TouchableOpacity onPress={() => onEdit(asesor)}>
+                  <Svg height="22" viewBox="0 -960 960 960" width="22" fill="#3b82f6">
+                    <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                  </Svg>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => onDelete(asesor.id_asesor)}>
+                  <Svg height="22" viewBox="0 -960 960 960" width="22" fill="#ef4444">
+                    <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                  </Svg>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+      {isRefetching && (
+        <View style={StyleSheet.absoluteFill} className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl">
+          <ActivityIndicator size="large" color="#6F09EA" />
+        </View>
+      )}
+    </View>
   );
 };
 
-const ScreenPagos = () => {
+const ScreenPagos = ({ navigation }) => {
   const [copiado, setCopiado] = useState(false); //Esta es la funcion que necesito modificar
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const copiarDatos = async (e) => {
     await Clipboard.setStringAsync(e);
@@ -670,6 +818,19 @@ const ScreenPagos = () => {
   };
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useFocusEffect(
+    useCallback(() => {
+      // Resetea el estado de carga cuando la pantalla vuelve a tener foco
+      setIsRedirecting(false);
+    }, [])
+  );
+
+  const handleRedirectToVentas = () => {
+    setIsRedirecting(true);
+    // Pequeño delay para que el usuario vea el modal de carga
+    setTimeout(() => navigation.navigate("Inicio", { screen: "Venta" }), 500);
+  };
 
   const datosBancarios = {
     banco: "Bancoppel",
@@ -810,9 +971,12 @@ const ScreenPagos = () => {
                   </Text>
                 </View>
                 <View className={`self-center`}>
-                  <Ripple className={`bg-blue-500 p-2 rounded`}>
+                  <Ripple
+                    className={`bg-blue-500 p-2 rounded mt-2`}
+                    onPress={handleRedirectToVentas}
+                  >
                     <Text className={`text-center text-white`}>
-                      Ir a la seccion de registro
+                      Registrar venta
                     </Text>
                   </Ripple>
                 </View>
@@ -831,6 +995,17 @@ const ScreenPagos = () => {
             >
               <Text className={`text-white/80`}>Copiado correctamente</Text>
             </Animated.View>
+
+            <Modal transparent visible={isRedirecting} animationType="fade">
+              <View className="flex-1 justify-center items-center bg-black/60">
+                <View className="bg-white rounded-lg p-6 flex-row items-center gap-x-4">
+                  <ActivityIndicator size="small" color="#6F09EA" />
+                  <Text className="text-slate-700 font-medium">
+                    Cargando...
+                  </Text>
+                </View>
+              </View>
+            </Modal>
           </View>
         )}
       </Tab.Screen>
@@ -1779,7 +1954,7 @@ const TablaCursos = ({
   return (
     <View className={`px-2 pb-4 relative flex-1`}>
       <View
-        className={`rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm ${Platform.OS=="web" ? "flex-1": ""}`}
+        className={`rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm ${Platform.OS == "web" ? "flex-1" : ""}`}
         style={{ opacity: isRefetching ? 0.5 : 1 }}
       >
         <ScrollView
@@ -1796,7 +1971,7 @@ const TablaCursos = ({
             <SortHeader label="#" k="id_curso" flex={0.1} center />
             <SortHeader label="Nombre" k="nombre_curso" flex={1} />
             <SortHeader label="Precio" k="costo_curso" flex={0.3} />
-            <SortHeader label="Acciones" k="Acciones" flex={0.2} />
+            <SortHeader label="Acciones" k="Acciones" flex={0.2} center />
           </View>
 
           {filtered.map((r, id_curso) => (
@@ -1823,7 +1998,7 @@ const TablaCursos = ({
                 style={{ flex: 0.2 }}
                 className="py-3 px-3"
               >
-                <View className="flex flex-row items-center justify-between">
+                <View className="flex flex-row items-center justify-around">
                   <TouchableOpacity onPress={() => onEdit(r)}>
                     <Svg
                       height="22"
@@ -2272,58 +2447,46 @@ const ScreenCursos = () => {
 };
 
 const SeccionVentas = () => {
-  const [query, setQuery] = useState("");
-  const [sortKey, setSortKey] = useState("id");
-  const [sortDir, setSortDir] = useState("desc");
+  const [estudiantesConAdeudo, setEstudiantesConAdeudo] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isRefetching, setIsRefetching] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const data = useMemo(
-    () => [
-      {
-        id: 1,
-        cliente: "Juan Pérez",
-        concepto: "Curso de React Native",
-        pendiente: 500,
-        sesiones: 10,
-        grupo: "Grupo A",
-        ingreso: 1500,
-      },
-      {
-        id: 2,
-        cliente: "María López",
-        concepto: "Asesoría Personal",
-        pendiente: 0,
-        sesiones: 5,
-        grupo: "Grupo B",
-        ingreso: 2000,
-      },
-    ],
-    []
+  const handleGenerateSale = () => {
+    // Lógica para generar una nueva venta
+    console.log("Generando nueva venta...");
+  };
+
+  const fetchEstudiantesConAdeudo = async () => {
+    const { data, error } = await supabase
+      .from("estudiantes")
+      .select("*")
+      .gt("monto_pendiente", 0) // gt = greater than
+      .order("monto_pendiente", { ascending: false });
+
+    if (!error && data) setEstudiantesConAdeudo(data);
+    setLoading(false);
+    setIsRefetching(false);
+  };
+
+  const handleRefresh = async () => {
+    if (isRefetching || loading) return;
+    setIsRefetching(true);
+    await fetchEstudiantesConAdeudo();
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (estudiantesConAdeudo.length > 0) setIsRefetching(true);
+      else setLoading(true);
+      fetchEstudiantesConAdeudo();
+    }, [])
   );
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const arr = data.filter(
-      (r) =>
-        !q ||
-        r.cliente.toLowerCase().includes(q) ||
-        r.concepto.toLowerCase().includes(q) ||
-        r.grupo.toLowerCase().includes(q)
-    );
-    const sorted = [...arr].sort((a, b) => {
-      let va = a[sortKey];
-      let vb = b[sortKey];
-      if (typeof va === "string") va = va.toLowerCase();
-      if (typeof vb === "string") vb = vb.toLowerCase();
-      if (va < vb) return sortDir === "asc" ? -1 : 1;
-      if (va > vb) return sortDir === "asc" ? 1 : -1;
-      return 0;
-    });
-    return sorted;
-  }, [data, query, sortKey, sortDir]);
 
   const SortHeader = ({ label, k, flex = 1, center }) => (
     <Pressable
       onPress={() => {
+        if (!k) return;
         setSortKey(k);
         setSortDir((d) =>
           sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"
@@ -2337,139 +2500,55 @@ const SeccionVentas = () => {
         <Text className="text-slate-800 font-semibold text-xs sm:text-sm uppercase tracking-wide">
           {label}
         </Text>
-        {sortKey === k && (
-          <Svg width={12} height={12} viewBox="0 -960 960 960" fill="#334155">
-            {sortDir === "asc" ? (
-              <Path d="M480-680 240-440h480L480-680Z" />
-            ) : (
-              <Path d="M240-520h480L480-280 240-520Z" />
-            )}
-          </Svg>
-        )}
       </View>
-    </Pressable>
-  );
-
-  const ActionButton = ({ color = "#66b5ff", text, icon }) => (
-    <Pressable
-      className="rounded-xl px-3 py-2.5 flex-row items-center gap-2"
-      style={{ backgroundColor: color, elevation: 5 }}
-      android_ripple={{ color: "rgba(0,0,0,0.08)" }}
-      hitSlop={8}
-    >
-      <Text className="text-[#0b0f19] font-semibold">{text}</Text>
-      {icon}
     </Pressable>
   );
 
   return (
     <View className="flex-1 bg-slate-50">
-      <View className="w-full flex-row flex-wrap items-center justify-between gap-2 p-2">
-        <View className="flex-row items-center gap-2">
-          <ActionButton
-            text="Generar venta"
-            icon={
-              <Svg
-                width={20}
-                height={20}
-                viewBox="0 -960 960 960"
-                fill="#0b0f19"
-              >
-                <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
-              </Svg>
-            }
-          />
-          <ActionButton
-            color="#facc15"
-            text="Reimprimir ticket"
-            icon={
-              <Svg
-                width={20}
-                height={20}
-                viewBox="0 -960 960 960"
-                fill="#0b0f19"
-              >
-                <Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z" />
-              </Svg>
-            }
-          />
+      {loading ? (
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#6F09EA" />
         </View>
-        <View className="flex-row items-center gap-2">
-          <View className="flex-row items-center bg-white border border-slate-200 rounded-xl px-3 py-2">
-            <Svg width={18} height={18} viewBox="0 -960 960 960" fill="#64748b">
-              <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
-            </Svg>
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Buscar"
-              placeholderTextColor="#94a3b8"
-              className="min-w-[160px] sm:min-w-[240px] ml-2 text-slate-800"
-            />
-          </View>
-        </View>
-      </View>
-
-      <View className="px-2 pb-4">
-        <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
-          <ScrollView stickyHeaderIndices={[0]}>
-            <View className="bg-slate-100 border-b border-slate-200 flex-row">
-              <SortHeader label="#" k="id" flex={0.8} center />
-              <SortHeader label="Cliente" k="cliente" flex={2} />
-              <SortHeader label="Curso/Asesoría" k="concepto" flex={2} />
-              <SortHeader label="Pendiente" k="pendiente" flex={1} center />
-              <SortHeader label="Sesiones" k="sesiones" flex={1} center />
-              <SortHeader label="Grupo" k="grupo" flex={1.2} center />
-              <SortHeader label="Ingreso" k="ingreso" flex={1.2} center />
+      ) : (
+        <>
+          <View className="flex-row items-center justify-between p-4">
+            <View className="flex-row items-center bg-white border border-slate-300 rounded-full px-3 py-1 shadow-sm">
+              <Svg height="20" viewBox="0 -960 960 960" width="20" fill="#9ca3af">
+                <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
+              </Svg>
+              <TextInput
+                placeholder="Buscar por nombre, curso..."
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+                className="ml-2 text-base"
+              />
             </View>
-
-            {filtered.map((r, idx) => (
-              <Pressable
-                key={r.id}
-                className={`flex-row items-center ${idx % 2 ? "bg-white" : "bg-slate-50"}`}
-                android_ripple={{ color: "rgba(0,0,0,0.04)" }}
+            <View>
+              <TouchableOpacity
+                onPress={handleGenerateSale}
+                className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
               >
-                <View style={{ flex: 0.8 }} className="py-3 px-3 items-center">
-                  <Text className="text-slate-700">{r.id}</Text>
-                </View>
-                <View style={{ flex: 2 }} className="py-3 px-3">
-                  <Text
-                    numberOfLines={1}
-                    className="text-slate-800 font-medium"
-                  >
-                    {r.cliente}
-                  </Text>
-                </View>
-                <View style={{ flex: 2 }} className="py-3 px-3">
-                  <Text numberOfLines={1} className="text-slate-700">
-                    {r.concepto}
-                  </Text>
-                </View>
-                <View style={{ flex: 1 }} className="py-3 px-3 items-center">
-                  <Text
-                    className={`${r.pendiente > 0 ? "text-amber-700" : "text-emerald-700"} font-medium`}
-                  >
-                    {r.pendiente > 0 ? `$${r.pendiente}` : "$0"}
-                  </Text>
-                </View>
-                <View style={{ flex: 1 }} className="py-3 px-3 items-center">
-                  <Text className="text-slate-700">{r.sesiones}</Text>
-                </View>
-                <View style={{ flex: 1.2 }} className="py-3 px-3 items-center">
-                  <Text className="text-slate-700" numberOfLines={1}>
-                    {r.grupo}
-                  </Text>
-                </View>
-                <View style={{ flex: 1.2 }} className="py-3 px-3 items-center">
-                  <Text className="text-slate-900 font-semibold">
-                    ${r.ingreso}
-                  </Text>
-                </View>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-      </View>
+                <Svg height="18" viewBox="0 -960 960 960" width="18" fill="#ffffff">
+                  <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+                </Svg>
+                <Text className="text-white font-bold ml-2">Generar Venta</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <TablaEstudiantes
+            data={estudiantesConAdeudo}
+            query={searchTerm}
+            isRefetching={isRefetching}
+            onRefresh={handleRefresh}
+            onEdit={(est) => console.log("Edit", est)}
+            onReprint={(id) => console.log("Reprinting ticket for", id)}
+            // La función de borrar no es necesaria en esta tabla, la pasamos como nula
+            onDelete={null}
+          />
+        </>
+      )}
     </View>
   );
 };
@@ -2559,24 +2638,44 @@ const SeccionReportes = () => {
 };
 
 const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
-  const { width } = Dimensions.get("window");
-
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [catalogoLayout, setCatalogoLayout] = useState(null);
+  const [tarifarioLayout, setTarifarioLayout] = useState(null);
   const lastTapTimeRef = useRef(null);
 
-  const handleTap = () => {
-    const now = new Date().getTime();
-    const DOUBLE_TAP_DELAY = 300; // Adjust as needed for your use case (in milliseconds)
-
-    if (now - lastTapTimeRef.current < DOUBLE_TAP_DELAY) {
-      // Double tap detected
-      console.log(catalogos ? "Catálogo" : "Tarifario");
-      setCatalogos(!catalogos);
-      // Perform 'like' action here
+  const handleDoubleTap = () => {
+    const now = Date.now();
+    const DOUBLE_PRESS_DELAY = 300; // ms
+    if (lastTapTimeRef.current && now - lastTapTimeRef.current < DOUBLE_PRESS_DELAY) {
+      // Doble toque detectado
+      setCatalogos(prev => !prev);
     } else {
-      ("");
+      lastTapTimeRef.current = now;
     }
-    lastTapTimeRef.current = now;
   };
+
+  useEffect(() => {
+    if (catalogoLayout && tarifarioLayout) {
+      const targetLayout = catalogos ? tarifarioLayout : catalogoLayout;
+      // El ancho base es el del primer botón (Catálogo)
+      const baseWidth = catalogoLayout.width;
+      // El factor de escala es el ancho del botón destino dividido por el ancho base
+      const scaleFactor = targetLayout.width / baseWidth;
+
+      Animated.spring(slideAnim, {
+        toValue: targetLayout.x,
+        useNativeDriver: true, // Volvemos a usar el driver nativo para fluidez
+        bounciness: 4,
+      }).start();
+
+      Animated.spring(scaleAnim, {
+        toValue: scaleFactor,
+        useNativeDriver: true,
+        bounciness: 8,
+      }).start();
+    }
+  }, [catalogos, catalogoLayout, tarifarioLayout]);
 
   const catalogoImages = [
     require("./assets/Catalogo/Catalogo-01.png"),
@@ -2607,52 +2706,50 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
 
   const imagesToShow = catalogos ? tarifarioImages : catalogoImages;
 
-  // const imagesToShow = catalogos ? tarifarioImages : catalogoImages;
-
   return (
     <View className={`flex-1 bg-slate-50`}>
       <View className={`items-center flex-row justify-center p-2`}>
-        <View
-          className={`p-2 justify-center items-center flex-row bg-gray-300 rounded gap-x-2`}
-        >
-          <View className={``}>
-            <Ripple
-              style={{ elevation: catalogos ? 0 : 5 }}
-              rippleContainerBorderRadius={5}
-              className={`self-start p-2 justify-center items-center rounded ${catalogos ? "" : "bg-white"}`}
-              onPress={() => setCatalogos(false)}
-            >
-              <Text className={`uppercase font-semibold`}>Catálogo</Text>
-              <Svg
-                xmlns="http://www.w3.org/2000/svg"
-                height="24px"
-                viewBox="0 -960 960 960"
-                width="24px"
-                fill="#010101"
-              >
-                <Path d="M560-564v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-600q-38 0-73 9.5T560-564Zm0 220v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-380q-38 0-73 9t-67 27Zm0-110v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-490q-38 0-73 9.5T560-454ZM260-320q47 0 91.5 10.5T440-278v-394q-41-24-87-36t-93-12q-36 0-71.5 7T120-692v396q35-12 69.5-18t70.5-6Zm260 42q44-21 88.5-31.5T700-320q36 0 70.5 6t69.5 18v-396q-33-14-68.5-21t-71.5-7q-47 0-93 12t-87 36v394Zm-40 118q-48-38-104-59t-116-21q-42 0-82.5 11T100-198q-21 11-40.5-1T40-234v-482q0-11 5.5-21T62-752q46-24 96-36t102-12q58 0 113.5 15T480-740q51-30 106.5-45T700-800q52 0 102 12t96 36q11 5 16.5 15t5.5 21v482q0 23-19.5 35t-40.5 1q-37-20-77.5-31T700-240q-60 0-116 21t-104 59ZM280-494Z" />
-              </Svg>
-            </Ripple>
-          </View>
-          <View>
-            <Ripple
-              style={{ elevation: catalogos ? 5 : 0 }}
-              rippleContainerBorderRadius={5}
-              className={`self-start p-2 justify-center items-center rounded ${catalogos ? "bg-white" : ""}`}
-              onPress={() => setCatalogos(true)}
-            >
-              <Text className={`uppercase font-semibold`}>Tarifario</Text>
-              <Svg
-                xmlns="http://www.w3.org/2000/svg"
-                height="24px"
-                viewBox="0 -960 960 960"
-                width="24px"
-                fill="#010101"
-              >
-                <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
-              </Svg>
-            </Ripple>
-          </View>
+        <View className={`p-1 justify-center items-center flex-row relative bg-gray-300 rounded-lg gap-x-2`}>
+          {catalogoLayout && tarifarioLayout && (
+            <Animated.View
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 3.2,
+                width: catalogoLayout?.width || 0, // Ancho base
+                height: "100%",
+                backgroundColor: "white",
+                borderRadius: 5,
+                elevation: 3,
+                shadowColor: "#000",
+                shadowOpacity: 0.1,
+                shadowRadius: 5,
+                shadowOffset: { width: 0, height: 2 },
+                transform: [{ translateX: slideAnim }, { scaleX: scaleAnim }],
+                transformOrigin: "left", // Asegura que la escala se aplique desde la izquierda
+              }}
+            />
+          )}
+          <Pressable
+            onLayout={(e) => setCatalogoLayout(e.nativeEvent.layout)}
+            className={`p-2 justify-center items-center rounded`}
+            onPress={() => setCatalogos(false)}
+          >
+            <Text className={`uppercase font-semibold ${!catalogos ? 'text-slate-800' : 'text-slate-600'}`}>Catálogo</Text>
+            <Svg height="24px" viewBox="0 -960 960 960" width="24px" fill={!catalogos ? '#010101' : '#64748b'}>
+              <Path d="M560-564v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-600q-38 0-73 9.5T560-564Zm0 220v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-380q-38 0-73 9t-67 27Zm0-110v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-490q-38 0-73 9.5T560-454ZM260-320q47 0 91.5 10.5T440-278v-394q-41-24-87-36t-93-12q-36 0-71.5 7T120-692v396q35-12 69.5-18t70.5-6Zm260 42q44-21 88.5-31.5T700-320q36 0 70.5 6t69.5 18v-396q-33-14-68.5-21t-71.5-7q-47 0-93 12t-87 36v394Zm-40 118q-48-38-104-59t-116-21q-42 0-82.5 11T100-198q-21 11-40.5-1T40-234v-482q0-11 5.5-21T62-752q46-24 96-36t102-12q58 0 113.5 15T480-740q51-30 106.5-45T700-800q52 0 102 12t96 36q11 5 16.5 15t5.5 21v482q0 23-19.5 35t-40.5 1q-37-20-77.5-31T700-240q-60 0-116 21t-104 59ZM280-494Z" />
+            </Svg>
+          </Pressable>
+          <Pressable
+            onLayout={(e) => setTarifarioLayout(e.nativeEvent.layout)}
+            className={`p-2 justify-center items-center rounded`}
+            onPress={() => setCatalogos(true)}
+          >
+            <Text className={`uppercase font-semibold ${catalogos ? 'text-slate-800' : 'text-slate-600'}`}>Tarifario</Text>
+            <Svg height="24px" viewBox="0 -960 960 960" width="24px" fill={catalogos ? '#010101' : '#64748b'}>
+              <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
+            </Svg>
+          </Pressable>
         </View>
       </View>
 
@@ -2668,16 +2765,8 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
             name={`Página ${index + 1}`}
           >
             {() => (
-              <Pressable onPress={handleTap} style={styles.carouselContainer}>
-                <Image
-                  className={`bg-slate-50`}
-                  source={imageSource}
-                  style={{
-                    width: width,
-                    height: "100%",
-                  }}
-                  resizeMode="contain"
-                />
+              <Pressable onPress={handleDoubleTap} style={styles.carouselContainer}>
+                <Image source={imageSource} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
               </Pressable>
             )}
           </Tab.Screen>

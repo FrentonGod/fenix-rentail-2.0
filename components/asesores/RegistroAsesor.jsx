@@ -1,4 +1,10 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, {
+  useMemo,
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import {
   View,
   Text,
@@ -19,6 +25,7 @@ import Svg, { Path } from "react-native-svg";
 // Input compacto con label y error inline
 function LabeledInput({
   label,
+  customLabel, // Nuevo prop para un label personalizado
   value,
   onChangeText,
   placeholder,
@@ -29,13 +36,18 @@ function LabeledInput({
   error,
   autoCorrect,
   textContentType,
+  disabled, // Añadido para controlar la editabilidad
   ...rest
 }) {
   return (
     <View className="w-full">
-      <Text className="text-slate-700 text-xs font-semibold mb-1 uppercase tracking-wide">
-        {label}
-      </Text>
+      {customLabel ? (
+        customLabel
+      ) : (
+        <Text className="text-slate-700 text-xs font-semibold mb-1 uppercase tracking-wide">
+          {label}
+        </Text>
+      )}
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -47,7 +59,8 @@ function LabeledInput({
         secureTextEntry={secureTextEntry}
         textContentType={textContentType}
         placeholderTextColor="#9ca3af"
-        className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white"
+        className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 ${disabled ? "bg-slate-100 opacity-60" : "bg-white"}`}
+        editable={!disabled} // Controla si el TextInput es editable
         {...rest}
       />
       {!!error && <Text className="text-red-600 text-xs mt-1">{error}</Text>}
@@ -88,12 +101,23 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
   };
 
   const [form, setForm] = useState(initialFormState);
+  const [editableFields, setEditableFields] = useState({}); // Estado para controlar qué campos son editables
 
   useEffect(() => {
     // Si recibimos un asesor para editar, llenamos el formulario
     if (asesorToEdit) {
       setForm({ ...initialFormState, ...asesorToEdit });
+      // Inicializar todos los campos como no editables en modo edición
+      const initialEditableState = Object.keys(initialFormState).reduce(
+        (acc, key) => {
+          acc[key] = false;
+          return acc;
+        },
+        {}
+      );
+      setEditableFields(initialEditableState);
     }
+    // Si no hay asesorToEdit, el formulario está vacío y todos los campos son editables por defecto (o no controlados por editableFields)
   }, [asesorToEdit]);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ type: "", msg: "" });
@@ -112,6 +136,56 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
   const activeInputRef = useRef(null);
 
   const set = (key) => (value) => setForm((f) => ({ ...f, [key]: value }));
+
+  // Helper para renderizar el label con el botón de editar
+  const renderLabelWithEditButton = useCallback(
+    ({ labelText, fieldKey }) => {
+      return (
+        <View className="flex-row items-center mb-1">
+          <View className="flex-row items-center gap-x-2">
+            <Text className="text-slate-700 text-xs font-semibold uppercase tracking-wide">
+              {labelText}
+            </Text>
+          </View>
+          {asesorToEdit && ( // Solo mostrar el botón de editar en modo edición
+            <TouchableOpacity
+              onPress={() =>
+                setEditableFields((prev) => ({
+                  ...prev,
+                  [fieldKey]: !prev[fieldKey],
+                }))
+              }
+              className="ml-2 p-1 rounded-full bg-slate-100"
+              hitSlop={8}
+            >
+              {editableFields[fieldKey] ? (
+                // Icono de Confirmar (Check)
+                <Svg
+                  height="16"
+                  viewBox="0 -960 960 960"
+                  width="16"
+                  fill="#10b981"
+                >
+                  <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+                </Svg>
+              ) : (
+                // Icono de Editar (Lápiz)
+                <Svg
+                  height="16"
+                  viewBox="0 -960 960 960"
+                  width="16"
+                  fill="#475569"
+                >
+                  <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                </Svg>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+      );
+    },
+    [asesorToEdit, editableFields]
+  ); // Dependencia para que se regenere si cambia el modo
 
   // Helpers de validación
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -159,51 +233,57 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
         v && !onlyLettersSpaces(v) ? "Usa solo letras y espacios" : "",
       genero_asesor: (v) => (!v ? "Selecciona el género" : ""),
     }),
-    []
+    [asesorToEdit] // Dependencia para que se regenere al cambiar de modo
   );
 
-  const validateField = async (key, valueOverride) => {
-    const value = valueOverride ?? form[key];
-    const fn = validators[key];
-    if (!fn) return true;
-    const msg = fn(value, form);
-    setFieldErrors((e) => ({ ...e, [key]: msg }));
-    // chequeo de duplicado para correo al salir del campo
-    if (key === "correo_asesor" && !msg) {
-      const email = String(value).trim().toLowerCase();
-      if (emailRe.test(email)) {
+  const validateField = useCallback(
+    async (key, valueOverride) => {
+      const value = valueOverride ?? form[key];
+      const fn = validators[key];
+      if (!fn) return true;
+      const msg = fn(value, form);
+      setFieldErrors((e) => ({ ...e, [key]: msg }));
+      // chequeo de duplicado para correo al salir del campo
+      if (key === "correo_asesor" && !msg && value) {
+        // Solo buscar duplicados si el correo es sintácticamente válido y no está vacío
+        const email = String(value).trim().toLowerCase();
         let query = supabase
           .from("asesores")
           .select("id_asesor", { count: "exact", head: true })
           .eq("correo_asesor", email);
-        // Si estamos editando, excluimos el ID del asesor actual de la búsqueda de duplicados
+
+        // Si estamos editando, excluimos el ID del asesor actual de la búsqueda
         if (asesorToEdit?.id_asesor) {
           query = query.not("id_asesor", "eq", asesorToEdit.id_asesor);
         }
-        const { count } = await query;
+
+        const { count, error } = await query;
+        if (error) console.error("Error checking duplicate email:", error);
+
         if ((count ?? 0) > 0) {
           setFieldErrors((e) => ({
             ...e,
-            correo_asesor: "Este correo ya está registrado",
+            correo_asesor: "Este correo ya existe",
           }));
-          return false;
+          return false; // Indica que la validación falló
         }
       }
-    }
-    return !msg;
-  };
+      return !msg;
+    },
+    [form, validators, asesorToEdit]
+  );
 
-  const validateAll = () => {
+  const validateAll = useCallback(() => {
     const errs = {};
     Object.entries(validators).forEach(([k, fn]) => {
-      const e = fn(form[k] ?? "");
+      const e = fn(form[k] ?? "", form);
       if (e) errs[k] = e;
     });
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
-  };
+  }, [form, validators]);
 
-  const onSubmit = async () => {
+  const onSubmit = useCallback(async () => {
     setToast({ type: "", msg: "" });
     if (!validateAll()) return;
     try {
@@ -269,7 +349,7 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
     } finally {
       setSaving(false);
     }
-  };
+  }, [form, asesorToEdit, onFormClose, validateAll, initialFormState]);
 
   const handleInputFocus = (event) => {
     // Guardamos una referencia al input que tiene el foco
@@ -338,7 +418,10 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
           <View className="flex-row flex-wrap gap-4">
             <View style={[styles.half, isSmall && { width: "100%" }]}>
               <LabeledInput
-                label="Nombre completo"
+                customLabel={renderLabelWithEditButton({
+                  labelText: "Nombre completo",
+                  fieldKey: "nombre_asesor",
+                })}
                 value={form.nombre_asesor}
                 onChangeText={(v) => {
                   set("nombre_asesor")(v);
@@ -349,11 +432,15 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
                 autoCorrect={false}
                 autoCapitalize={"words"}
                 error={fieldErrors.nombre_asesor}
+                disabled={asesorToEdit && !editableFields.nombre_asesor}
               />
             </View>
             <View style={[styles.half, isSmall && { width: "100%" }]}>
               <LabeledInput
-                label="Correo"
+                customLabel={renderLabelWithEditButton({
+                  labelText: "Correo",
+                  fieldKey: "correo_asesor",
+                })}
                 value={form.correo_asesor}
                 onChangeText={(v) => {
                   set("correo_asesor")(v);
@@ -366,11 +453,15 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
                 autoComplete="email"
                 textContentType="emailAddress"
                 error={fieldErrors.correo_asesor}
+                disabled={asesorToEdit && !editableFields.correo_asesor}
               />
             </View>
             <View style={[styles.half, isSmall && { width: "100%" }]}>
               <LabeledInput
-                label="Teléfono"
+                customLabel={renderLabelWithEditButton({
+                  labelText: "Teléfono",
+                  fieldKey: "telefono_asesor",
+                })}
                 value={form.telefono_asesor}
                 onChangeText={(v) => {
                   set("telefono_asesor")(phoneDigits(v));
@@ -382,11 +473,15 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
                 autoComplete="tel"
                 textContentType="telephoneNumber"
                 error={fieldErrors.telefono_asesor}
+                disabled={asesorToEdit && !editableFields.telefono_asesor}
               />
             </View>
             <View style={[styles.half, isSmall && { width: "100%" }]}>
               <LabeledInput
-                label="Dirección"
+                customLabel={renderLabelWithEditButton({
+                  labelText: "Dirección",
+                  fieldKey: "direccion_asesor",
+                })}
                 value={form.direccion_asesor}
                 onChangeText={(v) => {
                   set("direccion_asesor")(v);
@@ -394,11 +489,15 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
                 onFocus={handleInputFocus}
                 onEndEditing={() => validateField("direccion_asesor")}
                 placeholder="Calle y número"
+                disabled={asesorToEdit && !editableFields.direccion_asesor}
               />
             </View>
             <View style={[styles.half, isSmall && { width: "100%" }]}>
               <LabeledInput
-                label="Municipio"
+                customLabel={renderLabelWithEditButton({
+                  labelText: "Municipio",
+                  fieldKey: "municipio_asesor",
+                })}
                 value={form.municipio_asesor}
                 onChangeText={(v) => {
                   set("municipio_asesor")(v);
@@ -406,11 +505,15 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
                 onFocus={handleInputFocus}
                 onEndEditing={() => validateField("municipio_asesor")}
                 placeholder="Ej. Benito Juárez"
+                disabled={asesorToEdit && !editableFields.municipio_asesor}
               />
             </View>
             <View style={[styles.half, isSmall && { width: "100%" }]}>
               <LabeledInput
-                label="RFC"
+                customLabel={renderLabelWithEditButton({
+                  labelText: "RFC",
+                  fieldKey: "rfc_asesor",
+                })}
                 value={form.rfc_asesor}
                 onChangeText={(v) => {
                   set("rfc_asesor")(v.toUpperCase());
@@ -419,11 +522,15 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
                 onEndEditing={() => validateField("rfc_asesor")}
                 placeholder="XAXX010101000"
                 autoCapitalize="characters"
+                disabled={asesorToEdit && !editableFields.rfc_asesor}
               />
             </View>
             <View style={[styles.half, isSmall && { width: "100%" }]}>
               <LabeledInput
-                label="Nacionalidad"
+                customLabel={renderLabelWithEditButton({
+                  labelText: "Nacionalidad",
+                  fieldKey: "nacionalidad_asesor",
+                })}
                 value={form.nacionalidad_asesor}
                 onChangeText={(v) => {
                   set("nacionalidad_asesor")(v);
@@ -431,6 +538,7 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
                 onFocus={handleInputFocus}
                 onEndEditing={() => validateField("nacionalidad_asesor")}
                 placeholder="Mexicana"
+                disabled={asesorToEdit && !editableFields.nacionalidad_asesor}
               />
             </View>
 
@@ -444,27 +552,21 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
               ]}
               ref={genderAnchorRef}
             >
-              <Text className="text-slate-700 text-xs font-semibold mb-1 uppercase tracking-wide">
-                Género
-              </Text>
+              {renderLabelWithEditButton({
+                labelText: "Género",
+                fieldKey: "genero_asesor",
+              })}
               <Pressable
                 onPress={() => {
-                  try {
-                    const node = genderAnchorRef.current;
-                    if (node?.measureInWindow) {
-                      node.measureInWindow((x, y, w, h) => {
-                        setGenderMenuPos({ x, y, w, h });
-                        setGenderOpen(true);
-                      });
-                    } else {
-                      setGenderOpen(true);
-                    }
-                  } catch {
+                  if (asesorToEdit && !editableFields.genero_asesor) return; // No abrir si está deshabilitado
+                  genderAnchorRef.current?.measureInWindow((x, y, w, h) => {
+                    setGenderMenuPos({ x, y, w, h });
                     setGenderOpen(true);
-                  }
+                  });
                 }}
-                className="border border-slate-300 rounded-xl px-4 py-3 bg-white flex-row items-center justify-between"
+                className={`border border-slate-300 rounded-xl px-4 py-3 flex-row items-center justify-between ${asesorToEdit && !editableFields.genero_asesor ? "bg-slate-100 opacity-60" : "bg-white"}`}
                 android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+                disabled={asesorToEdit && !editableFields.genero_asesor} // Deshabilitar el Pressable
               >
                 <Text
                   className={`text-slate-900 ${!form.genero_asesor ? "opacity-50" : ""}`}
@@ -549,16 +651,21 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
           <View className="mt-3 flex-row justify-end gap-2">
             <Pressable
               onPress={() => {
-                setForm({
-                  nombre_asesor: "",
-                  correo_asesor: "",
-                  telefono_asesor: "",
-                  direccion_asesor: "",
-                  municipio_asesor: "",
-                  rfc_asesor: "",
-                  nacionalidad_asesor: "",
-                  genero_asesor: "",
-                });
+                if (asesorToEdit) {
+                  // Revertir a los valores originales del asesor
+                  setForm({ ...initialFormState, ...asesorToEdit });
+                  // Resetear el estado de editabilidad
+                  const initialEditableState = Object.keys(
+                    initialFormState
+                  ).reduce((acc, key) => {
+                    acc[key] = false;
+                    return acc;
+                  }, {});
+                  setEditableFields(initialEditableState);
+                } else {
+                  // Para nuevo registro, limpiar completamente
+                  setForm(initialFormState);
+                }
                 setFieldErrors({});
                 setToast({ type: "", msg: "" });
               }}
