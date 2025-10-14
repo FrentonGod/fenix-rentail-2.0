@@ -57,6 +57,7 @@ assets/**/
 # Supabase internal (adjust if created later)
 #############################################
 supabase/.branches
+supabase/*
 
 #############################################
 # Project specific kept from original

@@ -68,7 +68,11 @@ function LabeledInput({
   );
 }
 
-export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
+export default function RegistroAsesor({
+  asesorToEdit,
+  onFormClose,
+  viewOnly = false,
+}) {
   const { width, height } = useWindowDimensions();
   const isSmall = width < 640;
   const isTablet = width >= 640 && width < 1024;
@@ -147,40 +151,41 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
               {labelText}
             </Text>
           </View>
-          {asesorToEdit && ( // Solo mostrar el botón de editar en modo edición
-            <TouchableOpacity
-              onPress={() =>
-                setEditableFields((prev) => ({
-                  ...prev,
-                  [fieldKey]: !prev[fieldKey],
-                }))
-              }
-              className="ml-2 p-1 rounded-full bg-slate-100"
-              hitSlop={8}
-            >
-              {editableFields[fieldKey] ? (
-                // Icono de Confirmar (Check)
-                <Svg
-                  height="16"
-                  viewBox="0 -960 960 960"
-                  width="16"
-                  fill="#10b981"
-                >
-                  <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
-                </Svg>
-              ) : (
-                // Icono de Editar (Lápiz)
-                <Svg
-                  height="16"
-                  viewBox="0 -960 960 960"
-                  width="16"
-                  fill="#475569"
-                >
-                  <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                </Svg>
-              )}
-            </TouchableOpacity>
-          )}
+          {asesorToEdit &&
+            !viewOnly && ( // Solo mostrar el botón de editar en modo edición y no en solo-lectura
+              <TouchableOpacity
+                onPress={() =>
+                  setEditableFields((prev) => ({
+                    ...prev,
+                    [fieldKey]: !prev[fieldKey],
+                  }))
+                }
+                className="ml-2 p-1 rounded-full bg-slate-100"
+                hitSlop={8}
+              >
+                {editableFields[fieldKey] ? (
+                  // Icono de Confirmar (Check)
+                  <Svg
+                    height="16"
+                    viewBox="0 -960 960 960"
+                    width="16"
+                    fill="#10b981"
+                  >
+                    <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+                  </Svg>
+                ) : (
+                  // Icono de Editar (Lápiz)
+                  <Svg
+                    height="16"
+                    viewBox="0 -960 960 960"
+                    width="16"
+                    fill="#475569"
+                  >
+                    <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                  </Svg>
+                )}
+              </TouchableOpacity>
+            )}
         </View>
       );
     },
@@ -342,7 +347,10 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
         type: "ok",
         msg: `Asesor ${asesorToEdit ? "actualizado" : "registrado"} correctamente.`,
       });
-      setForm(initialFormState);
+      // Solo limpiar el formulario si estamos creando un nuevo asesor
+      if (!asesorToEdit) {
+        setForm(initialFormState);
+      }
       setFieldErrors({});
       // Si el guardado fue exitoso y hay una función para cerrar, la llamamos después de un momento
       if (onFormClose) setTimeout(() => onFormClose(), 1500);
@@ -400,12 +408,18 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
             </TouchableOpacity>
           )}
           <Text className="text-slate-900 text-2xl font-extrabold">
-            {asesorToEdit ? "Editar Asesor" : "Registro de Asesores"}
+            {viewOnly
+              ? "Detalles del Asesor"
+              : asesorToEdit
+                ? "Editar Asesor"
+                : "Registro de Asesores"}
           </Text>
           <Text className="text-slate-600">
-            {asesorToEdit
-              ? "Modifica los datos del asesor."
-              : "Completa los siguientes campos."}
+            {viewOnly
+              ? "Información registrada del asesor."
+              : asesorToEdit
+                ? "Modifica los datos del asesor."
+                : "Completa los siguientes campos."}
           </Text>
         </View>
 
@@ -432,7 +446,9 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
                 autoCorrect={false}
                 autoCapitalize={"words"}
                 error={fieldErrors.nombre_asesor}
-                disabled={asesorToEdit && !editableFields.nombre_asesor}
+                disabled={
+                  viewOnly || (asesorToEdit && !editableFields.nombre_asesor)
+                }
               />
             </View>
             <View style={[styles.half, isSmall && { width: "100%" }]}>
@@ -453,7 +469,9 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
                 autoComplete="email"
                 textContentType="emailAddress"
                 error={fieldErrors.correo_asesor}
-                disabled={asesorToEdit && !editableFields.correo_asesor}
+                disabled={
+                  viewOnly || (asesorToEdit && !editableFields.correo_asesor)
+                }
               />
             </View>
             <View style={[styles.half, isSmall && { width: "100%" }]}>
@@ -473,7 +491,9 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
                 autoComplete="tel"
                 textContentType="telephoneNumber"
                 error={fieldErrors.telefono_asesor}
-                disabled={asesorToEdit && !editableFields.telefono_asesor}
+                disabled={
+                  viewOnly || (asesorToEdit && !editableFields.telefono_asesor)
+                }
               />
             </View>
             <View style={[styles.half, isSmall && { width: "100%" }]}>
@@ -489,7 +509,9 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
                 onFocus={handleInputFocus}
                 onEndEditing={() => validateField("direccion_asesor")}
                 placeholder="Calle y número"
-                disabled={asesorToEdit && !editableFields.direccion_asesor}
+                disabled={
+                  viewOnly || (asesorToEdit && !editableFields.direccion_asesor)
+                }
               />
             </View>
             <View style={[styles.half, isSmall && { width: "100%" }]}>
@@ -505,7 +527,9 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
                 onFocus={handleInputFocus}
                 onEndEditing={() => validateField("municipio_asesor")}
                 placeholder="Ej. Benito Juárez"
-                disabled={asesorToEdit && !editableFields.municipio_asesor}
+                disabled={
+                  viewOnly || (asesorToEdit && !editableFields.municipio_asesor)
+                }
               />
             </View>
             <View style={[styles.half, isSmall && { width: "100%" }]}>
@@ -522,7 +546,9 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
                 onEndEditing={() => validateField("rfc_asesor")}
                 placeholder="XAXX010101000"
                 autoCapitalize="characters"
-                disabled={asesorToEdit && !editableFields.rfc_asesor}
+                disabled={
+                  viewOnly || (asesorToEdit && !editableFields.rfc_asesor)
+                }
               />
             </View>
             <View style={[styles.half, isSmall && { width: "100%" }]}>
@@ -538,7 +564,10 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
                 onFocus={handleInputFocus}
                 onEndEditing={() => validateField("nacionalidad_asesor")}
                 placeholder="Mexicana"
-                disabled={asesorToEdit && !editableFields.nacionalidad_asesor}
+                disabled={
+                  viewOnly ||
+                  (asesorToEdit && !editableFields.nacionalidad_asesor)
+                }
               />
             </View>
 
@@ -558,15 +587,21 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
               })}
               <Pressable
                 onPress={() => {
-                  if (asesorToEdit && !editableFields.genero_asesor) return; // No abrir si está deshabilitado
+                  if (
+                    viewOnly ||
+                    (asesorToEdit && !editableFields.genero_asesor)
+                  )
+                    return; // No abrir si está deshabilitado
                   genderAnchorRef.current?.measureInWindow((x, y, w, h) => {
                     setGenderMenuPos({ x, y, w, h });
                     setGenderOpen(true);
                   });
                 }}
-                className={`border border-slate-300 rounded-xl px-4 py-3 flex-row items-center justify-between ${asesorToEdit && !editableFields.genero_asesor ? "bg-slate-100 opacity-60" : "bg-white"}`}
+                className={`border border-slate-300 rounded-xl px-4 py-3 flex-row items-center justify-between ${viewOnly || (asesorToEdit && !editableFields.genero_asesor) ? "bg-slate-100 opacity-60" : "bg-white"}`}
                 android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-                disabled={asesorToEdit && !editableFields.genero_asesor} // Deshabilitar el Pressable
+                disabled={
+                  viewOnly || (asesorToEdit && !editableFields.genero_asesor)
+                } // Deshabilitar el Pressable
               >
                 <Text
                   className={`text-slate-900 ${!form.genero_asesor ? "opacity-50" : ""}`}
@@ -648,49 +683,51 @@ export default function RegistroAsesor({ asesorToEdit, onFormClose }) {
               </Text>
             </View>
           )}
-          <View className="mt-3 flex-row justify-end gap-2">
-            <Pressable
-              onPress={() => {
-                if (asesorToEdit) {
-                  // Revertir a los valores originales del asesor
-                  setForm({ ...initialFormState, ...asesorToEdit });
-                  // Resetear el estado de editabilidad
-                  const initialEditableState = Object.keys(
-                    initialFormState
-                  ).reduce((acc, key) => {
-                    acc[key] = false;
-                    return acc;
-                  }, {});
-                  setEditableFields(initialEditableState);
-                } else {
-                  // Para nuevo registro, limpiar completamente
-                  setForm(initialFormState);
-                }
-                setFieldErrors({});
-                setToast({ type: "", msg: "" });
-              }}
-              className="px-4 py-3 rounded-xl border border-slate-300 bg-white"
-              hitSlop={8}
-              android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-            >
-              <Text className="text-slate-700 font-semibold">Limpiar</Text>
-            </Pressable>
-            <Pressable
-              onPress={onSubmit}
-              disabled={disabled}
-              className={`px-5 py-3 rounded-xl items-center justify-center ${disabled ? "bg-violet-400" : "bg-[#6F09EA]"}`}
-              hitSlop={10}
-              android_ripple={{ color: "rgba(255,255,255,0.15)" }}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-bold">
-                  {asesorToEdit ? "Guardar Cambios" : "Registrar Asesor"}
-                </Text>
-              )}
-            </Pressable>
-          </View>
+          {!viewOnly && (
+            <View className="mt-3 flex-row justify-end gap-2">
+              <Pressable
+                onPress={() => {
+                  if (asesorToEdit) {
+                    // Revertir a los valores originales del asesor
+                    setForm({ ...initialFormState, ...asesorToEdit });
+                    // Resetear el estado de editabilidad
+                    const initialEditableState = Object.keys(
+                      initialFormState
+                    ).reduce((acc, key) => {
+                      acc[key] = false;
+                      return acc;
+                    }, {});
+                    setEditableFields(initialEditableState);
+                  } else {
+                    // Para nuevo registro, limpiar completamente
+                    setForm(initialFormState);
+                  }
+                  setFieldErrors({});
+                  setToast({ type: "", msg: "" });
+                }}
+                className="px-4 py-3 rounded-xl border border-slate-300 bg-white"
+                hitSlop={8}
+                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+              >
+                <Text className="text-slate-700 font-semibold">Limpiar</Text>
+              </Pressable>
+              <Pressable
+                onPress={onSubmit}
+                disabled={disabled}
+                className={`px-5 py-3 rounded-xl items-center justify-center ${disabled ? "bg-violet-400" : "bg-[#6F09EA]"}`}
+                hitSlop={10}
+                android_ripple={{ color: "rgba(255,255,255,0.15)" }}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text className="text-white font-bold">
+                    {asesorToEdit ? "Guardar Cambios" : "Registrar Asesor"}
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+          )}
         </View>
 
         {/* Backdrop para cerrar el dropdown */}

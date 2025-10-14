@@ -55,6 +55,7 @@ import { supabase } from "./lib/supabase";
 import { useAuthContext } from "./hooks/use-auth-context";
 import RegistroAsesor from "./components/asesores/RegistroAsesor";
 
+import RegistroVenta from "./components/ventas/RegistroVenta";
 const Tab = createMaterialTopTabNavigator(); //Aqui se esta creando el componente
 const Drawer = createDrawerNavigator();
 
@@ -303,6 +304,7 @@ const CustomDrawerContent = (props) => {
 
 const ScreenInicio = () => {
   const [catalogos, setCatalogos] = useState(false);
+  const [isVentaFormOpen, setVentaFormOpen] = useState(false);
   return (
     <Tab.Navigator
       initialRouteName="Venta"
@@ -311,7 +313,7 @@ const ScreenInicio = () => {
         tabBarActiveTintColor: "#1f1f1f",
         tabBarInactiveTintColor: "#70757a",
 
-        tabBarScrollEnabled: true,
+        swipeEnabled: !isVentaFormOpen, // Deshabilita el swipe si el formulario está abierto
         tabBarItemStyle: { width: "auto", paddingHorizontal: 5 },
         tabBarLabelStyle: {
           fontSize: 14,
@@ -322,11 +324,23 @@ const ScreenInicio = () => {
         tabBarIndicatorStyle: { backgroundColor: "#1f1f1f", height: 2 },
       }}
     >
-      <Tab.Screen name="Venta" component={SeccionVentas} />
-      <Tab.Screen name="Reporte" component={SeccionReportes} />
-      <Tab.Screen name="Catálogos">
+      <Tab.Screen name="Venta">
+        {(props) => (
+          <SeccionVentas {...props} onFormToggle={setVentaFormOpen} />
+        )}
+      </Tab.Screen>
+      <Tab.Screen
+        name="Reporte"
+        component={SeccionReportes}
+      />
+      <Tab.Screen
+        name="Catálogos"
+      >
         {() => (
-          <SeccionCatalogos catalogos={catalogos} setCatalogos={setCatalogos} />
+          <SeccionCatalogos
+            catalogos={catalogos}
+            setCatalogos={setCatalogos}
+          />
         )}
       </Tab.Screen>
     </Tab.Navigator>
@@ -383,7 +397,8 @@ const ScreenEstudiantes = () => {
               .from("estudiantes")
               .delete()
               .eq("id_estudiante", id);
-            if (error) Alert.alert("Error", "No se pudo eliminar el estudiante.");
+            if (error)
+              Alert.alert("Error", "No se pudo eliminar el estudiante.");
             else handleRefresh();
           },
         },
@@ -411,7 +426,12 @@ const ScreenEstudiantes = () => {
         <>
           <View className="flex-row items-center justify-between p-4">
             <View className="flex-row items-center bg-white border border-slate-300 rounded-full px-3 py-1 shadow-sm">
-              <Svg height="20" viewBox="0 -960 960 960" width="20" fill="#9ca3af">
+              <Svg
+                height="20"
+                viewBox="0 -960 960 960"
+                width="20"
+                fill="#9ca3af"
+              >
                 <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
               </Svg>
               <TextInput
@@ -425,10 +445,17 @@ const ScreenEstudiantes = () => {
               onPress={handleAdd}
               className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
             >
-              <Svg height="18" viewBox="0 -960 960 960" width="18" fill="#ffffff">
+              <Svg
+                height="18"
+                viewBox="0 -960 960 960"
+                width="18"
+                fill="#ffffff"
+              >
                 <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
               </Svg>
-              <Text className="text-white font-bold ml-2">Agregar Estudiante</Text>
+              <Text className="text-white font-bold ml-2">
+                Agregar Estudiante
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -446,11 +473,21 @@ const ScreenEstudiantes = () => {
   );
 };
 
-const TablaEstudiantes = ({ data, query, isRefetching, onRefresh, onEdit, onDelete }) => {
+const TablaEstudiantes = ({
+  data,
+  query,
+  isRefetching,
+  onRefresh,
+  onEdit,
+  onDelete,
+}) => {
   const [sortKey, setSortKey] = useState("nombre_estudiante");
   const [sortDir, setSortDir] = useState("asc");
 
-  const currencyFormatter = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
+  const currencyFormatter = new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+  });
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -479,17 +516,25 @@ const TablaEstudiantes = ({ data, query, isRefetching, onRefresh, onEdit, onDele
       onPress={() => {
         if (!k) return;
         setSortKey(k);
-        setSortDir((d) => (sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"));
+        setSortDir((d) =>
+          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"
+        );
       }}
       className="py-3 px-3"
       style={{ flex, alignItems: center ? "center" : "flex-start" }}
       android_ripple={{ color: "rgba(0,0,0,0.05)" }}
     >
       <View className="flex-row items-center gap-1">
-        <Text className="text-slate-800 font-semibold text-xs sm:text-sm uppercase tracking-wide">{label}</Text>
+        <Text className="text-slate-800 font-semibold text-xs sm:text-sm uppercase tracking-wide">
+          {label}
+        </Text>
         {sortKey === k && (
           <Svg width={12} height={12} viewBox="0 -960 960 960" fill="#334155">
-            {sortDir === "asc" ? <Path d="M480-680 240-440h480L480-680Z" /> : <Path d="M240-520h480L480-280 240-520Z" />}
+            {sortDir === "asc" ? (
+              <Path d="M480-680 240-440h480L480-680Z" />
+            ) : (
+              <Path d="M240-520h480L480-280 240-520Z" />
+            )}
           </Svg>
         )}
       </View>
@@ -498,7 +543,16 @@ const TablaEstudiantes = ({ data, query, isRefetching, onRefresh, onEdit, onDele
 
   return (
     <View className="px-2 flex-1">
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor="#6F09EA" />}>
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={onRefresh}
+            tintColor="#6F09EA"
+          />
+        }
+      >
         <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
           <View className="bg-slate-100 border-b border-slate-200 flex-row">
             <SortHeader label="Curso" k="curso_asignado" flex={3} />
@@ -508,18 +562,62 @@ const TablaEstudiantes = ({ data, query, isRefetching, onRefresh, onEdit, onDele
             <SortHeader label="Acciones" k={null} flex={1.5} center />
           </View>
           {filtered.map((estudiante, index) => (
-            <View key={estudiante.id_estudiante} className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}>
-              <Text style={{ flex: 3 }} className="p-3 text-slate-700" numberOfLines={1}>{estudiante.curso_asignado}</Text>
-              <Text style={{ flex: 3 }} className="p-3 text-slate-800" numberOfLines={1}>{estudiante.nombre_estudiante}</Text>
-              <Text style={{ flex: 2, textAlign: 'center' }} className="p-3 text-slate-700 font-medium">{currencyFormatter.format(estudiante.monto_pendiente || 0)}</Text>
-              <Text style={{ flex: 1.5, textAlign: 'center' }} className="p-3 text-slate-700">{estudiante.grupo}</Text>
-              <View style={{ flex: 1.5 }} className="p-3 flex-row justify-center items-center gap-x-4">
+            <View
+              key={estudiante.id_estudiante}
+              className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
+            >
+              <Text
+                style={{ flex: 3 }}
+                className="p-3 text-slate-700"
+                numberOfLines={1}
+              >
+                {estudiante.curso_asignado}
+              </Text>
+              <Text
+                style={{ flex: 3 }}
+                className="p-3 text-slate-800"
+                numberOfLines={1}
+              >
+                {estudiante.nombre_estudiante}
+              </Text>
+              <Text
+                style={{ flex: 2, textAlign: "center" }}
+                className="p-3 text-slate-700 font-medium"
+              >
+                {currencyFormatter.format(estudiante.monto_pendiente || 0)}
+              </Text>
+              <Text
+                style={{ flex: 1.5, textAlign: "center" }}
+                className="p-3 text-slate-700"
+              >
+                {estudiante.grupo}
+              </Text>
+              <View
+                style={{ flex: 1.5 }}
+                className="p-3 flex-row justify-center items-center gap-x-4"
+              >
                 <TouchableOpacity onPress={() => onEdit(estudiante)}>
-                  <Svg height="22" viewBox="0 -960 960 960" width="22" fill="#3b82f6"><Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" /></Svg>
+                  <Svg
+                    height="22"
+                    viewBox="0 -960 960 960"
+                    width="22"
+                    fill="#3b82f6"
+                  >
+                    <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                  </Svg>
                 </TouchableOpacity>
                 {/* El botón de borrar se reemplaza por el de reimprimir ticket */}
-                <TouchableOpacity onPress={() => onReprint(estudiante.id_estudiante)}>
-                  <Svg height="22" viewBox="0 -960 960 960" width="22" fill="#475569"><Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z" /></Svg>
+                <TouchableOpacity
+                  onPress={() => onReprint(estudiante.id_estudiante)}
+                >
+                  <Svg
+                    height="22"
+                    viewBox="0 -960 960 960"
+                    width="22"
+                    fill="#475569"
+                  >
+                    <Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z" />
+                  </Svg>
                 </TouchableOpacity>
               </View>
             </View>
@@ -527,7 +625,10 @@ const TablaEstudiantes = ({ data, query, isRefetching, onRefresh, onEdit, onDele
         </View>
       </ScrollView>
       {isRefetching && (
-        <View style={StyleSheet.absoluteFill} className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl">
+        <View
+          style={StyleSheet.absoluteFill}
+          className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl"
+        >
           <ActivityIndicator size="large" color="#6F09EA" />
         </View>
       )}
@@ -610,6 +711,12 @@ const ScreenAsesores = () => {
     setViewMode("form");
   };
 
+  // Pasamos el asesor a ver y cambiamos de vista
+  const handleView = (asesor) => {
+    setEditingAsesor(asesor); // Reutilizamos el estado
+    setViewMode("view");
+  };
+
   // Cambiamos a la vista de formulario para agregar uno nuevo
   const handleAdd = () => {
     setEditingAsesor(null); // Nos aseguramos de que no haya datos de edición
@@ -621,7 +728,22 @@ const ScreenAsesores = () => {
     return (
       <RegistroAsesor
         asesorToEdit={editingAsesor}
-        onFormClose={() => setViewMode("list")} // Para volver a la tabla
+        onFormClose={() => {
+          setViewMode("list");
+          handleRefresh(); // Refresca la lista por si hubo cambios
+        }}
+      />
+    );
+  }
+  if (viewMode === "view") {
+    return (
+      <RegistroAsesor
+        asesorToEdit={editingAsesor}
+        onFormClose={() => {
+          setViewMode("list");
+          handleRefresh(); // Refresca la lista al salir de la vista
+        }}
+        viewOnly={true}
       />
     );
   }
@@ -675,6 +797,7 @@ const ScreenAsesores = () => {
             onRefresh={handleRefresh}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onView={handleView}
           />
         </>
       )}
@@ -689,6 +812,7 @@ const TablaAsesores = ({
   onRefresh,
   onEdit,
   onDelete,
+  onView,
 }) => {
   const [sortKey, setSortKey] = useState("nombre_asesor");
   const [sortDir, setSortDir] = useState("asc");
@@ -767,37 +891,63 @@ const TablaAsesores = ({
           </View>
           {/* Filas */}
           {filtered.map((asesor, index) => (
-            <View
+            <Pressable
               key={asesor.id_asesor}
               className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
+              onPress={() => onView(asesor)}
+              android_ripple={{ color: "rgba(0,0,0,0.04)" }}
             >
-              <Text style={{ flex: 3 }} className="p-3 text-slate-800" numberOfLines={1}>
+              <Text
+                style={{ flex: 3 }}
+                className="p-3 text-slate-800"
+                numberOfLines={1}
+              >
                 {asesor.nombre_asesor}
               </Text>
-              <Text style={{ flex: 5 }} className="p-3 text-slate-700" numberOfLines={1}>
+              <Text
+                style={{ flex: 5 }}
+                className="p-3 text-slate-700"
+                numberOfLines={1}
+              >
                 {asesor.correo_asesor}
               </Text>
               <Text style={{ flex: 2 }} className="p-3 text-slate-700">
                 {asesor.telefono_asesor}
               </Text>
-              <View style={{ flex: 1.3 }} className="p-3 flex-row justify-around items-center gap-x-6">
+              <View
+                style={{ flex: 1.3 }}
+                className="p-3 flex-row justify-around items-center gap-x-6"
+              >
                 <TouchableOpacity onPress={() => onEdit(asesor)}>
-                  <Svg height="22" viewBox="0 -960 960 960" width="22" fill="#3b82f6">
+                  <Svg
+                    height="22"
+                    viewBox="0 -960 960 960"
+                    width="22"
+                    fill="#3b82f6"
+                  >
                     <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
                   </Svg>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => onDelete(asesor.id_asesor)}>
-                  <Svg height="22" viewBox="0 -960 960 960" width="22" fill="#ef4444">
+                  <Svg
+                    height="22"
+                    viewBox="0 -960 960 960"
+                    width="22"
+                    fill="#ef4444"
+                  >
                     <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
                   </Svg>
                 </TouchableOpacity>
               </View>
-            </View>
+            </Pressable>
           ))}
         </View>
       </ScrollView>
       {isRefetching && (
-        <View style={StyleSheet.absoluteFill} className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl">
+        <View
+          style={StyleSheet.absoluteFill}
+          className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl"
+        >
           <ActivityIndicator size="large" color="#6F09EA" />
         </View>
       )}
@@ -2446,16 +2596,22 @@ const ScreenCursos = () => {
   );
 };
 
-const SeccionVentas = () => {
+const SeccionVentas = ({ onFormToggle, navigation }) => {
   const [estudiantesConAdeudo, setEstudiantesConAdeudo] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefetching, setIsRefetching] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState("list"); // 'list' o 'form'
 
   const handleGenerateSale = () => {
     // Lógica para generar una nueva venta
-    console.log("Generando nueva venta...");
+    setViewMode("form");
   };
+
+  useEffect(() => {
+    onFormToggle(viewMode === "form");
+  }, [viewMode, onFormToggle]);
+
 
   const fetchEstudiantesConAdeudo = async () => {
     const { data, error } = await supabase
@@ -2483,6 +2639,15 @@ const SeccionVentas = () => {
     }, [])
   );
 
+  // Si estamos en modo formulario, renderizamos RegistroVenta
+  if (viewMode === "form") {
+    return (
+      <RegistroVenta
+        navigation={navigation}
+        onFormClose={() => setViewMode("list")}
+      />
+    );
+  }
   const SortHeader = ({ label, k, flex = 1, center }) => (
     <Pressable
       onPress={() => {
@@ -2514,7 +2679,12 @@ const SeccionVentas = () => {
         <>
           <View className="flex-row items-center justify-between p-4">
             <View className="flex-row items-center bg-white border border-slate-300 rounded-full px-3 py-1 shadow-sm">
-              <Svg height="20" viewBox="0 -960 960 960" width="20" fill="#9ca3af">
+              <Svg
+                height="20"
+                viewBox="0 -960 960 960"
+                width="20"
+                fill="#9ca3af"
+              >
                 <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
               </Svg>
               <TextInput
@@ -2529,7 +2699,12 @@ const SeccionVentas = () => {
                 onPress={handleGenerateSale}
                 className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
               >
-                <Svg height="18" viewBox="0 -960 960 960" width="18" fill="#ffffff">
+                <Svg
+                  height="18"
+                  viewBox="0 -960 960 960"
+                  width="18"
+                  fill="#ffffff"
+                >
                   <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
                 </Svg>
                 <Text className="text-white font-bold ml-2">Generar Venta</Text>
@@ -2643,13 +2818,17 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
   const [catalogoLayout, setCatalogoLayout] = useState(null);
   const [tarifarioLayout, setTarifarioLayout] = useState(null);
   const lastTapTimeRef = useRef(null);
+  const hintAnim = useRef(new Animated.Value(0)).current;
 
   const handleDoubleTap = () => {
     const now = Date.now();
     const DOUBLE_PRESS_DELAY = 300; // ms
-    if (lastTapTimeRef.current && now - lastTapTimeRef.current < DOUBLE_PRESS_DELAY) {
+    if (
+      lastTapTimeRef.current &&
+      now - lastTapTimeRef.current < DOUBLE_PRESS_DELAY
+    ) {
       // Doble toque detectado
-      setCatalogos(prev => !prev);
+      setCatalogos((prev) => !prev);
     } else {
       lastTapTimeRef.current = now;
     }
@@ -2676,6 +2855,31 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
       }).start();
     }
   }, [catalogos, catalogoLayout, tarifarioLayout]);
+
+  // Animación para el hint de doble toque
+  useFocusEffect(
+    useCallback(() => {
+      const sequence = Animated.sequence([
+        Animated.delay(500),
+        Animated.timing(hintAnim, {
+          // Aparece
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.delay(800), 
+        Animated.timing(hintAnim, {
+          // Desaparece
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]);
+      sequence.start();
+      // Limpia la animación si el usuario sale de la pantalla antes de que termine
+      return () => sequence.stop();
+    }, [])
+  );
 
   const catalogoImages = [
     require("./assets/Catalogo/Catalogo-01.png"),
@@ -2709,7 +2913,9 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
   return (
     <View className={`flex-1 bg-slate-50`}>
       <View className={`items-center flex-row justify-center p-2`}>
-        <View className={`p-1 justify-center items-center flex-row relative bg-gray-300 rounded-lg gap-x-2`}>
+        <View
+          className={`p-1 justify-center items-center flex-row relative bg-gray-300 rounded-lg gap-x-2`}
+        >
           {catalogoLayout && tarifarioLayout && (
             <Animated.View
               style={{
@@ -2735,8 +2941,17 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
             className={`p-2 justify-center items-center rounded`}
             onPress={() => setCatalogos(false)}
           >
-            <Text className={`uppercase font-semibold ${!catalogos ? 'text-slate-800' : 'text-slate-600'}`}>Catálogo</Text>
-            <Svg height="24px" viewBox="0 -960 960 960" width="24px" fill={!catalogos ? '#010101' : '#64748b'}>
+            <Text
+              className={`uppercase font-semibold ${!catalogos ? "text-slate-800" : "text-slate-600"}`}
+            >
+              Catálogo
+            </Text>
+            <Svg
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill={!catalogos ? "#010101" : "#64748b"}
+            >
               <Path d="M560-564v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-600q-38 0-73 9.5T560-564Zm0 220v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-380q-38 0-73 9t-67 27Zm0-110v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-490q-38 0-73 9.5T560-454ZM260-320q47 0 91.5 10.5T440-278v-394q-41-24-87-36t-93-12q-36 0-71.5 7T120-692v396q35-12 69.5-18t70.5-6Zm260 42q44-21 88.5-31.5T700-320q36 0 70.5 6t69.5 18v-396q-33-14-68.5-21t-71.5-7q-47 0-93 12t-87 36v394Zm-40 118q-48-38-104-59t-116-21q-42 0-82.5 11T100-198q-21 11-40.5-1T40-234v-482q0-11 5.5-21T62-752q46-24 96-36t102-12q58 0 113.5 15T480-740q51-30 106.5-45T700-800q52 0 102 12t96 36q11 5 16.5 15t5.5 21v482q0 23-19.5 35t-40.5 1q-37-20-77.5-31T700-240q-60 0-116 21t-104 59ZM280-494Z" />
             </Svg>
           </Pressable>
@@ -2745,8 +2960,17 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
             className={`p-2 justify-center items-center rounded`}
             onPress={() => setCatalogos(true)}
           >
-            <Text className={`uppercase font-semibold ${catalogos ? 'text-slate-800' : 'text-slate-600'}`}>Tarifario</Text>
-            <Svg height="24px" viewBox="0 -960 960 960" width="24px" fill={catalogos ? '#010101' : '#64748b'}>
+            <Text
+              className={`uppercase font-semibold ${catalogos ? "text-slate-800" : "text-slate-600"}`}
+            >
+              Tarifario
+            </Text>
+            <Svg
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill={catalogos ? "#010101" : "#64748b"}
+            >
               <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
             </Svg>
           </Pressable>
@@ -2765,13 +2989,44 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
             name={`Página ${index + 1}`}
           >
             {() => (
-              <Pressable onPress={handleDoubleTap} style={styles.carouselContainer}>
-                <Image source={imageSource} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+              <Pressable
+                onPress={handleDoubleTap}
+                style={styles.carouselContainer}
+              >
+                <Image
+                  source={imageSource}
+                  style={{ width: "100%", height: "100%" }}
+                  resizeMode="contain"
+                />
               </Pressable>
             )}
           </Tab.Screen>
         ))}
       </Tab.Navigator>
+
+      {/* Hint animado para el doble toque */}
+      <Animated.View
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: [
+            { translateX: -100 }, // Mitad del ancho aprox.
+            { translateY: -30 }, // Mitad del alto aprox.
+            { scale: hintAnim },
+          ],
+          opacity: hintAnim,
+        }}
+        className="bg-black/70 rounded-full p-4 flex-row items-center gap-x-3"
+        pointerEvents="none"
+      >
+        <Svg height="24" viewBox="0 0 24 24" width="24" fill="white">
+          <Path d="M18.5 10.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5S17 8.17 17 9s.67 1.5 1.5 1.5zm-5 0c.83 0 1.5-.67 1.5-1.5S14.33 7.5 13.5 7.5 12 8.17 12 9s.67 1.5 1.5 1.5zm-5 0c.83 0 1.5-.67 1.5-1.5S9.33 7.5 8.5 7.5 7 8.17 7 9s.67 1.5 1.5 1.5zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
+        </Svg>
+        <Text className="text-white font-bold text-base">
+          Doble toque para cambiar
+        </Text>
+      </Animated.View>
     </View>
   );
 };
