@@ -2694,7 +2694,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
                 className="ml-2 text-base"
               />
             </View>
-            <View>
+            <View className="flex-row">
               <TouchableOpacity
                 onPress={handleGenerateSale}
                 className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
