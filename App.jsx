@@ -329,18 +329,10 @@ const ScreenInicio = () => {
           <SeccionVentas {...props} onFormToggle={setVentaFormOpen} />
         )}
       </Tab.Screen>
-      <Tab.Screen
-        name="Reporte"
-        component={SeccionReportes}
-      />
-      <Tab.Screen
-        name="Catálogos"
-      >
+      <Tab.Screen name="Reporte" component={SeccionReportes} />
+      <Tab.Screen name="Catálogos">
         {() => (
-          <SeccionCatalogos
-            catalogos={catalogos}
-            setCatalogos={setCatalogos}
-          />
+          <SeccionCatalogos catalogos={catalogos} setCatalogos={setCatalogos} />
         )}
       </Tab.Screen>
     </Tab.Navigator>
@@ -727,10 +719,50 @@ const ScreenAsesores = () => {
   if (viewMode === "form") {
     return (
       <RegistroAsesor
+        key={editingAsesor ? `edit-${editingAsesor.id_asesor}` : "new"}
         asesorToEdit={editingAsesor}
-        onFormClose={() => {
-          setViewMode("list");
-          handleRefresh(); // Refresca la lista por si hubo cambios
+        onFormClose={(currentForm) => {
+          const initialData = editingAsesor
+            ? {
+                nombre_asesor: editingAsesor.nombre_asesor || "",
+                correo_asesor: editingAsesor.correo_asesor || "",
+                telefono_asesor: editingAsesor.telefono_asesor || "",
+                direccion_asesor: editingAsesor.direccion_asesor || "",
+                municipio_asesor: editingAsesor.municipio_asesor || "",
+                rfc_asesor: editingAsesor.rfc_asesor || "",
+                nacionalidad_asesor: editingAsesor.nacionalidad_asesor || "",
+                genero_asesor: editingAsesor.genero_asesor || "",
+              }
+            : {
+                nombre_asesor: "",
+                correo_asesor: "",
+                telefono_asesor: "",
+                direccion_asesor: "",
+                municipio_asesor: "",
+                rfc_asesor: "",
+                nacionalidad_asesor: "",
+                genero_asesor: "",
+              };
+
+          const hasChanges = !equal(currentForm, initialData);
+
+          if (!hasChanges) {
+            setViewMode("list");
+            return;
+          }
+
+          Alert.alert(
+            "Cambios sin guardar",
+            "Tienes cambios sin guardar. ¿Deseas descartarlos?",
+            [
+              { text: "Cancelar", style: "cancel" },
+              {
+                text: "Descartar",
+                style: "destructive",
+                onPress: () => setViewMode("list"),
+              },
+            ]
+          );
         }}
       />
     );
@@ -2612,7 +2644,6 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
     onFormToggle(viewMode === "form");
   }, [viewMode, onFormToggle]);
 
-
   const fetchEstudiantesConAdeudo = async () => {
     const { data, error } = await supabase
       .from("estudiantes")
@@ -2867,7 +2898,7 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
           duration: 500,
           useNativeDriver: true,
         }),
-        Animated.delay(800), 
+        Animated.delay(800),
         Animated.timing(hintAnim, {
           // Desaparece
           toValue: 0,

@@ -18,10 +18,11 @@ import {
   useWindowDimensions,
   TouchableOpacity,
   KeyboardAvoidingView,
+  Alert,
 } from "react-native";
 import { supabase } from "../../lib/supabase";
 import Svg, { Path } from "react-native-svg";
-
+import equal from "fast-deep-equal";
 // Input compacto con label y error inline
 function LabeledInput({
   label,
@@ -391,7 +392,7 @@ export default function RegistroAsesor({
         >
           {onFormClose && (
             <TouchableOpacity
-              onPress={onFormClose}
+              onPress={() => onFormClose(form)}
               className="flex-row items-center mb-4 opacity-80"
             >
               <Svg
