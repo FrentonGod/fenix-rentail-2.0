@@ -20,6 +20,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import equal from "fast-deep-equal";
 import * as Clipboard from "expo-clipboard";
 import "./global.css";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";

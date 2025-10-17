@@ -71,7 +71,7 @@ const CurrencyInput = ({ value, onChangeText, placeholder, editable }) => {
 
   const handleFocus = () => {
     // Si es editable y el valor es 0, lo borra para facilitar la escritura.
-    if (isEditable && (Number(value) === 0 || value === null || value === "")) {
+    if (isEditable && (value === null || value === "")) {
       onChangeText("");
     }
     // Coloca el cursor al final del texto al enfocar.
@@ -91,9 +91,12 @@ const CurrencyInput = ({ value, onChangeText, placeholder, editable }) => {
     >
       <Text style={styles.currencySymbol}>$</Text>
       <TextInput
-        style={styles.currencyInput}
+        style={[
+          styles.currencyInput,
+          (value === 0 || value === null) && styles.currencyInputPlaceholder,
+        ]}
         ref={inputRef}
-        value={value === null || value === "" ? "" : String(Math.floor(value))}
+        value={value === null ? "" : String(Math.floor(value))}
         onChangeText={onChangeText}
         onFocus={handleFocus}
         placeholder={placeholder || "0"}
@@ -137,6 +140,7 @@ const ChipButton = ({ label, onPress, disabled, variant, isSelected }) => (
       styles.chip,
       isSelected && styles.chipSelected,
       variant === "primary" && styles.chipPrimary,
+      variant === "clear" && styles.chipClear,
       disabled && styles.chipDisabled,
     ]}
     onPress={onPress}
@@ -147,6 +151,7 @@ const ChipButton = ({ label, onPress, disabled, variant, isSelected }) => (
         styles.chipText,
         isSelected && styles.chipTextSelected,
         variant === "primary" && styles.chipTextPrimary,
+        variant === "clear" && styles.chipTextClear,
         disabled && styles.chipTextDisabled,
       ]}
     >
@@ -155,8 +160,22 @@ const ChipButton = ({ label, onPress, disabled, variant, isSelected }) => (
   </TouchableOpacity>
 );
 
-const ChipButtonGroup = ({ chips, onSelect, disabled, selectedValue }) => (
+const ChipButtonGroup = ({
+  chips,
+  onSelect,
+  disabled,
+  selectedValue,
+  clearLabel,
+}) => (
   <View style={styles.chipContainer}>
+    {selectedValue !== null && selectedValue !== 0 && (
+      <ChipButton
+        label={clearLabel || "Limpiar"}
+        onPress={() => onSelect(0)}
+        disabled={disabled}
+        variant="clear"
+      />
+    )}
     {chips.map((chip) => (
       <ChipButton
         key={chip.label}
@@ -249,8 +268,8 @@ const initialFormState = {
   frecuencia_sesiones: null,
   horas_sesion: 1,
   importe: 0,
-  anticipo: null,
-  incentivo_premium: null,
+  anticipo: 0,
+  incentivo_premium: 0,
   descripcion: "",
   fecha_limite_pago: "",
 };
@@ -284,12 +303,20 @@ export default function RegistroVenta({ navigation, onFormClose }) {
   // Estado para controlar si se muestra el input de dirección personalizada
   const [showCustomDireccion, setShowCustomDireccion] = useState(false);
 
+  // Estado para controlar si el usuario quiere definir una fecha límite
+  const [defineFechaLimite, setDefineFechaLimite] = useState(false);
+
   // Estados "en vivo" para una UI fluida en los sliders
   const [liveHoras, setLiveHoras] = useState(initialFormState.horas_sesion);
   const [liveAnticipo, setLiveAnticipo] = useState(initialFormState.anticipo);
   const [liveIncentivo, setLiveIncentivo] = useState(
     initialFormState.incentivo_premium
   );
+
+  // --- Lógica para los inputs de fecha segmentados ---
+  const [dateParts, setDateParts] = useState({ day: "", month: "", year: "" });
+  const monthInputRef = useRef(null);
+  const yearInputRef = useRef(null);
 
   // Ref para gestionar el intervalo de pulsación larga en los steppers
   const intervalRef = React.useRef(null);
@@ -342,6 +369,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
             set_incentivo_active(false);
             setShowCustomDireccion(false);
             setIsDescripcionManual(false); // Resetea el control de la descripción
+            setDefineFechaLimite(false); // Resetea el checklist de la fecha
             // Resetea también los estados "en vivo"
             setLiveHoras(initialFormState.horas_sesion);
             setLiveAnticipo(initialFormState.anticipo);
@@ -404,25 +432,58 @@ export default function RegistroVenta({ navigation, onFormClose }) {
         curso_id: item.value,
         curso_quantity: 1, // Resetea la cantidad a 1 al cambiar de curso
         importe: item.costo || 0,
-        // Al cambiar de curso, el anticipo se resetea a null para que el usuario lo defina.
-        anticipo: null,
+        // Al cambiar de curso, el anticipo y el incentivo se resetean a 0.
+        anticipo: 0,
+        incentivo_premium: 0,
       };
     });
-    setLiveAnticipo(null); // Sincroniza el estado en vivo
-    setLiveIncentivo(null);
+    // Sincroniza los estados "en vivo" de los sliders
+    setLiveAnticipo(0);
+    setLiveIncentivo(0);
+    // Activa automáticamente el checklist para definir la fecha al seleccionar un curso.
+    setDefineFechaLimite(true);
   };
 
   const handleCursoQuantityChange = (newQuantity) => {
     if (newQuantity < 1 || !form.curso_id) return; // No permitir menos de 1 o si no hay curso
 
     const selectedCurso = cursos.find((c) => c.value === form.curso_id);
-    const costo_curso = selectedCurso ? selectedCurso.costo : 0;
+    const costoUnitario = selectedCurso ? selectedCurso.costo : 0;
+    const nuevoImporte = costoUnitario * newQuantity;
 
-    setForm((prev) => ({
-      ...prev,
-      curso_quantity: newQuantity,
-      importe: costo_curso * newQuantity,
-    }));
+    setForm((prev) => {
+      let incentivoActual = prev.incentivo_premium;
+      let anticipoActual = prev.anticipo;
+
+      // 1. Re-validar el incentivo contra el nuevo importe.
+      // Si el incentivo es un monto fijo y ahora es mayor que el nuevo importe, se ajusta.
+      if (!incentivoEnPorcentaje && incentivoActual > nuevoImporte) {
+        incentivoActual = nuevoImporte;
+        setLiveIncentivo(incentivoActual); // Sincronizar slider
+      }
+
+      // 2. Calcular el monto del incentivo (ya sea porcentaje o fijo)
+      const montoIncentivo = incentivoActual
+        ? incentivoEnPorcentaje
+          ? nuevoImporte * (incentivoActual / 100)
+          : incentivoActual
+        : 0;
+
+      // 3. Re-validar el anticipo contra el nuevo importe menos el incentivo.
+      const maxAnticipo = nuevoImporte - montoIncentivo;
+      if (anticipoActual > maxAnticipo) {
+        anticipoActual = maxAnticipo;
+        setLiveAnticipo(anticipoActual); // Sincronizar slider
+      }
+
+      return {
+        ...prev,
+        curso_quantity: newQuantity,
+        importe: nuevoImporte,
+        incentivo_premium: incentivoActual,
+        anticipo: anticipoActual,
+      };
+    });
   };
 
   const commitAnticipo = (value) => {
@@ -469,7 +530,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
   };
 
   const commitIncentivo = (value) => {
-    let numericValue = value === null ? null : parseFloat(value);
+    let numericValue = value === null || value === "" ? 0 : parseFloat(value);
 
     setForm((currentForm) => {
       let nuevoAnticipo = currentForm.anticipo;
@@ -491,21 +552,23 @@ export default function RegistroVenta({ navigation, onFormClose }) {
           }
         }
       }
+
       setLiveIncentivo(numericValue); // Sincroniza el estado visual con el valor final
       const montoIncentivoFinal = numericValue
         ? incentivoEnPorcentaje
           ? currentForm.importe * (numericValue / 100)
           : numericValue
         : 0;
+
       const maxAnticipo = currentForm.importe - montoIncentivoFinal;
 
-      const finalValue =
-        numericValue === null ? null : parseFloat(numericValue.toFixed(2));
+      const finalValue = numericValue;
       // Si el anticipo actual es mayor que el nuevo máximo permitido, se ajusta.
-      if (nuevoAnticipo > maxAnticipo) {
+      if (nuevoAnticipo > maxAnticipo && maxAnticipo >= 0) {
         nuevoAnticipo = maxAnticipo;
         setLiveAnticipo(nuevoAnticipo); // Sincroniza el slider del anticipo
       }
+
       return {
         ...currentForm,
         incentivo_premium: finalValue,
@@ -661,16 +724,31 @@ export default function RegistroVenta({ navigation, onFormClose }) {
     return result < 0 ? 0 : result;
   }, [form.importe, form.incentivo_premium, incentivoEnPorcentaje]);
 
-  const formattedFechaLimite = useMemo(() => {
-    // Guarda para prevenir el error si dateParts es undefined momentáneamente.
-    if (!dateParts) return "DD/MM/AAAA";
+  // Determina si los controles de anticipo deben estar deshabilitados.
+  const isAnticipoDisabled = useMemo(
+    () => !form.curso_id || totalConIncentivo <= 0,
+    [form.curso_id, totalConIncentivo]
+  );
 
-    const { day, month, year } = dateParts;
+  // Determina si el pago se ha cubierto en su totalidad.
+  const isPagoCompleto = useMemo(() => totalFinal <= 0, [totalFinal]);
 
-    // Si no se ha escrito nada, muestra el formato por defecto.
-    if (!day && !month && !year) {
-      return "DD/MM/AAAA";
+  // Efecto para manejar el estado de la fecha límite basado en si el pago está completo.
+  useEffect(() => {
+    if (isPagoCompleto) {
+      // Si el pago está completo, nos aseguramos de que no haya fecha límite.
+      setDefineFechaLimite(false);
+      setForm((prev) => ({ ...prev, fecha_limite_pago: "" }));
+      setDateParts({ day: "", month: "", year: "" });
+    } else if (!defineFechaLimite) {
+      // Si el pago no está completo y el usuario no quiere definir fecha, la limpiamos.
+      setForm((prev) => ({ ...prev, fecha_limite_pago: "" }));
+      setDateParts({ day: "", month: "", year: "" });
     }
+  }, [isPagoCompleto, defineFechaLimite]);
+
+  const formattedFechaLimite = useMemo(() => {
+    const { day, month, year } = dateParts || {};
 
     const monthNames = [
       "Enero",
@@ -689,7 +767,17 @@ export default function RegistroVenta({ navigation, onFormClose }) {
 
     const dayText = day || "DD";
     let monthText = "MM";
-    const yearText = year || "del año en curso";
+    let yearText;
+
+    const currentYear = new Date().getFullYear();
+
+    if (!year) {
+      yearText = "AAAA";
+    } else if (parseInt(year, 10) === currentYear) {
+      yearText = "en curso";
+    } else {
+      yearText = year;
+    }
 
     if (month && month.length === 2) {
       const monthIndex = parseInt(month, 10) - 1;
@@ -697,7 +785,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
         monthText = monthNames[monthIndex];
     }
 
-    return `El pago se realizará el día ${dayText} de ${monthText} del ${yearText}.`;
+    return `El pago se realizará el día ${dayText} de ${monthText} del año ${yearText}.`;
   }, [dateParts]); // La dependencia es correcta
 
   const municipios = [
@@ -737,20 +825,12 @@ export default function RegistroVenta({ navigation, onFormClose }) {
     currency: "MXN",
   });
 
-  const is_incentivo_disabled = useMemo(
-    () => (form.anticipo >= form.importe && form.importe > 0) || !form.curso_id,
-    [form.anticipo, form.importe, form.curso_id]
-  );
+  const is_incentivo_disabled = useMemo(() => !form.curso_id, [form.curso_id]);
 
   const selectedCursoInfo = useMemo(
     () => cursos.find((c) => c.value === form.curso_id),
     [form.curso_id, cursos]
   );
-
-  // --- Lógica para los inputs de fecha segmentados ---
-  const [dateParts, setDateParts] = useState({ day: "", month: "", year: "" });
-  const monthInputRef = useRef(null);
-  const yearInputRef = useRef(null);
 
   useEffect(() => {
     const { day, month, year } = dateParts;
@@ -799,7 +879,19 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       if (numericValue.length === 2) yearInputRef.current?.focus();
     }
     if (part === "year" && numericValue.length === 4) {
-      Keyboard.dismiss();
+      const enteredYear = parseInt(numericValue, 10);
+      const maxYear = new Date().getFullYear() + 10;
+
+      if (enteredYear > maxYear) {
+        Alert.alert(
+          "Fecha Inválida",
+          "Asegurese de haber puesto una fecha correcta"
+        );
+        Keyboard.dismiss();
+        newParts = { day: "", month: "", year: "" };
+      } else {
+        Keyboard.dismiss();
+      }
     }
 
     setDateParts(newParts);
@@ -814,18 +906,41 @@ export default function RegistroVenta({ navigation, onFormClose }) {
   // --- Fin de la lógica de fecha ---
 
   const isFormValid = useMemo(() => {
-    return (
+    const baseValid =
       form.nombre_cliente.trim() !== "" &&
-      form.fecha_limite_pago.length === 10 &&
       form.curso_id !== null &&
-      form.anticipo !== null
-    );
+      form.anticipo !== null;
+
+    if (!baseValid) return false;
+
+    // Si el pago está completo, el formulario es válido sin fecha.
+    if (isPagoCompleto) return true;
+
+    // Si hay pago pendiente y se define fecha, esta debe ser completa.
+    return !defineFechaLimite || form.fecha_limite_pago.length === 10;
   }, [
     form.nombre_cliente,
     form.curso_id,
     form.anticipo,
     form.fecha_limite_pago,
+    isPagoCompleto,
+    defineFechaLimite,
   ]);
+
+  // Calcula el máximo anticipo posible, considerando el incentivo.
+  const maxAnticipoPosible = useMemo(() => {
+    const { importe, incentivo_premium = 0 } = form;
+    if (importe <= 0) return 1000; // Un valor por defecto si no hay importe
+
+    const montoIncentivo = incentivo_premium
+      ? incentivoEnPorcentaje
+        ? importe * (incentivo_premium / 100)
+        : incentivo_premium
+      : 0;
+
+    const max = importe - montoIncentivo;
+    return max < 0 ? 0 : max;
+  }, [form.importe, form.incentivo_premium, incentivoEnPorcentaje]);
 
   const handleRegisterSale = useCallback(async () => {
     if (!isFormValid) {
@@ -1172,7 +1287,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                 >
                   <StepButton
                     type="decrement"
-                    disabled={!form.curso_id || (form.anticipo || 0) <= 0}
+                    disabled={isAnticipoDisabled || (form.anticipo || 0) <= 0}
                     onPress={() =>
                       handleDirectAnticipoChange(
                         Math.max(0, (liveAnticipo || 0) - 50)
@@ -1195,16 +1310,18 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                       style={{ width: "100%", height: SLIDER_HEIGHT }}
                       minimumValue={0}
                       step={50}
-                      maximumValue={form.importe > 0 ? form.importe : 1000}
+                      maximumValue={maxAnticipoPosible}
                       value={Number(liveAnticipo) || 0}
                       // onValueChange se omite para deshabilitar el deslizamiento
                       onSlidingComplete={handleDirectAnticipoChange}
-                      disabled={!form.curso_id}
+                      disabled={isAnticipoDisabled}
                       minimumTrackTintColor={
-                        !form.curso_id ? "#4b5563" : "#6F09EA"
+                        isAnticipoDisabled ? "#9ca3af" : "#6F09EA"
                       }
                       maximumTrackTintColor="#d1d5db"
-                      thumbTintColor={!form.curso_id ? "#9ca3af" : "#6F09EA"}
+                      thumbTintColor={
+                        isAnticipoDisabled ? "#9ca3af" : "#6F09EA"
+                      }
                     />
                   </View>
                   <CurrencyInput
@@ -1212,19 +1329,17 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                     onChangeText={(text) => {
                       const numericValue =
                         text === ""
-                          ? null
+                          ? 0
                           : parseInt(text.replace(/[^0-9]/g, ""), 10) || 0;
                       handleDirectAnticipoChange(numericValue);
                     }}
                     placeholder="0"
-                    editable={!!form.curso_id}
+                    editable={!isAnticipoDisabled}
                   />
                   <StepButton
                     type="increment"
                     disabled={
-                      !form.curso_id ||
-                      form.anticipo >=
-                        form.importe - (form.incentivo_premium || 0)
+                      isAnticipoDisabled || form.anticipo >= maxAnticipoPosible
                     }
                     onPress={() =>
                       handleDirectAnticipoChange(
@@ -1249,7 +1364,8 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                 </View>
                 {form.curso_id && (
                   <ChipButtonGroup
-                    disabled={!form.curso_id}
+                    clearLabel="Sin anticipo"
+                    disabled={isAnticipoDisabled}
                     selectedValue={form.anticipo}
                     chips={(() => {
                       const importe = form.importe || 0;
@@ -1475,7 +1591,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                           onChangeText={(text) => {
                             const numericValue =
                               text === ""
-                                ? null
+                                ? 0
                                 : parseInt(text.replace(/[^0-9]/g, ""), 10) ||
                                   0;
                             handleDirectIncentivoChange(numericValue);
@@ -1487,9 +1603,9 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                         type="increment"
                         disabled={
                           is_incentivo_disabled ||
-                          (incentivoEnPorcentaje
-                            ? form.incentivo_premium >= 100
-                            : form.incentivo_premium >= pendienteSinIncentivo)
+                          (incentivoEnPorcentaje // Si es %, el límite es 100
+                            ? form.incentivo_premium >= 100 // Si es monto, el límite es el importe total del curso
+                            : form.incentivo_premium >= form.importe)
                         }
                         onPress={() =>
                           handleDirectIncentivoChange(
@@ -1510,6 +1626,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                       />
                     </View>
                     <ChipButtonGroup
+                      clearLabel="Sin incentivo"
                       disabled={is_incentivo_disabled} // El grupo se deshabilita si el incentivo no es aplicable
                       selectedValue={form.incentivo_premium}
                       chips={
@@ -1525,7 +1642,8 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                               }, // Botón especial
                             ]
                           : (() => {
-                              const maxIncentivo = pendienteSinIncentivo || 0;
+                              // Lógica para chips de monto fijo
+                              const maxIncentivo = form.importe || 0;
                               if (maxIncentivo <= 0) return [];
 
                               const standardChips = [50, 100, 200, 500];
@@ -1561,7 +1679,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                 )}
               </View>
 
-              {form.incentivo_premium && (
+              {form.incentivo_premium > 0 ? (
                 <LabeledInput label="Pendiente (con incentivo)">
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
                     <StepButton type="decrement" disabled />
@@ -1579,7 +1697,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                     <StepButton type="increment" disabled />
                   </View>
                 </LabeledInput>
-              )}
+              ) : null}
 
               <LabeledInput label="Total a pagar">
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -1601,40 +1719,81 @@ export default function RegistroVenta({ navigation, onFormClose }) {
 
               <LabeledInput
                 label="Fecha Límite de Pago"
-                helperText={formattedFechaLimite}
+                helperText={defineFechaLimite ? formattedFechaLimite : null}
               >
-                <View style={styles.dateInputContainer}>
-                  <TextInput
-                    style={styles.dateInput}
-                    placeholder="DD"
-                    value={dateParts.day}
-                    onChangeText={(text) => handleDatePartChange("day", text)}
-                    keyboardType="number-pad"
-                    maxLength={2} //
-                    onBlur={() => handleDateBlur("day")}
-                  />
-                  <Text style={styles.dateSeparator}>/</Text>
-                  <TextInput
-                    ref={monthInputRef}
-                    style={styles.dateInput}
-                    placeholder="MM"
-                    value={dateParts.month}
-                    onChangeText={(text) => handleDatePartChange("month", text)}
-                    keyboardType="number-pad"
-                    maxLength={2} //
-                    onBlur={() => handleDateBlur("month")}
-                  />
-                  <Text style={styles.dateSeparator}>/</Text>
-                  <TextInput
-                    ref={yearInputRef}
-                    style={[styles.dateInput, { flex: 1.5 }]}
-                    placeholder="AAAA"
-                    value={dateParts.year}
-                    onChangeText={(text) => handleDatePartChange("year", text)}
-                    keyboardType="number-pad"
-                    maxLength={4}
-                  />
-                </View>
+                {isPagoCompleto && form.curso_id ? (
+                  <View
+                    style={styles.pagoCompletoContainer}
+                    pointerEvents="none"
+                  >
+                    <Text style={styles.pagoCompletoText}>
+                      El pago ha sido cubierto en su totalidad.
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.switchContainer}>
+                      <Text style={styles.switchLabel}>
+                        Establecer fecha límite de pago
+                      </Text>
+                      <Switch
+                        trackColor={{ false: "#e5e7eb", true: "#a78bfa" }}
+                        thumbColor={defineFechaLimite ? "#6F09EA" : "#f4f3f4"}
+                        onValueChange={() =>
+                          setDefineFechaLimite((prev) => !prev)
+                        }
+                        disabled={!form.curso_id}
+                        value={defineFechaLimite}
+                      />
+                    </View>
+                    {defineFechaLimite ? (
+                      <View
+                        style={[styles.dateInputContainer, { marginTop: 10 }]}
+                      >
+                        <TextInput
+                          style={styles.dateInput}
+                          placeholder="DD"
+                          value={dateParts.day}
+                          onChangeText={(text) =>
+                            handleDatePartChange("day", text)
+                          }
+                          keyboardType="number-pad"
+                          maxLength={2}
+                          onBlur={() => handleDateBlur("day")}
+                        />
+                        <Text style={styles.dateSeparator}>/</Text>
+                        <TextInput
+                          ref={monthInputRef}
+                          style={styles.dateInput}
+                          placeholder="MM"
+                          value={dateParts.month}
+                          onChangeText={(text) =>
+                            handleDatePartChange("month", text)
+                          }
+                          keyboardType="number-pad"
+                          maxLength={2}
+                          onBlur={() => handleDateBlur("month")}
+                        />
+                        <Text style={styles.dateSeparator}>/</Text>
+                        <TextInput
+                          ref={yearInputRef}
+                          style={[styles.dateInput, { flex: 1.5 }]}
+                          placeholder="AAAA"
+                          value={dateParts.year}
+                          onChangeText={(text) =>
+                            handleDatePartChange("year", text)
+                          }
+                          keyboardType="number-pad"
+                          maxLength={4}
+                        />
+                      </View>
+                    ) : (
+                      <Text style={styles.helperText}>
+                        La fecha de pago es indefinida
+                      </Text>
+                    )}
+                  </>
+                )}
               </LabeledInput>
 
               <LabeledInput label="Descripción">
@@ -1869,6 +2028,18 @@ const styles = StyleSheet.create({
     color: "#b45309",
     fontWeight: "bold",
   },
+  chipClear: {
+    backgroundColor: "#fee2e2",
+    borderColor: "#fca5a5",
+  },
+  chipTextClear: {
+    color: "#b91c1c",
+    fontWeight: "bold",
+  },
+  chipTextDisabled: {
+    color: "#9ca3af",
+    fontWeight: "500",
+  },
 
   segmentedControlContainer: {
     flexDirection: "row",
@@ -1957,6 +2128,9 @@ const styles = StyleSheet.create({
     maxWidth: "100%", // Asegura que no se desborde en web
     textAlign: "right",
     alignSelf: "center",
+  },
+  currencyInputPlaceholder: {
+    color: "#9ca3af",
   },
   currencyCents: {
     fontSize: 16,
@@ -2139,5 +2313,32 @@ const styles = StyleSheet.create({
   dateSeparator: {
     fontSize: 16,
     color: "#9ca3af",
+  },
+  pagoCompletoContainer: {
+    backgroundColor: "#dcfce7", // Verde claro
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#86efac",
+  },
+  pagoCompletoText: {
+    color: "#166534", // Verde oscuro
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  switchContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  switchLabel: {
+    fontSize: 16,
+    color: "#374151",
+  },
+  helperText: {
+    color: "#6b7280",
+    fontSize: 12,
+    marginTop: 4,
   },
 });
