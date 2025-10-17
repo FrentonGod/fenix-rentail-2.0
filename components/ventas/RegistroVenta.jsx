@@ -180,8 +180,15 @@ const ChipButtonGroup = ({
       <ChipButton
         key={chip.label}
         label={chip.label}
-        onPress={() => onSelect(chip.value)}
-        isSelected={chip.value === selectedValue && chip.value !== null}
+        onPress={() => {
+          // Si el chip ya está seleccionado, al presionarlo de nuevo se resetea a 0.
+          if (chip.value === selectedValue) {
+            onSelect(0);
+          } else {
+            onSelect(chip.value);
+          }
+        }}
+        isSelected={chip.value === selectedValue && chip.value !== 0}
         variant={chip.variant}
         disabled={disabled || chip.disabled}
       />
@@ -213,14 +220,25 @@ const TicketPreview = ({ form, curso, totalFinal, totalConIncentivo }) => {
       <View style={styles.ticketSection}>
         <Text style={styles.ticketSectionTitle}>Detalles</Text>
         <View style={styles.ticketItem}>
-          <View style={{ flexShrink: 1, marginRight: 8 }}>
-            <Text style={styles.ticketText} numberOfLines={1}>
-              {form.curso_quantity}x {curso?.label || "Curso no seleccionado"}
-            </Text>
-          </View>
-          <Text style={styles.ticketText}>
-            {currencyFormatter.format(form.importe)}
-          </Text>
+          {form.curso_id ? (
+            <>
+              <Text
+                style={[styles.ticketText, { flexShrink: 1, marginRight: 8 }]}
+              >
+                {form.curso_quantity}x {curso?.label || "Curso..."}
+              </Text>
+              <Text style={styles.ticketText}>
+                {currencyFormatter.format(form.importe)}
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.ticketText}>Curso(s) no seleccionado(s)</Text>
+              <Text style={styles.ticketText}>
+                {currencyFormatter.format(0)}
+              </Text>
+            </>
+          )}
         </View>
       </View>
 
@@ -237,21 +255,42 @@ const TicketPreview = ({ form, curso, totalFinal, totalConIncentivo }) => {
 
       <View style={styles.ticketSeparator} />
 
-      <View style={styles.ticketTotals}>
-        <View style={styles.ticketItem}>
-          <Text style={styles.ticketText}>Anticipo:</Text>
-          <Text style={styles.ticketText}>
-            - {currencyFormatter.format(form.anticipo || 0)}
-          </Text>
+      <View style={styles.ticketItem}>
+        <Text style={styles.ticketText}>Anticipo:</Text>
+        <Text style={styles.ticketText}>
+          - {currencyFormatter.format(form.anticipo || 0)}
+        </Text>
+      </View>
+
+      <View style={styles.ticketSeparator} />
+
+      {form.anticipo > 0 && form.curso_id ? (
+        <>
+          <View style={[styles.ticketItem, { marginTop: 8, marginBottom: 0 }]}>
+            <Text style={[styles.ticketText, styles.ticketTotalLabel]}>
+              Pendiente:
+            </Text>
+            <Text style={[styles.ticketText, styles.ticketTotalAmount]}>
+              {currencyFormatter.format(totalFinal < 0 ? 0 : totalFinal)}
+            </Text>
+          </View>
+        </>
+      ) : null}
+
+      {form.fecha_limite_pago ? (
+        <View style={[styles.ticketItem, { marginTop: 2, marginBottom: 0 }]}>
+          <Text style={styles.ticketDate}>Fecha de pago:</Text>
+          <Text style={styles.ticketDate}>{form.fecha_limite_pago}</Text>
         </View>
-        <View style={styles.ticketItem}>
-          <Text style={[styles.ticketText, styles.ticketTotalLabel]}>
-            Pendiente:
-          </Text>
-          <Text style={[styles.ticketText, styles.ticketTotalAmount]}>
-            {currencyFormatter.format(totalFinal < 0 ? 0 : totalFinal)}
-          </Text>
-        </View>
+      ) : null}
+
+      <View style={[styles.ticketItem, { marginTop: 4 }]}>
+        <Text style={[styles.ticketText, styles.ticketPendingLabel]}>
+          Total a Pagar:
+        </Text>
+        <Text style={[styles.ticketText, styles.ticketPendingAmount]}>
+          {currencyFormatter.format(totalConIncentivo)}
+        </Text>
       </View>
     </View>
   );
@@ -314,7 +353,11 @@ export default function RegistroVenta({ navigation, onFormClose }) {
   );
 
   // --- Lógica para los inputs de fecha segmentados ---
-  const [dateParts, setDateParts] = useState({ day: "", month: "", year: "" });
+  const [dateParts, setDateParts] = useState({
+    day: "",
+    month: "",
+    year: new Date().getFullYear().toString(),
+  });
   const monthInputRef = useRef(null);
   const yearInputRef = useRef(null);
 
@@ -398,7 +441,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
     const cantidadTexto =
       curso_quantity > 1 ? `de ${curso_quantity} cursos` : "del curso";
 
-    return `Compra ${cantidadTexto} "${cursoSeleccionado.label}" del día ${formattedDate} por ${nombre_cliente}.`;
+    return `Compra ${cantidadTexto} "${cursoSeleccionado.label}" del día ${formattedDate} por ${nombre_cliente}`;
   }, [form.nombre_cliente, form.curso_id, form.curso_quantity, cursos]);
 
   // Efecto para actualizar la descripción si no es manual
@@ -442,6 +485,14 @@ export default function RegistroVenta({ navigation, onFormClose }) {
     setLiveIncentivo(0);
     // Activa automáticamente el checklist para definir la fecha al seleccionar un curso.
     setDefineFechaLimite(true);
+
+    // Y establece la fecha de hoy directamente para asegurar que se popule.
+    const today = new Date();
+    setDateParts({
+      day: String(today.getDate()).padStart(2, "0"),
+      month: String(today.getMonth() + 1).padStart(2, "0"),
+      year: today.getFullYear().toString(),
+    });
   };
 
   const handleCursoQuantityChange = (newQuantity) => {
@@ -487,28 +538,32 @@ export default function RegistroVenta({ navigation, onFormClose }) {
   };
 
   const commitAnticipo = (value) => {
-    let numericValue = value === null ? null : parseFloat(value);
+    let numericValue = value === null || value === "" ? 0 : parseFloat(value);
 
     setForm((currentForm) => {
-      // Calcula el monto del incentivo actual para determinar el máximo anticipo posible.
-      const montoIncentivo = currentForm.incentivo_premium
-        ? incentivoEnPorcentaje
-          ? currentForm.importe * (currentForm.incentivo_premium / 100)
-          : currentForm.incentivo_premium
-        : 0;
+      let nuevoIncentivo = currentForm.incentivo_premium;
 
-      const maxAnticipo = currentForm.importe - montoIncentivo;
-
-      // El anticipo no puede ser mayor que el importe restante después del incentivo.
-      if (numericValue > maxAnticipo) {
-        numericValue = maxAnticipo;
+      // 1. Validar el nuevo anticipo para que no exceda el importe total.
+      if (numericValue > currentForm.importe) {
+        numericValue = currentForm.importe;
       }
 
       setLiveAnticipo(numericValue); // Sincroniza el estado visual con el valor final
 
+      // 2. Calcular el máximo incentivo posible con el nuevo anticipo.
+      const maxIncentivo = currentForm.importe - numericValue;
+
+      // 3. Si el incentivo actual es mayor que el nuevo máximo, se ajusta.
+      if (nuevoIncentivo > maxIncentivo && maxIncentivo >= 0) {
+        nuevoIncentivo = maxIncentivo;
+        // Si el incentivo se ajusta, también sincronizamos su slider.
+        setLiveIncentivo(nuevoIncentivo);
+      }
+
       return {
         ...currentForm,
         anticipo: numericValue,
+        incentivo_premium: nuevoIncentivo,
       };
     });
   };
@@ -739,11 +794,24 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       // Si el pago está completo, nos aseguramos de que no haya fecha límite.
       setDefineFechaLimite(false);
       setForm((prev) => ({ ...prev, fecha_limite_pago: "" }));
-      setDateParts({ day: "", month: "", year: "" });
+      setDateParts({
+        day: "",
+        month: "",
+        year: new Date().getFullYear().toString(),
+      });
     } else if (!defineFechaLimite) {
-      // Si el pago no está completo y el usuario no quiere definir fecha, la limpiamos.
+      // Al desactivar, solo se limpia la fecha final del formulario,
+      // pero se conservan los datos en los inputs (dateParts).
       setForm((prev) => ({ ...prev, fecha_limite_pago: "" }));
-      setDateParts({ day: "", month: "", year: "" });
+    } else {
+      // Al reactivar el switch, si ya había una fecha completa, la restauramos.
+      const { day, month, year } = dateParts;
+      if (day.length === 2 && month.length === 2 && year.length === 4) {
+        setForm((prev) => ({
+          ...prev,
+          fecha_limite_pago: `${day}/${month}/${year}`,
+        }));
+      }
     }
   }, [isPagoCompleto, defineFechaLimite]);
 
@@ -1339,7 +1407,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                   <StepButton
                     type="increment"
                     disabled={
-                      isAnticipoDisabled || form.anticipo >= maxAnticipoPosible
+                      isAnticipoDisabled || form.anticipo >= form.importe
                     }
                     onPress={() =>
                       handleDirectAnticipoChange(
@@ -1748,7 +1816,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                     </View>
                     {defineFechaLimite ? (
                       <View
-                        style={[styles.dateInputContainer, { marginTop: 10 }]}
+                        style={[styles.dateInputContainer, { marginTop: 4 }]}
                       >
                         <TextInput
                           style={styles.dateInput}
@@ -2266,8 +2334,14 @@ const styles = StyleSheet.create({
   stepButtonTextDisabled: {
     color: "#9ca3af",
   },
-  ticketTotals: {
-    marginTop: 10,
+  ticketPendingLabel: {
+    fontWeight: "600",
+    color: "#2563eb",
+  },
+  ticketPendingAmount: {
+    fontWeight: "600",
+    color: "#2563eb",
+    fontSize: 15,
   },
   ticketTotalLabel: {
     fontWeight: "bold",
@@ -2330,7 +2404,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
   },
   switchLabel: {
     fontSize: 16,
@@ -2339,6 +2412,5 @@ const styles = StyleSheet.create({
   helperText: {
     color: "#6b7280",
     fontSize: 12,
-    marginTop: 4,
   },
 });
