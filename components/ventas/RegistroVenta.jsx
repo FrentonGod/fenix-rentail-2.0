@@ -383,6 +383,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
           {
             text: "Descartar",
             style: "destructive",
+
             onPress: () => navigation.dispatch(e.data.action),
           },
           { text: "Cancelar", style: "cancel", onPress: () => {} },
@@ -1051,11 +1052,11 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       };
 
       // 3. Insertar en Supabase
-      const { error } = await supabase.from("ventas").insert(payload);
+      // const { error } = await supabase.from("ventas").insert(payload);
 
-      if (error) {
-        throw error;
-      }
+      // if (error) {
+      //   throw error;
+      // }
 
       // 4. Éxito
       Keyboard.dismiss();
@@ -1090,14 +1091,14 @@ export default function RegistroVenta({ navigation, onFormClose }) {
               Keyboard.dismiss();
               Alert.alert(
                 "Cambios sin guardar",
-                "Tienes cambios sin guardar. ¿Deseas descartarlos?",
+                "Tienes cambios sin guardar. ¿Qué deseas hacer?",
                 [
                   {
                     text: "Descartar",
                     style: "destructive",
-                    onPress: onFormClose, // Llama a la función para cerrar
+                    onPress: onFormClose,
                   },
-                  { text: "Cancelar", style: "cancel" },
+                  { text: "Cancelar", style: "cancel", onPress: () => {} },
                 ]
               );
             }}
@@ -1162,6 +1163,19 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                       setForm({ ...form, direccion: item.value });
                     }
                   }}
+                  renderRightIcon={() => (
+                    <Svg
+                      height="20"
+                      viewBox="0 -960 960 960"
+                      width="20"
+                      fill="#64748b"
+                    >
+                      <Path d="M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z" />
+                    </Svg>
+                  )}
+                  placeholderStyle={styles.dropdownPlaceholder}
+                  selectedTextStyle={styles.dropdownSelectedText}
+                  itemTextStyle={styles.dropdownItemText}
                 />
                 {showCustomDireccion && (
                   <TextInput
@@ -1198,6 +1212,19 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                         setForm({ ...form, grupo: item.value })
                       }
                       dropdownPosition="auto"
+                      renderRightIcon={() => (
+                        <Svg
+                          height="20"
+                          viewBox="0 -960 960 960"
+                          width="20"
+                          fill="#64748b"
+                        >
+                          <Path d="M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z" />
+                        </Svg>
+                      )}
+                      placeholderStyle={styles.dropdownPlaceholder}
+                      selectedTextStyle={styles.dropdownSelectedText}
+                      itemTextStyle={styles.dropdownItemText}
                     />
                   </LabeledInput>
                 </View>
@@ -1213,6 +1240,19 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                       onChange={(item) =>
                         setForm({ ...form, frecuencia_sesiones: item.value })
                       }
+                      renderRightIcon={() => (
+                        <Svg
+                          height="20"
+                          viewBox="0 -960 960 960"
+                          width="20"
+                          fill="#64748b"
+                        >
+                          <Path d="M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z" />
+                        </Svg>
+                      )}
+                      placeholderStyle={styles.dropdownPlaceholder}
+                      selectedTextStyle={styles.dropdownSelectedText}
+                      itemTextStyle={styles.dropdownItemText}
                     />
                   </LabeledInput>
                 </View>
@@ -1295,6 +1335,19 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                     search
                     searchPlaceholder="Buscar curso..."
                     dropdownPosition="auto"
+                    renderRightIcon={() => (
+                      <Svg
+                        height="20"
+                        viewBox="0 -960 960 960"
+                        width="20"
+                        fill="#64748b"
+                      >
+                        <Path d="M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z" />
+                      </Svg>
+                    )}
+                    placeholderStyle={styles.dropdownPlaceholder}
+                    selectedTextStyle={styles.dropdownSelectedText}
+                    itemTextStyle={styles.dropdownItemText}
                   />
                   <View
                     style={[
@@ -2022,6 +2075,18 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: "center",
+  },
+  dropdownItemText: {
+    color: "#1e293b",
+    fontSize: 16,
+  },
+  dropdownPlaceholder: {
+    color: "#64748b",
+    fontSize: 16,
+  },
+  dropdownSelectedText: {
+    color: "#1e293b",
+    fontSize: 16,
   },
   submitButtonDisabled: {
     backgroundColor: "#a78bfa", // Un morado más claro

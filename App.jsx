@@ -13,23 +13,32 @@ import {
   TextInput,
   LogBox,
   Modal,
+  Switch,
   TouchableWithoutFeedback,
   Keyboard,
   ActivityIndicator,
   Alert,
   RefreshControl,
+  KeyboardAvoidingView,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import equal from "fast-deep-equal";
 import * as Clipboard from "expo-clipboard";
 import "./global.css";
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
 import Svg, { Path } from "react-native-svg";
 import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
 import { BarChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { Dropdown } from "react-native-element-dropdown";
+import Slider from "@react-native-community/slider";
 import {
   Calendar,
   CalendarList,
@@ -340,6 +349,183 @@ const ScreenInicio = () => {
   );
 };
 
+const TablaVentasPendientes = ({
+  data,
+  query,
+  isRefetching,
+  onRefresh,
+  onEdit,
+  onReprint,
+}) => {
+  const [sortKey, setSortKey] = useState("monto_pendiente");
+  const [sortDir, setSortDir] = useState("desc");
+
+  const currencyFormatter = new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+  });
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const arr = data.filter((r) => {
+      if (!q) return true;
+      return (
+        String(r.nombre_estudiante).toLowerCase().includes(q) ||
+        String(r.curso_asignado).toLowerCase().includes(q) ||
+        String(r.grupo).toLowerCase().includes(q)
+      );
+    });
+    const sorted = [...arr].sort((a, b) => {
+      let va = a[sortKey] ?? "";
+      let vb = b[sortKey] ?? "";
+      if (typeof va === "string") va = va.toLowerCase();
+      if (typeof vb === "string") vb = vb.toLowerCase();
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [data, query, sortKey, sortDir]);
+
+  const SortHeader = ({ label, k, flex = 1, center }) => (
+    <Pressable
+      onPress={() => {
+        if (!k) return;
+        setSortKey(k);
+        setSortDir((d) =>
+          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"
+        );
+      }}
+      className="py-3 px-3"
+      style={{ flex, alignItems: center ? "center" : "flex-start" }}
+      android_ripple={{ color: "rgba(0,0,0,0.05)" }}
+    >
+      <View className="flex-row items-center gap-1">
+        <Text className="text-slate-800 font-semibold text-xs sm:text-sm uppercase tracking-wide">
+          {label}
+        </Text>
+        {sortKey === k && (
+          <Svg width={12} height={12} viewBox="0 -960 960 960" fill="#334155">
+            {sortDir === "asc" ? (
+              <Path d="M480-680 240-440h480L480-680Z" />
+            ) : (
+              <Path d="M240-520h480L480-280 240-520Z" />
+            )}
+          </Svg>
+        )}
+      </View>
+    </Pressable>
+  );
+
+  return (
+    <View className="px-2 flex-1">
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={onRefresh}
+            tintColor="#6F09EA"
+          />
+        }
+      >
+        <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+          <View className="bg-slate-100 border-b border-slate-200 flex-row">
+            <SortHeader label="Curso" k="curso_asignado" flex={3} />
+            <SortHeader label="Nombre" k="nombre_estudiante" flex={3} />
+            <SortHeader label="Pendiente" k="monto_pendiente" flex={2} center />
+            <SortHeader label="Grupo" k="grupo" flex={1.5} center />
+            <SortHeader label="Acciones" k={null} flex={1.5} center />
+          </View>
+          {filtered.length > 0 ? (
+            filtered.map((estudiante, index) => (
+              <View
+                key={estudiante.id_estudiante}
+                className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
+              >
+                <Text
+                  style={{ flex: 3 }}
+                  className="p-3 text-slate-700"
+                  numberOfLines={1}
+                >
+                  {estudiante.curso_asignado}
+                </Text>
+                <Text
+                  style={{ flex: 3 }}
+                  className="p-3 text-slate-800"
+                  numberOfLines={1}
+                >
+                  {estudiante.nombre_estudiante}
+                </Text>
+                <Text
+                  style={{ flex: 2, textAlign: "center" }}
+                  className="p-3 text-slate-700 font-medium"
+                >
+                  {currencyFormatter.format(estudiante.monto_pendiente || 0)}
+                </Text>
+                <Text
+                  style={{ flex: 1.5, textAlign: "center" }}
+                  className="p-3 text-slate-700"
+                >
+                  {estudiante.grupo}
+                </Text>
+                <View
+                  style={{ flex: 1.5 }}
+                  className="p-3 flex-row justify-center items-center gap-x-4"
+                >
+                  <TouchableOpacity onPress={() => onEdit(estudiante)}>
+                    <Svg
+                      height="22"
+                      viewBox="0 -960 960 960"
+                      width="22"
+                      fill="#3b82f6"
+                    >
+                      <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                    </Svg>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => onReprint(estudiante.id_estudiante)}
+                  >
+                    <Svg
+                      height="22"
+                      viewBox="0 -960 960 960"
+                      width="22"
+                      fill="#475569"
+                    >
+                      <Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z" />
+                    </Svg>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          ) : (
+            <View className="p-8 items-center justify-center bg-white">
+              <Text className="text-slate-500 text-center font-medium">
+                {query
+                  ? "No se encontraron resultados para tu búsqueda."
+                  : "Aún no hay ventas con adeudos registradas."}
+              </Text>
+              <Text className="text-slate-400 text-center text-sm mt-1">
+                {query
+                  ? "Intenta con otras palabras clave."
+                  : "¡Todo está al día!"}
+              </Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+      {isRefetching && (
+        <View
+          style={StyleSheet.absoluteFill}
+          className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl"
+        >
+          <ActivityIndicator size="large" color="#6F09EA" />
+        </View>
+      )}
+    </View>
+  );
+};
+
 const ScreenEstudiantes = () => {
   const [estudiantes, setEstudiantes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -477,11 +663,6 @@ const TablaEstudiantes = ({
   const [sortKey, setSortKey] = useState("nombre_estudiante");
   const [sortDir, setSortDir] = useState("asc");
 
-  const currencyFormatter = new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-  });
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const arr = data.filter((r) => {
@@ -548,73 +729,80 @@ const TablaEstudiantes = ({
       >
         <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
           <View className="bg-slate-100 border-b border-slate-200 flex-row">
+            <SortHeader label="Nombre" k="nombre_estudiante" flex={4} />
             <SortHeader label="Curso" k="curso_asignado" flex={3} />
-            <SortHeader label="Nombre" k="nombre_estudiante" flex={3} />
-            <SortHeader label="Pendiente" k="monto_pendiente" flex={2} center />
-            <SortHeader label="Grupo" k="grupo" flex={1.5} center />
+            <SortHeader label="Grupo" k="grupo" flex={2} center />
             <SortHeader label="Acciones" k={null} flex={1.5} center />
           </View>
-          {filtered.map((estudiante, index) => (
-            <View
-              key={estudiante.id_estudiante}
-              className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
-            >
-              <Text
-                style={{ flex: 3 }}
-                className="p-3 text-slate-700"
-                numberOfLines={1}
-              >
-                {estudiante.curso_asignado}
-              </Text>
-              <Text
-                style={{ flex: 3 }}
-                className="p-3 text-slate-800"
-                numberOfLines={1}
-              >
-                {estudiante.nombre_estudiante}
-              </Text>
-              <Text
-                style={{ flex: 2, textAlign: "center" }}
-                className="p-3 text-slate-700 font-medium"
-              >
-                {currencyFormatter.format(estudiante.monto_pendiente || 0)}
-              </Text>
-              <Text
-                style={{ flex: 1.5, textAlign: "center" }}
-                className="p-3 text-slate-700"
-              >
-                {estudiante.grupo}
-              </Text>
+          {filtered.length > 0 ? (
+            filtered.map((estudiante, index) => (
               <View
-                style={{ flex: 1.5 }}
-                className="p-3 flex-row justify-center items-center gap-x-4"
+                key={estudiante.id_estudiante}
+                className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
               >
-                <TouchableOpacity onPress={() => onEdit(estudiante)}>
-                  <Svg
-                    height="22"
-                    viewBox="0 -960 960 960"
-                    width="22"
-                    fill="#3b82f6"
-                  >
-                    <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                  </Svg>
-                </TouchableOpacity>
-                {/* El botón de borrar se reemplaza por el de reimprimir ticket */}
-                <TouchableOpacity
-                  onPress={() => onReprint(estudiante.id_estudiante)}
+                <Text
+                  style={{ flex: 4 }}
+                  className="p-3 text-slate-800"
+                  numberOfLines={1}
                 >
-                  <Svg
-                    height="22"
-                    viewBox="0 -960 960 960"
-                    width="22"
-                    fill="#475569"
+                  {estudiante.nombre_estudiante}
+                </Text>
+                <Text
+                  style={{ flex: 3 }}
+                  className="p-3 text-slate-700"
+                  numberOfLines={1}
+                >
+                  {estudiante.curso_asignado}
+                </Text>
+                <Text
+                  style={{ flex: 2, textAlign: "center" }}
+                  className="p-3 text-slate-700"
+                >
+                  {estudiante.grupo}
+                </Text>
+                <View
+                  style={{ flex: 1.5 }}
+                  className="p-3 flex-row justify-center items-center gap-x-4"
+                >
+                  <TouchableOpacity onPress={() => onEdit(estudiante)}>
+                    <Svg
+                      height="22"
+                      viewBox="0 -960 960 960"
+                      width="22"
+                      fill="#3b82f6"
+                    >
+                      <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                    </Svg>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => onDelete(estudiante.id_estudiante)}
                   >
-                    <Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z" />
-                  </Svg>
-                </TouchableOpacity>
+                    <Svg
+                      height="22"
+                      viewBox="0 -960 960 960"
+                      width="22"
+                      fill="#ef4444"
+                    >
+                      <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                    </Svg>
+                  </TouchableOpacity>
+                </View>
               </View>
+            ))
+          ) : (
+            <View className="p-8 items-center justify-center bg-white">
+              <Text className="text-slate-500 text-center font-medium">
+                {query
+                  ? "No se encontraron resultados para tu búsqueda."
+                  : "Aún no hay estudiantes registrados."}
+              </Text>
+              <Text className="text-slate-400 text-center text-sm mt-1">
+                {query
+                  ? "Intenta con otras palabras clave."
+                  : "¡Agrega un nuevo estudiante para comenzar!"}
+              </Text>
             </View>
-          ))}
+          )}
         </View>
       </ScrollView>
       {isRefetching && (
@@ -923,57 +1111,72 @@ const TablaAsesores = ({
             <SortHeader label="Acciones" k={null} flex={1.3} center />
           </View>
           {/* Filas */}
-          {filtered.map((asesor, index) => (
-            <Pressable
-              key={asesor.id_asesor}
-              className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
-              onPress={() => onView(asesor)}
-              android_ripple={{ color: "rgba(0,0,0,0.04)" }}
-            >
-              <Text
-                style={{ flex: 3 }}
-                className="p-3 text-slate-800"
-                numberOfLines={1}
+          {filtered.length > 0 ? (
+            filtered.map((asesor, index) => (
+              <Pressable
+                key={asesor.id_asesor}
+                className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
+                onPress={() => onView(asesor)}
+                android_ripple={{ color: "rgba(0,0,0,0.04)" }}
               >
-                {asesor.nombre_asesor}
+                <Text
+                  style={{ flex: 3 }}
+                  className="p-3 text-slate-800"
+                  numberOfLines={1}
+                >
+                  {asesor.nombre_asesor}
+                </Text>
+                <Text
+                  style={{ flex: 5 }}
+                  className="p-3 text-slate-700"
+                  numberOfLines={1}
+                >
+                  {asesor.correo_asesor}
+                </Text>
+                <Text style={{ flex: 2 }} className="p-3 text-slate-700">
+                  {asesor.telefono_asesor}
+                </Text>
+                <View
+                  style={{ flex: 1.3 }}
+                  className="p-3 flex-row justify-around items-center gap-x-6"
+                >
+                  <TouchableOpacity onPress={() => onEdit(asesor)}>
+                    <Svg
+                      height="22"
+                      viewBox="0 -960 960 960"
+                      width="22"
+                      fill="#3b82f6"
+                    >
+                      <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                    </Svg>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => onDelete(asesor.id_asesor)}>
+                    <Svg
+                      height="22"
+                      viewBox="0 -960 960 960"
+                      width="22"
+                      fill="#ef4444"
+                    >
+                      <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                    </Svg>
+                  </TouchableOpacity>
+                </View>
+              </Pressable>
+            ))
+          ) : (
+            <View className="p-8 items-center justify-center bg-white">
+              <Text className="text-slate-500 text-center font-medium">
+                {query
+                  ? "No se encontraron asesores para tu búsqueda."
+                  : "Aún no hay asesores registrados."}
               </Text>
-              <Text
-                style={{ flex: 5 }}
-                className="p-3 text-slate-700"
-                numberOfLines={1}
-              >
-                {asesor.correo_asesor}
+              <Text className="text-slate-400 text-center text-sm mt-1">
+                {query
+                  ? "Intenta con otras palabras clave."
+                  : "¡Agrega un nuevo asesor para comenzar!"}
               </Text>
-              <Text style={{ flex: 2 }} className="p-3 text-slate-700">
-                {asesor.telefono_asesor}
-              </Text>
-              <View
-                style={{ flex: 1.3 }}
-                className="p-3 flex-row justify-around items-center gap-x-6"
-              >
-                <TouchableOpacity onPress={() => onEdit(asesor)}>
-                  <Svg
-                    height="22"
-                    viewBox="0 -960 960 960"
-                    width="22"
-                    fill="#3b82f6"
-                  >
-                    <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                  </Svg>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => onDelete(asesor.id_asesor)}>
-                  <Svg
-                    height="22"
-                    viewBox="0 -960 960 960"
-                    width="22"
-                    fill="#ef4444"
-                  >
-                    <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
-                  </Svg>
-                </TouchableOpacity>
-              </View>
-            </Pressable>
-          ))}
+            </View>
+          )}
         </View>
       </ScrollView>
       {isRefetching && (
@@ -1292,38 +1495,898 @@ const ScreenPagos = ({ navigation }) => {
   );
 };
 
-const Proximamente = () => {
-  const [dots, setDots] = useState("");
+function LabeledInput({ label, error, children, containerClassName = "" }) {
+  return (
+    <View className={`w-full ${containerClassName}`}>
+      <Text className="text-slate-700 text-xs font-semibold mb-1 uppercase tracking-wide">
+        {label}
+      </Text>
+      {children}
+      {!!error && <Text className="text-red-600 text-xs mt-1">{error}</Text>}
+    </View>
+  );
+}
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      setDots((prevDots) => (prevDots.length < 3 ? prevDots + "." : ""));
-    }, 500);
+const renderDropdownIcon = () => (
+  <Svg height="20" viewBox="0 -960 960 960" width="20" fill="#475569">
+    <Path d="M480-360 240-600h480L480-360Z" />
+  </Svg>
+);
 
-    return () => clearInterval(intervalId);
-  }, []);
+const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
+  const initialFormState = {
+    id: null,
+    nombre: "",
+    descripcion: "",
+    monto: "",
+    fecha: new Date().toISOString().split("T")[0], // Fecha para el filtro
+  };
+
+  const [form, setForm] = useState(
+    egresoToEdit
+      ? { ...egresoToEdit, monto: String(egresoToEdit.monto) }
+      : initialFormState
+  );
+  const [formErrors, setFormErrors] = useState({ nombre: "" });
+
+  // --- Lógica para el slider de Monto ---
+  const [liveMonto, setLiveMonto] = useState(Number(egresoToEdit?.monto) || 0);
+  const [maxSliderValue, setMaxSliderValue] = useState(
+    Math.max(3000, Number(egresoToEdit?.monto) || 0)
+  );
+
+  const handleInputChange = (field, value) => {
+    setForm({ ...form, [field]: value });
+    if (formErrors[field]) {
+      setFormErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const handleMontoChange = (value) => {
+    setLiveMonto(value);
+    handleInputChange("monto", String(value));
+    if (value > maxSliderValue) {
+      setMaxSliderValue(value);
+    } else if (value === 0 && maxSliderValue !== 3000) {
+      setMaxSliderValue(3000);
+    }
+  };
+
+  const handleSave = () => {
+    if (!form.nombre.trim()) {
+      setFormErrors({ nombre: "El nombre es requerido" });
+      return;
+    }
+    onFormClose(form, true);
+  };
+
+  const handleCancel = () => {
+    const originalData = egresoToEdit
+      ? { ...egresoToEdit, monto: String(egresoToEdit.monto) }
+      : initialFormState;
+    if (!equal(form, originalData)) {
+      Alert.alert(
+        "Cambios sin guardar",
+        "Tienes cambios sin guardar. ¿Deseas descartarlos?",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Descartar",
+            style: "destructive",
+            onPress: () => onFormClose(null, false),
+          },
+        ]
+      );
+    } else {
+      onFormClose(null, false);
+    }
+  };
 
   return (
-    <View className={`flex-1 justify-center items-center flex-row`}>
-      <Text style={{ fontSize: 24, fontWeight: "bold", color: "#334155" }}>
-        Próximamente
-      </Text>
-      <Text
-        style={{
-          fontSize: 24,
-          fontWeight: "bold",
-          color: "#334155",
-          width: 20,
-          textAlign: "left",
-        }}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1, backgroundColor: "#f8fafc" }}
+      keyboardVerticalOffset={Platform.OS === "android" ? 30 : 0}
+    >
+      <ScrollView
+        className="flex-1 bg-slate-50"
+        contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
+        keyboardShouldPersistTaps="handled"
       >
-        {dots}
-      </Text>
+        <View className="max-w-6xl self-start">
+          <TouchableOpacity
+            onPress={handleCancel}
+            className="flex-row items-center mb-4 opacity-80"
+          >
+            <Svg height="20" viewBox="0 -960 960 960" width="20" fill="#475569">
+              <Path d="M400-80 0-480l400-400 71 71-329 329 329 329-71 71Z" />
+            </Svg>
+            <Text className="text-slate-600 font-bold ml-1">
+              Volver a la lista
+            </Text>
+          </TouchableOpacity>
+          <Text className="text-slate-900 text-2xl font-extrabold">
+            {egresoToEdit ? "Editar Egreso" : "Agregar Egreso"}
+          </Text>
+          <Text className="text-slate-600">
+            Completa los campos para registrar un nuevo egreso.
+          </Text>
+        </View>
+
+        <View className="flex-1 max-w-6xl self-center mt-4">
+          <View className="flex-row flex-wrap gap-4">
+            <View style={{ width: "100%" }}>
+              <LabeledInput label="Nombre del Egreso" error={formErrors.nombre}>
+                <TextInput
+                  value={form.nombre}
+                  onChangeText={(text) => handleInputChange("nombre", text)}
+                  placeholder="Ej. Pago de servicio de luz"
+                  placeholderTextColor="#9ca3af"
+                  className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white ${formErrors.nombre ? "border-red-500" : ""}`}
+                />
+              </LabeledInput>
+            </View>
+
+            <View style={{ width: "100%" }}>
+              <LabeledInput label="Descripción (Opcional)">
+                <TextInput
+                  value={form.descripcion}
+                  onChangeText={(text) =>
+                    handleInputChange("descripcion", text)
+                  }
+                  placeholder="Detalles adicionales sobre el egreso"
+                  placeholderTextColor="#9ca3af"
+                  multiline
+                  numberOfLines={3}
+                  className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white h-24"
+                  style={{ textAlignVertical: "top" }}
+                />
+              </LabeledInput>
+            </View>
+
+            <View style={{ width: "100%" }}>
+              <LabeledInput label="Monto">
+                <View className="flex-row items-center">
+                  <StepButton
+                    type="decrement"
+                    disabled={(Number(form.monto) || 0) <= 0}
+                    onPress={() =>
+                      handleMontoChange(Math.max(0, liveMonto - 50))
+                    }
+                  />
+                  <Slider
+                    style={{ flex: 1, height: 40 }}
+                    minimumValue={0}
+                    maximumValue={maxSliderValue}
+                    step={50}
+                    value={liveMonto}
+                    onSlidingComplete={handleMontoChange}
+                    minimumTrackTintColor={"#6F09EA"}
+                    maximumTrackTintColor="#d1d5db"
+                    thumbTintColor={"#6F09EA"}
+                  />
+                  <CurrencyInput
+                    value={form.monto}
+                    onChangeText={(text) => {
+                      const numericText = text.replace(/[^0-9]/g, "");
+                      if (numericText.length > 4) {
+                        handleMontoChange(maxSliderValue);
+                      } else {
+                        handleMontoChange(Number(numericText) || 0);
+                      }
+                    }}
+                  />
+                  <StepButton
+                    type="increment"
+                    onPress={() => handleMontoChange(liveMonto + 50)}
+                  />
+                </View>
+                <ChipButtonGroup
+                  chips={useMemo(() => {
+                    const standardChips = new Set([
+                      500, 1000, 1500, 2000, 2500, 3000,
+                    ]);
+                    if (maxSliderValue > 3000) {
+                      for (let i = 3500; i <= maxSliderValue; i += 500) {
+                        standardChips.add(i);
+                      }
+                    }
+                    return Array.from(standardChips)
+                      .sort((a, b) => a - b)
+                      .map((v) => ({ label: `$${v}`, value: v }));
+                  }, [maxSliderValue])}
+                  selectedValue={Number(form.monto)}
+                  onSelect={(value) => {
+                    handleMontoChange(value);
+                    setMaxSliderValue((currentMax) =>
+                      Math.max(currentMax, value, 3000)
+                    );
+                  }}
+                />
+              </LabeledInput>
+            </View>
+          </View>
+
+          <View className="mt-3 flex-row justify-end gap-2">
+            <Pressable
+              onPress={handleCancel}
+              className="px-4 py-3 rounded-xl border border-slate-300 bg-white"
+              android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+            >
+              <Text className="text-slate-700 font-semibold">Cancelar</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleSave}
+              className="px-5 py-3 rounded-xl items-center justify-center bg-[#6F09EA]"
+              android_ripple={{ color: "rgba(255,255,255,0.15)" }}
+            >
+              <Text className="text-white font-bold">Guardar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+};
+
+const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
+  const initialFormState = {
+    id: null,
+    alumno: "",
+    curso: "",
+    fechaInicio: "",
+    asesor: null,
+    metodoPago: null,
+    importe: "",
+    estatus: null,
+  };
+
+  const [form, setForm] = useState(
+    ingresoToEdit
+      ? { ...ingresoToEdit, importe: String(ingresoToEdit.importe) }
+      : initialFormState
+  );
+  const [formErrors, setFormErrors] = useState({
+    alumno: "",
+    curso: "",
+    fechaInicio: "",
+  });
+  const [isCalendarVisible, setCalendarVisible] = useState(false);
+  const [liveImporte, setLiveImporte] = useState(
+    Number(ingresoToEdit?.importe) || 0
+  );
+  const [maxSliderValue, setMaxSliderValue] = useState(
+    Math.max(3000, Number(ingresoToEdit?.importe) || 0)
+  );
+
+  const handleInputChange = (field, value) => {
+    setForm({ ...form, [field]: value });
+    if (formErrors[field]) {
+      setFormErrors((prev) => ({ ...prev, [field]: false }));
+    }
+  };
+
+  const handleImporteChange = (value) => {
+    setLiveImporte(value);
+    handleInputChange("importe", String(value));
+    if (value > maxSliderValue) {
+      setMaxSliderValue(value);
+    } else if (value === 0 && maxSliderValue !== 3000) {
+      setMaxSliderValue(3000);
+    }
+  };
+
+  const handleSave = () => {
+    const { alumno, curso, fechaInicio } = form;
+    if (!alumno || !curso || !fechaInicio) {
+      setFormErrors({
+        alumno: !alumno ? "El nombre es requerido" : "",
+        curso: !curso ? "Selecciona un curso" : "",
+        fechaInicio: !fechaInicio ? "La fecha es requerida" : "",
+      });
+      return;
+    }
+    // Llama a onFormClose pasando el formulario guardado
+    onFormClose(form, true);
+  };
+
+  const handleCancel = () => {
+    const originalData = ingresoToEdit
+      ? { ...ingresoToEdit, importe: String(ingresoToEdit.importe) }
+      : initialFormState;
+    const hasChanges = !equal(form, originalData);
+
+    if (hasChanges) {
+      Alert.alert(
+        "Cambios sin guardar",
+        "Tienes cambios sin guardar. ¿Deseas descartarlos?",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Descartar",
+            style: "destructive",
+            onPress: () => onFormClose(null, false),
+          },
+        ]
+      );
+    } else {
+      onFormClose(null, false);
+    }
+  };
+
+  // Datos para los dropdowns (pueden venir de props o definirse aquí)
+  const asesores = [
+    { label: "Darian Reyes Romero", value: "Darian Reyes Romero" },
+    { label: "María López", value: "María López" },
+    { label: "Asesor de Prueba", value: "Asesor de Prueba" },
+  ];
+  const metodosPago = [
+    { label: "Efectivo", value: "Efectivo" },
+    { label: "Transferencia", value: "Transferencia" },
+    { label: "Depósito", value: "Depósito" },
+  ];
+  const estatusOptions = [
+    { label: "Pendiente", value: "Pendiente" },
+    { label: "Pagado", value: "Pagado" },
+  ];
+  const cursos = [
+    {
+      label: "Entrenamiento para el examen de admision a la universidad",
+      value: "Entrenamiento para el examen de admision a la universidad",
+    },
+    {
+      label: "Entrenamiento para el examen de admision a la preparatoria",
+      value: "Entrenamiento para el examen de admision a la preparatoria",
+    },
+  ];
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1, backgroundColor: "#f8fafc" }}
+      keyboardVerticalOffset={Platform.OS === "android" ? 30 : 0}
+    >
+      <ScrollView
+        className="flex-1 bg-slate-50"
+        contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View className="max-w-6xl self-start">
+          <TouchableOpacity
+            onPress={handleCancel}
+            className="flex-row items-center mb-4 opacity-80"
+          >
+            <Svg height="20" viewBox="0 -960 960 960" width="20" fill="#475569">
+              <Path d="M400-80 0-480l400-400 71 71-329 329 329 329-71 71Z" />
+            </Svg>
+            <Text className="text-slate-600 font-bold ml-1">
+              Volver a la lista
+            </Text>
+          </TouchableOpacity>
+          <Text className="text-slate-900 text-2xl font-extrabold">
+            {ingresoToEdit ? "Editar Ingreso" : "Agregar Ingreso"}
+          </Text>
+          <Text className="text-slate-600">
+            {ingresoToEdit
+              ? "Modifica los datos del ingreso."
+              : "Completa los siguientes campos para registrar un nuevo ingreso."}
+          </Text>
+        </View>
+
+        <View className="flex-1 max-w-6xl self-center mt-4">
+          <View className="flex-row flex-wrap gap-4">
+            <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+              <LabeledInput label="Nombre" error={formErrors.alumno}>
+                <TextInput
+                  value={form.alumno}
+                  onChangeText={(text) => handleInputChange("alumno", text)}
+                  placeholder="Ej. Juan Pére"
+                  placeholderTextColor="#9ca3af"
+                  className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white ${formErrors.alumno ? "border-red-500" : ""}`}
+                />
+              </LabeledInput>
+            </View>
+
+            <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+              <LabeledInput label="Curso/Asesoría" error={formErrors.curso}>
+                <Dropdown
+                  style={[
+                    styles_finanzas.dropdown,
+                    formErrors.curso ? { borderColor: "#ef4444" } : {},
+                  ]}
+                  data={cursos}
+                  labelField="label"
+                  valueField="value"
+                  placeholder="Seleccionar curso"
+                  value={form.curso}
+                  onChange={(item) => handleInputChange("curso", item.value)}
+                  renderRightIcon={renderDropdownIcon}
+                />
+              </LabeledInput>
+            </View>
+
+            <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+              <LabeledInput
+                label="Fecha de Inicio"
+                error={formErrors.fechaInicio}
+              >
+                <TouchableOpacity
+                  onPress={() => setCalendarVisible(true)}
+                  className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white h-[50px] justify-center ${formErrors.fechaInicio ? "border-red-500" : ""}`}
+                >
+                  <Text
+                    className={
+                      form.fechaInicio ? "text-slate-900" : "text-gray-400"
+                    }
+                  >
+                    {form.fechaInicio || "Seleccionar fecha"}
+                  </Text>
+                </TouchableOpacity>
+              </LabeledInput>
+            </View>
+
+            <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+              <LabeledInput label="Método de Pago">
+                <Dropdown
+                  style={styles_finanzas.dropdown}
+                  data={metodosPago}
+                  labelField="label"
+                  valueField="value"
+                  placeholder="Seleccionar método"
+                  value={form.metodoPago}
+                  onChange={(item) =>
+                    handleInputChange("metodoPago", item.value)
+                  }
+                  renderRightIcon={renderDropdownIcon}
+                />
+              </LabeledInput>
+            </View>
+
+            <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+              <LabeledInput label="Asesor">
+                <Dropdown
+                  style={styles_finanzas.dropdown}
+                  data={asesores}
+                  labelField="label"
+                  valueField="value"
+                  placeholder="Seleccionar asesor"
+                  value={form.asesor}
+                  onChange={(item) => handleInputChange("asesor", item.value)}
+                  renderRightIcon={renderDropdownIcon}
+                />
+              </LabeledInput>
+            </View>
+
+            <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+              <LabeledInput label="Estatus">
+                <Dropdown
+                  style={styles_finanzas.dropdown}
+                  data={estatusOptions}
+                  labelField="label"
+                  valueField="value"
+                  placeholder="Seleccionar estatus"
+                  value={form.estatus}
+                  onChange={(item) => handleInputChange("estatus", item.value)}
+                  renderRightIcon={renderDropdownIcon}
+                />
+              </LabeledInput>
+            </View>
+
+            <View style={{ width: "100%" }}>
+              <LabeledInput label="Importe">
+                <View className="flex-row items-center">
+                  <StepButton
+                    type="decrement"
+                    disabled={(Number(form.importe) || 0) <= 0}
+                    onPress={() =>
+                      handleImporteChange(Math.max(0, liveImporte - 50))
+                    }
+                  />
+                  <Slider
+                    style={{ flex: 1, height: 40 }}
+                    minimumValue={0}
+                    maximumValue={maxSliderValue}
+                    step={50}
+                    value={liveImporte}
+                    onSlidingComplete={handleImporteChange}
+                    minimumTrackTintColor={"#6F09EA"}
+                    maximumTrackTintColor="#d1d5db"
+                    thumbTintColor={"#6F09EA"}
+                  />
+                  <CurrencyInput
+                    value={form.importe}
+                    onChangeText={(text) => {
+                      const numericText = text.replace(/[^0-9]/g, "");
+                      if (numericText.length > 4) {
+                        handleImporteChange(maxSliderValue);
+                      } else {
+                        handleImporteChange(Number(numericText) || 0);
+                      }
+                    }}
+                  />
+                  <StepButton
+                    type="increment"
+                    onPress={() => handleImporteChange(liveImporte + 50)}
+                  />
+                </View>
+                <ChipButtonGroup
+                  chips={useMemo(() => {
+                    const standardChips = new Set([
+                      500, 1000, 1500, 2000, 2500, 3000,
+                    ]);
+                    // Agrega chips adicionales en incrementos de 500 si el rango se expande
+                    if (maxSliderValue > 3000) {
+                      for (let i = 3500; i <= maxSliderValue; i += 500) {
+                        standardChips.add(i);
+                      }
+                    }
+                    return Array.from(standardChips)
+                      .sort((a, b) => a - b)
+                      .map((v) => ({
+                        label: `$${v}`,
+                        value: v,
+                      }));
+                  }, [maxSliderValue])}
+                  selectedValue={Number(form.importe)}
+                  onSelect={(value) => {
+                    // Primero, actualiza el valor del formulario y el estado visual del slider.
+                    handleImporteChange(value);
+                    // Luego, asegura que el rango máximo del slider se expanda si es necesario.
+                    setMaxSliderValue((currentMax) =>
+                      Math.max(currentMax, value, 3000)
+                    );
+                  }}
+                />
+              </LabeledInput>
+            </View>
+          </View>
+
+          <View className="mt-3 flex-row justify-end gap-2">
+            <Pressable
+              onPress={handleCancel}
+              className="px-4 py-3 rounded-xl border border-slate-300 bg-white"
+              android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+            >
+              <Text className="text-slate-700 font-semibold">Cancelar</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleSave}
+              className="px-5 py-3 rounded-xl items-center justify-center bg-[#6F09EA]"
+              android_ripple={{ color: "rgba(255,255,255,0.15)" }}
+            >
+              <Text className="text-white font-bold">Guardar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </ScrollView>
+
+      <Modal
+        transparent={true}
+        animationType="fade"
+        visible={isCalendarVisible}
+        onRequestClose={() => setCalendarVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setCalendarVisible(false)}>
+          <View className="flex-1 justify-center items-center bg-black/50">
+            <TouchableWithoutFeedback>
+              <View className="bg-white rounded-lg p-5">
+                <Calendar
+                  onDayPress={(day) => {
+                    handleInputChange("fechaInicio", day.dateString);
+                    setCalendarVisible(false);
+                  }}
+                  markedDates={{
+                    [form.fechaInicio]: {
+                      selected: true,
+                      selectedColor: "#6F09EA",
+                    },
+                  }}
+                />
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    </KeyboardAvoidingView>
+  );
+};
+
+const TablaEgresos = ({ data, onEdit }) => {
+  const currencyFormatter = new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+  });
+
+  const [sortKey, setSortKey] = useState("id");
+  const [sortDir, setSortDir] = useState("desc");
+
+  const sortedData = useMemo(() => {
+    const sorted = [...data].sort((a, b) => {
+      let va = a[sortKey] ?? "";
+      let vb = b[sortKey] ?? "";
+      if (typeof va === "string") va = va.toLowerCase();
+      if (typeof vb === "string") vb = vb.toLowerCase();
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [data, sortKey, sortDir]);
+
+  const headers = [
+    { title: "ID", flex: 0.8, center: true, key: "id" },
+    { title: "Nombre", flex: 4, key: "nombre" },
+    { title: "Descripción", flex: 5, key: "descripcion" },
+    { title: "Fecha", flex: 2, center: true, key: "fecha" },
+    { title: "Monto", flex: 2, center: true, key: "monto" },
+    { title: "Acciones", flex: 1, center: true },
+  ];
+
+  return (
+    <View className="flex-1">
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+          {/* Header */}
+          <View className="bg-slate-100 border-b border-slate-200 flex-row">
+            {headers.map((header, index) => (
+              <View
+                key={index}
+                style={{
+                  flex: header.flex,
+                  alignItems: header.center ? "center" : "flex-start",
+                }}
+                className="py-3 px-3"
+              >
+                <Text className="text-slate-800 font-semibold text-xs uppercase tracking-wide">
+                  {header.title}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Body */}
+          {sortedData.length > 0 ? (
+            sortedData.map((egreso, index) => (
+              <View
+                key={egreso.id}
+                className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
+              >
+                <Text
+                  style={{ flex: 0.8, textAlign: "center" }}
+                  className="p-3 text-slate-600"
+                >
+                  {egreso.id}
+                </Text>
+                <Text
+                  style={{ flex: 4 }}
+                  className="p-3 text-slate-800"
+                  numberOfLines={1}
+                >
+                  {egreso.nombre}
+                </Text>
+                <Text
+                  style={{ flex: 5 }}
+                  className="p-3 text-slate-700"
+                  numberOfLines={1}
+                >
+                  {egreso.descripcion}
+                </Text>
+                <Text
+                  style={{ flex: 2, textAlign: "center" }}
+                  className="p-3 text-slate-600"
+                >
+                  {new Date(egreso.fecha).toLocaleDateString("es-MX")}
+                </Text>
+                <Text
+                  style={{ flex: 2, textAlign: "center" }}
+                  className="p-3 text-slate-800 font-medium"
+                >
+                  {currencyFormatter.format(egreso.monto)}
+                </Text>
+                <View
+                  style={{ flex: 1 }}
+                  className="p-3 flex-row justify-center items-center"
+                >
+                  <TouchableOpacity onPress={() => onEdit(egreso)}>
+                    <Svg
+                      height="22"
+                      viewBox="0 -960 960 960"
+                      width="22"
+                      fill="#3b82f6"
+                    >
+                      <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                    </Svg>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          ) : (
+            <View className="p-8 items-center justify-center bg-white">
+              <Text className="text-slate-500 text-center font-medium">
+                No hay egresos para mostrar en este período.
+              </Text>
+              <Text className="text-slate-400 text-center text-sm mt-1">
+                Intenta con otro mes/año o agrega un nuevo egreso.
+              </Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
     </View>
   );
 };
 
 const ScreenFinanzas = () => {
+  const TablaIngresos = ({ data, onEdit }) => {
+    const currencyFormatter = new Intl.NumberFormat("es-MX", {
+      style: "currency",
+      currency: "MXN",
+    });
+
+    const [sortKey, setSortKey] = useState("id");
+    const [sortDir, setSortDir] = useState("desc");
+
+    const sortedData = useMemo(() => {
+      const sorted = [...data].sort((a, b) => {
+        let va = a[sortKey] ?? "";
+        let vb = b[sortKey] ?? "";
+        if (typeof va === "string") va = va.toLowerCase();
+        if (typeof vb === "string") vb = vb.toLowerCase();
+        if (va < vb) return sortDir === "asc" ? -1 : 1;
+        if (va > vb) return sortDir === "asc" ? 1 : -1;
+        return 0;
+      });
+      return sorted;
+    }, [data, sortKey, sortDir]);
+
+    const SortHeader = ({ label, k, flex = 1, center }) => (
+      <Pressable
+        onPress={() => {
+          if (!k) return;
+          setSortKey(k);
+          setSortDir((d) =>
+            sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"
+          );
+        }}
+        className="py-3 px-3"
+        style={{ flex, alignItems: center ? "center" : "flex-start" }}
+        android_ripple={{ color: "rgba(0,0,0,0.05)" }}
+      >
+        <View className="flex-row items-center gap-1">
+          <Text className="text-slate-800 font-semibold text-xs uppercase tracking-wide">
+            {label}
+          </Text>
+          {sortKey === k && (
+            <Svg width={12} height={12} viewBox="0 -960 960 960" fill="#334155">
+              {sortDir === "asc" ? (
+                <Path d="M480-680 240-440h480L480-680Z" />
+              ) : (
+                <Path d="M240-520h480L480-280 240-520Z" />
+              )}
+            </Svg>
+          )}
+        </View>
+      </Pressable>
+    );
+
+    const headers = [
+      { title: "ID", flex: 0.5, center: true, key: "id" },
+      { title: "Alumno", flex: 2.5, key: "alumno" },
+      { title: "Curso", flex: 1.5, key: "curso" },
+      { title: "Fecha", flex: 1, center: true, key: "fechaInicio" },
+      { title: "Importe", flex: 1, center: true, key: "importe" },
+      { title: "Estatus", flex: 1, center: true, key: "estatus" },
+      { title: "Acciones", flex: 1, center: true },
+    ];
+
+    return (
+      <View className="flex-1">
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+          <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+            {/* Header */}
+            <View className="bg-slate-100 border-b border-slate-200 flex-row">
+              {headers.map((header, index) => (
+                <View
+                  key={index}
+                  style={{
+                    flex: header.flex,
+                    alignItems: header.center ? "center" : "flex-start",
+                  }}
+                  className="py-3 px-3"
+                >
+                  <Text className="text-slate-800 font-semibold text-xs uppercase tracking-wide">
+                    {header.title}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Body */}
+            {data.length > 0 ? (
+              data.map((ingreso, index) => (
+                <View
+                  key={ingreso.id}
+                  className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
+                >
+                  <Text
+                    style={{ flex: 0.5, textAlign: "center" }}
+                    className="p-3 text-slate-600"
+                  >
+                    {ingreso.id}
+                  </Text>
+                  <Text
+                    style={{ flex: 2 }}
+                    className="p-3 text-slate-800"
+                    numberOfLines={1}
+                  >
+                    {ingreso.alumno}
+                  </Text>
+                  <Text
+                    style={{ flex: 2.5 }}
+                    className="p-3 text-slate-700"
+                    numberOfLines={1}
+                  >
+                    {ingreso.curso}
+                  </Text>
+                  <Text
+                    style={{ flex: 1, textAlign: "center" }}
+                    className="p-3 text-slate-600"
+                  >
+                    {new Date(ingreso.fechaInicio).toLocaleDateString("es-MX")}
+                  </Text>
+                  <Text
+                    style={{ flex: 1, textAlign: "center" }}
+                    className="p-3 text-slate-800 font-medium"
+                  >
+                    {currencyFormatter.format(ingreso.importe)}
+                  </Text>
+                  <View
+                    style={{ flex: 1, alignItems: "center" }}
+                    className="p-3"
+                  >
+                    <Text
+                      className={`text-xs font-bold rounded-full px-2 py-1 ${
+                        ingreso.estatus === "Pagado"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {ingreso.estatus}
+                    </Text>
+                  </View>
+                  <View
+                    style={{ flex: 0.8 }}
+                    className="p-3 flex-row justify-center items-center"
+                  >
+                    <TouchableOpacity onPress={() => onEdit(ingreso)}>
+                      <Svg
+                        height="22"
+                        viewBox="0 -960 960 960"
+                        width="22"
+                        fill="#3b82f6"
+                      >
+                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                      </Svg>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))
+            ) : (
+              <View className="p-8 items-center justify-center bg-white">
+                <Text className="text-slate-500 text-center font-medium">
+                  No hay ingresos para mostrar en este período.
+                </Text>
+                <Text className="text-slate-400 text-center text-sm mt-1">
+                  Intenta con otro mes/año o agrega un nuevo ingreso.
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  };
+
   const [ingresosData, setIngresosData] = useState([
     {
       id: 1,
@@ -1337,9 +2400,39 @@ const ScreenFinanzas = () => {
     },
     // Agrega más datos de ejemplo si es necesario
   ]);
+  const [egresosData, setEgresosData] = useState([
+    {
+      id: 1,
+      nombre: "Pago de servicio de luz",
+      descripcion: "Recibo CFE del mes de Junio",
+      monto: 850,
+      fecha: "2024-07-15",
+    },
+    {
+      id: 2,
+      nombre: "Compra de papelería",
+      descripcion: "",
+      monto: 1200,
+      fecha: "2024-06-25",
+    },
+  ]);
+  const [loading, setLoading] = useState(false); // Desactivamos la carga por defecto
+
+  // --- Estados para controlar la vista del formulario ---
+  const [viewMode, setViewMode] = useState("list"); // 'list' o 'form'
+  const [editingIngreso, setEditingIngreso] = useState(null);
+
+  // --- Estados para los filtros de fecha ---
+  const [selectedIngresoDateFilter, setSelectedIngresoDateFilter] =
+    useState("last_month");
+  const [selectedEgresoDateFilter, setSelectedEgresoDateFilter] =
+    useState("last_month");
+  const [syncDateFilters, setSyncDateFilters] = useState(true);
+  // --- Estados para controlar la vista de Egresos ---
+  const [egresoViewMode, setEgresoViewMode] = useState("list"); // 'list' o 'form'
+  const [editingEgreso, setEditingEgreso] = useState(null);
 
   const initialFormState = {
-    // Estado para la fila de nuevo ingreso
     id: null,
     alumno: "",
     curso: "",
@@ -1349,20 +2442,6 @@ const ScreenFinanzas = () => {
     importe: "",
     estatus: null,
   };
-
-  const [isFormModalVisible, setFormModalVisible] = useState(false);
-  const [modalMode, setModalMode] = useState("add"); // 'add' or 'edit'
-  const [currentIngreso, setCurrentIngreso] = useState(initialFormState);
-
-  const [formErrors, setFormErrors] = useState({
-    alumno: false,
-    curso: false,
-    fechaInicio: false,
-  });
-
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth()); // 0-11
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [showAllYear, setShowAllYear] = useState(false);
 
   const months = [
     { label: "Enero", value: 0 },
@@ -1379,11 +2458,35 @@ const ScreenFinanzas = () => {
     { label: "Diciembre", value: 11 },
   ];
 
+  // --- Nueva lógica de filtrado de fecha ---
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 5 }, (_, i) => ({
-    label: (currentYear - i).toString(),
-    value: currentYear - i,
-  }));
+  // Genera una lista de los 4 años ANTERIORES al actual.
+  const previousYears = Array.from({ length: 4 }, (_, i) => {
+    const year = currentYear - 1 - i;
+    return { label: String(year), value: `year-${year}` };
+  });
+
+  const dateFilterOptions = [
+    { label: "Último mes", value: "last_month" },
+    { label: "Del mes pasado", value: "previous_month" },
+    { label: "Hace 3 meses", value: "3_months_ago" },
+    { label: "Este año", value: "this_year" },
+    ...previousYears,
+  ];
+
+  const handleIngresoFilterChange = (item) => {
+    setSelectedIngresoDateFilter(item.value);
+    if (syncDateFilters) {
+      setSelectedEgresoDateFilter(item.value);
+    }
+  };
+
+  const handleEgresoFilterChange = (item) => {
+    setSelectedEgresoDateFilter(item.value);
+    if (syncDateFilters) {
+      setSelectedIngresoDateFilter(item.value);
+    }
+  };
 
   // Formateador de moneda
   const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -1422,85 +2525,167 @@ const ScreenFinanzas = () => {
     },
   ];
 
-  const handleOpenModal = (mode, rowData = null) => {
-    setModalMode(mode);
-    if (mode === "edit" && rowData) {
-      setCurrentIngreso({ ...rowData, importe: rowData.importe.toString() });
-    } else {
-      setCurrentIngreso(initialFormState);
-    }
-    setFormModalVisible(true);
+  const handleOpenForm = (mode, ingreso = null) => {
+    setEditingIngreso(ingreso);
+    setViewMode("form");
   };
 
-  const handleCloseModal = () => {
-    setFormModalVisible(false);
-    setCurrentIngreso(initialFormState);
-    setFormErrors({ alumno: false, curso: false, fechaInicio: false }); // Resetear errores al cerrar
+  const handleCloseForm = (savedData, wasSaved) => {
+    if (wasSaved && savedData) {
+      if (savedData.id) {
+        // Es una edición
+        const updatedData = ingresosData.map((row) =>
+          row.id === savedData.id
+            ? { ...savedData, importe: parseFloat(savedData.importe) || 0 }
+            : row
+        );
+        setIngresosData(updatedData);
+      } else {
+        // Es un nuevo ingreso
+        const newEntry = {
+          ...savedData,
+          id:
+            ingresosData.length > 0
+              ? Math.max(...ingresosData.map((i) => i.id)) + 1
+              : 1,
+          importe: parseFloat(savedData.importe) || 0,
+        };
+        setIngresosData([...ingresosData, newEntry]);
+      }
+    } else {
+      // Si no se guardó (canceló), no hacemos nada con los datos
+    }
+    // En cualquier caso, volvemos a la lista
+    setViewMode("list");
+    setEditingIngreso(null);
   };
 
-  const handleSave = () => {
-    const { alumno, curso, fechaInicio } = currentIngreso;
-    // Validaciones
-    if (!alumno || !curso || !fechaInicio) {
-      setFormErrors({
-        alumno: !alumno,
-        curso: !curso,
-        fechaInicio: !fechaInicio,
-      });
-      return;
-    }
+  const handleOpenEgresoForm = (mode, egreso = null) => {
+    setEditingEgreso(egreso);
+    setEgresoViewMode("form");
+  };
 
-    if (modalMode === "add") {
-      // Crear nueva entrada
-      const newEntry = {
-        ...currentIngreso,
-        id:
-          ingresosData.length > 0
-            ? Math.max(...ingresosData.map((i) => i.id)) + 1
-            : 1,
-        importe: parseFloat(currentIngreso.importe) || 0,
-      };
-      setIngresosData([...ingresosData, newEntry]);
-    } else {
-      // Actualizar entrada existente
-      const updatedData = ingresosData.map((row) => {
-        if (row.id === currentIngreso.id) {
-          return {
-            ...currentIngreso,
-            importe: parseFloat(currentIngreso.importe) || 0,
-          };
+  const handleCloseEgresoForm = (savedData, wasSaved) => {
+    if (wasSaved && savedData) {
+      if (savedData.id) {
+        // Edición
+        const updatedData = egresosData.map((row) =>
+          row.id === savedData.id
+            ? { ...savedData, monto: parseFloat(savedData.monto) || 0 }
+            : row
+        );
+        setEgresosData(updatedData);
+      } else {
+        // Nuevo
+        const newEntry = {
+          ...savedData,
+          id:
+            egresosData.length > 0
+              ? Math.max(...egresosData.map((e) => e.id)) + 1
+              : 1,
+          monto: parseFloat(savedData.monto) || 0,
+        };
+        setEgresosData([...egresosData, newEntry]);
+      }
+    }
+    setEgresoViewMode("list");
+    setEditingEgreso(null);
+  };
+
+  const filteredIngresos = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    return ingresosData.filter((ingreso) => {
+      if (!ingreso.fechaInicio) return false;
+      const ingresoDate = new Date(ingreso.fechaInicio);
+
+      switch (selectedIngresoDateFilter) {
+        case "last_month": {
+          const oneMonthAgo = new Date(now);
+          oneMonthAgo.setMonth(now.getMonth() - 1);
+          return ingresoDate >= oneMonthAgo && ingresoDate <= now;
         }
-        return row;
-      });
-      setIngresosData(updatedData);
-    }
+        case "previous_month": {
+          const startOfPreviousMonth = new Date(
+            now.getFullYear(),
+            now.getMonth() - 1,
+            1
+          );
+          const endOfPreviousMonth = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            0
+          );
+          return (
+            ingresoDate >= startOfPreviousMonth &&
+            ingresoDate <= endOfPreviousMonth
+          );
+        }
+        case "3_months_ago": {
+          const threeMonthsAgo = new Date(now);
+          threeMonthsAgo.setMonth(now.getMonth() - 3);
+          return ingresoDate >= threeMonthsAgo && ingresoDate <= now;
+        }
+        case "this_year":
+          return ingresoDate.getFullYear() === now.getFullYear();
+        default:
+          if (selectedIngresoDateFilter.startsWith("year-")) {
+            const year = parseInt(selectedIngresoDateFilter.split("-")[1], 10);
+            return ingresoDate.getFullYear() === year;
+          }
+          return false;
+      }
+    });
+  }, [ingresosData, selectedIngresoDateFilter]);
 
-    handleCloseModal();
-  };
+  const filteredEgresos = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
 
-  const handleInputChange = (field, value) => {
-    setCurrentIngreso({ ...currentIngreso, [field]: value });
-    // Si hay un error en el campo que se está modificando, se limpia
-    if (formErrors[field]) {
-      setFormErrors((prevErrors) => ({
-        ...prevErrors,
-        [field]: false,
-      }));
-    }
-  };
+    return egresosData.filter((egreso) => {
+      if (!egreso.fecha) return false;
+      const egresoDate = new Date(egreso.fecha);
 
-  const filteredIngresos = ingresosData.filter((ingreso) => {
-    // Asegurarse de que la fecha de inicio no esté vacía
-    if (!ingreso.fechaInicio) return false;
-    const ingresoDate = new Date(ingreso.fechaInicio);
-    if (showAllYear) {
-      return ingresoDate.getFullYear() === selectedYear;
-    }
-    return (
-      ingresoDate.getMonth() === selectedMonth &&
-      ingresoDate.getFullYear() === selectedYear
-    );
-  });
+      switch (selectedEgresoDateFilter) {
+        case "last_month": {
+          const oneMonthAgo = new Date(now);
+          oneMonthAgo.setMonth(now.getMonth() - 1);
+          return egresoDate >= oneMonthAgo && egresoDate <= now;
+        }
+        case "previous_month": {
+          const startOfPreviousMonth = new Date(
+            now.getFullYear(),
+            now.getMonth() - 1,
+            1
+          );
+          const endOfPreviousMonth = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            0
+          );
+          return (
+            egresoDate >= startOfPreviousMonth &&
+            egresoDate <= endOfPreviousMonth
+          );
+        }
+        case "3_months_ago": {
+          const threeMonthsAgo = new Date(now);
+          threeMonthsAgo.setMonth(now.getMonth() - 3);
+          return egresoDate >= threeMonthsAgo && egresoDate <= now;
+        }
+        case "this_year":
+          return egresoDate.getFullYear() === now.getFullYear();
+        default:
+          if (selectedEgresoDateFilter.startsWith("year-")) {
+            const year = parseInt(selectedEgresoDateFilter.split("-")[1], 10);
+            return egresoDate.getFullYear() === year;
+          }
+          return false;
+      }
+    });
+  }, [egresosData, selectedEgresoDateFilter]);
+
   const renderCell = (data, cellInfo, index) => {
     const field = cellInfo.field;
 
@@ -1521,7 +2706,7 @@ const ScreenFinanzas = () => {
               alignItems: "center",
             }}
           >
-            <TouchableOpacity onPress={() => handleOpenModal("edit", data)}>
+            <TouchableOpacity onPress={() => handleOpenForm("edit", data)}>
               <Svg
                 height="22"
                 viewBox="0 -960 960 960"
@@ -1579,6 +2764,27 @@ const ScreenFinanzas = () => {
     { title: "Acciones", field: "actions", width: 100 },
   ];
 
+  if (viewMode === "form") {
+    return (
+      <RegistroIngreso
+        // Usamos una key para forzar el reseteo del componente al cambiar entre 'nuevo' y 'editar'
+        key={editingIngreso ? `edit-${editingIngreso.id}` : "new"}
+        ingresoToEdit={editingIngreso}
+        onFormClose={handleCloseForm}
+      />
+    );
+  }
+
+  if (egresoViewMode === "form") {
+    return (
+      <RegistroEgreso
+        key={editingEgreso ? `edit-${editingEgreso.id}` : "new"}
+        egresoToEdit={editingEgreso}
+        onFormClose={handleCloseEgresoForm}
+      />
+    );
+  }
+
   return (
     <Tab.Navigator
       initialRouteName="Ingresos"
@@ -1602,321 +2808,124 @@ const ScreenFinanzas = () => {
       <Tab.Screen name="Ingresos">
         {() => (
           <View id="tablas-ingresos" className={`flex-1 bg-slate-50 p-4`}>
-            <View className="flex-row mb-4 items-center gap-x-4">
-              <View>
-                <Text style={styles.label}>Mes</Text>
-                <Dropdown
-                  style={[
-                    styles.dropdownIngresos,
-                    showAllYear && styles.dropdownDisabled,
-                  ]}
-                  data={months}
-                  disable={showAllYear}
-                  labelField="label"
-                  valueField="value"
-                  value={selectedMonth}
-                  onChange={(item) => {
-                    setSelectedMonth(item.value);
-                  }}
-                />
-              </View>
-              <View>
-                <Text style={styles.label}>Año</Text>
-                <Dropdown
-                  style={styles.dropdownIngresos}
-                  data={years}
-                  labelField="label"
-                  valueField="value"
-                  value={selectedYear}
-                  onChange={(item) => setSelectedYear(item.value)}
-                />
-              </View>
-              <View className="flex-row items-center">
-                <TouchableOpacity
-                  onPress={() => setShowAllYear(!showAllYear)}
-                  className={`h-6 w-6 rounded border-2 justify-center items-center ${
-                    showAllYear
-                      ? "bg-indigo-600 border-indigo-600"
-                      : "bg-white border-gray-400"
-                  }`}
-                >
-                  {showAllYear && (
-                    <Svg
-                      height="16"
-                      viewBox="0 -960 960 960"
-                      width="16"
-                      fill="#ffffff"
-                    >
-                      <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
-                    </Svg>
-                  )}
-                </TouchableOpacity>
-                <Text
-                  className="ml-2 font-medium text-slate-700"
-                  onPress={() => setShowAllYear(!showAllYear)}
-                >
-                  Ver todo el año
+            {loading && (
+              <View className="absolute inset-0 bg-white/70 justify-center items-center z-10">
+                <ActivityIndicator size="large" color="#6F09EA" />
+                <Text className="mt-2 text-slate-600">
+                  Cargando ingresos...
                 </Text>
               </View>
-            </View>
-            <TouchableOpacity
-              onPress={() => handleOpenModal("add")}
-              className="bg-blue-500 p-3 rounded-lg self-start mb-4 shadow-md"
-            >
-              <View className="flex-row items-center gap-x-2">
+            )}
+
+            <View className="flex-row justify-between items-center mb-4">
+              <View className="flex-row items-center gap-x-4">
+                <View className="w-60">
+                  <Dropdown
+                    style={styles.dropdownIngresos}
+                    data={dateFilterOptions}
+                    labelField="label"
+                    valueField="value"
+                    value={selectedIngresoDateFilter}
+                    onChange={handleIngresoFilterChange}
+                  />
+                </View>
+                <View className="flex-row items-center gap-x-2">
+                  <Switch
+                    trackColor={{ false: "#e5e7eb", true: "#a78bfa" }}
+                    thumbColor={syncDateFilters ? "#6F09EA" : "#f4f3f4"}
+                    onValueChange={setSyncDateFilters}
+                    value={syncDateFilters}
+                  />
+                  <Text className="text-slate-600 text-xs font-semibold uppercase">
+                    Sincronizar
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => handleOpenForm("add")}
+                className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
+              >
                 <Svg
-                  height="20"
+                  height="18"
                   viewBox="0 -960 960 960"
-                  width="20"
+                  width="18"
                   fill="#ffffff"
                 >
                   <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
                 </Svg>
-                <Text className="text-white font-bold">Agregar Ingreso</Text>
-              </View>
-            </TouchableOpacity>
-            <ScrollView horizontal>
-              <View>
-                <Table borderStyle={{ borderWidth: 1, borderColor: "#e2e4e8" }}>
-                  <Row
-                    data={tableHeaders.map((h) => h.title)}
-                    widthArr={tableHeaders.map((h) => h.width)}
-                    style={styles.head}
-                    textStyle={styles.headText}
-                  />
-                </Table>
-                <ScrollView nestedScrollEnabled={true}>
-                  <Table
-                    borderStyle={{ borderWidth: 1, borderColor: "#e2e4e8" }}
-                  >
-                    {filteredIngresos.map((rowData, index) => (
-                      <TableWrapper key={rowData.id} style={styles.row}>
-                        {tableHeaders.map((cellInfo, cellIndex) => (
-                          <Cell
-                            key={cellIndex}
-                            data={renderCell(rowData, cellInfo, index)}
-                            width={cellInfo.width}
-                            style={{ padding: 6 }}
-                          />
-                        ))}
-                      </TableWrapper>
-                    ))}
-                  </Table>
-                </ScrollView>
-              </View>
-            </ScrollView>
-            <Modal
-              transparent={true}
-              animationType="slide"
-              visible={isFormModalVisible}
-              onRequestClose={handleCloseModal}
-            >
-              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <View className="flex-1 justify-center items-center fixed bg-black/60 p-4">
-                  <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                    <View className="bg-slate-50 rounded-2xl p-6 w-full shadow-xl">
-                      <Text className="text-2xl font-bold mb-6 text-slate-800">
-                        {modalMode === "add"
-                          ? "Agregar Ingreso"
-                          : "Editar Ingreso"}
-                      </Text>
-                      <ScrollView>
-                        {/* Nombre del Alumno */}
-                        <View className={`flex-row gap-x-4`}>
-                          <View className={`flex-1`}>
-                            <Text style={styles.label}>Nombre</Text>
-                            <TextInput
-                              style={[
-                                styles.input,
-                                formErrors.alumno && styles.errorInput,
-                              ]}
-                              value={currentIngreso.alumno}
-                              onChangeText={(text) =>
-                                handleInputChange("alumno", text)
-                              }
-                              placeholder={
-                                formErrors.alumno ? "" : "Ej. Juan Pérez"
-                              }
-                              placeholderTextColor={
-                                formErrors.alumno ? "#ef4444" : "#9ca3af"
-                              }
-                            />
-                          </View>
+                <Text className="text-white font-bold ml-2">
+                  Agregar Ingreso
+                </Text>
+              </TouchableOpacity>
+            </View>
 
-                          {/* Curso/Asesoría */}
-                          <View className={`flex-1`}>
-                            <Text style={styles.label}>Curso/Asesoría</Text>
-                            <Dropdown
-                              className={``}
-                              style={[
-                                styles.dropdownModal,
-                                formErrors.curso && styles.errorInput,
-                              ]}
-                              data={cursos}
-                              labelField="label"
-                              valueField="value"
-                              placeholder={
-                                formErrors.curso ? "" : "Seleccionar curso"
-                              }
-                              placeholderStyle={
-                                formErrors.curso && { color: "#ef4444" }
-                              }
-                              value={currentIngreso.curso}
-                              onChange={(item) =>
-                                handleInputChange("curso", item.value)
-                              }
-                            />
-                          </View>
-                        </View>
-
-                        <View className={`flex-row gap-x-4`}>
-                          {/* Fecha de Inicio */}
-                          <View className={`flex-1`}>
-                            <Text style={styles.label}>Fecha de Inicio</Text>
-                            <TouchableOpacity
-                              onPress={() => setCalendarVisible(true)}
-                              style={[
-                                styles.input,
-                                formErrors.fechaInicio && styles.errorInput,
-                              ]}
-                            >
-                              <Text
-                                className={
-                                  currentIngreso.fechaInicio
-                                    ? "text-black"
-                                    : "text-gray-400"
-                                }
-                                style={
-                                  formErrors.fechaInicio && { color: "#ef4444" }
-                                }
-                              >
-                                {currentIngreso.fechaInicio ||
-                                  (formErrors.fechaInicio
-                                    ? "Fecha inválida"
-                                    : "Seleccionar fecha")}
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                          {/* Asesor */}
-                          <View className={`flex-1`}>
-                            <Text style={styles.label}>Asesor</Text>
-                            <Dropdown
-                              style={styles.dropdownModal}
-                              data={asesores}
-                              labelField="label"
-                              valueField="value"
-                              placeholder="Seleccionar asesor"
-                              value={currentIngreso.asesor}
-                              onChange={(item) =>
-                                handleInputChange("asesor", item.value)
-                              }
-                            />
-                          </View>
-                        </View>
-
-                        {/* Método de Pago */}
-                        <Text style={styles.label}>Método de Pago</Text>
-                        <Dropdown
-                          style={styles.dropdownModal}
-                          data={metodosPago}
-                          labelField="label"
-                          valueField="value"
-                          placeholder="Seleccionar método"
-                          value={currentIngreso.metodoPago}
-                          onChange={(item) =>
-                            handleInputChange("metodoPago", item.value)
-                          }
-                        />
-
-                        {/* Importe */}
-                        <Text style={styles.label}>Importe</Text>
-                        <View
-                          style={styles.input}
-                          className="flex-row items-center"
-                        >
-                          <Text className="mr-1">$</Text>
-                          <TextInput
-                            value={currentIngreso.importe.toString()}
-                            onChangeText={(text) => {
-                              const numericValue = text.replace(/[^0-9.]/g, "");
-                              handleInputChange("importe", numericValue);
-                            }}
-                            placeholder="0.00"
-                            keyboardType="numeric"
-                            className="flex-1"
-                          />
-                        </View>
-
-                        {/* Estatus */}
-                        <Text style={styles_modal.label}>Estatus</Text>
-                        <Dropdown
-                          style={styles.dropdownModal}
-                          data={estatusOptions}
-                          labelField="label"
-                          valueField="value"
-                          placeholder="Seleccionar estatus"
-                          value={currentIngreso.estatus}
-                          onChange={(item) =>
-                            handleInputChange("estatus", item.value)
-                          }
-                        />
-                      </ScrollView>
-                      {/* Botones */}
-                      <View className="flex-row justify-end mt-6 gap-x-4">
-                        <TouchableOpacity
-                          onPress={handleCloseModal}
-                          className="bg-slate-200 px-5 py-3 rounded-lg"
-                        >
-                          <Text className="font-bold text-slate-600">
-                            Cancelar
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={handleSave}
-                          className="bg-indigo-600 px-5 py-3 rounded-lg shadow-md shadow-indigo-600/30"
-                        >
-                          <Text className="text-white font-bold">Guardar</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </TouchableWithoutFeedback>
-                </View>
-              </TouchableWithoutFeedback>
-            </Modal>
-            <Modal
-              transparent={true}
-              animationType="fade"
-              visible={isCalendarVisible}
-              onRequestClose={() => setCalendarVisible(false)}
-            >
-              <TouchableWithoutFeedback
-                onPress={() => setCalendarVisible(false)}
-              >
-                <View className="flex-1 justify-center items-center bg-black/50">
-                  <TouchableWithoutFeedback>
-                    <View className="bg-white rounded-lg p-5">
-                      <Calendar
-                        onDayPress={(day) => {
-                          handleInputChange("fechaInicio", day.dateString);
-                          setCalendarVisible(false);
-                        }}
-                        markedDates={{
-                          [currentIngreso.fechaInicio]: {
-                            selected: true,
-                            selectedColor: "#6F09EA",
-                          },
-                        }}
-                      />
-                    </View>
-                  </TouchableWithoutFeedback>
-                </View>
-              </TouchableWithoutFeedback>
-            </Modal>
+            <TablaIngresos
+              data={filteredIngresos}
+              onEdit={(ingreso) => handleOpenForm("edit", ingreso)}
+            />
           </View>
         )}
       </Tab.Screen>
       <Tab.Screen name="Egresos" id="tablas-egresos">
-        {() => <View className={`flex-1 bg-slate-50 p-2`}></View>}
+        {() => (
+          <View id="tablas-egresos" className={`flex-1 bg-slate-50 p-4`}>
+            {loading && (
+              <View className="absolute inset-0 bg-white/70 justify-center items-center z-10">
+                <ActivityIndicator size="large" color="#6F09EA" />
+                <Text className="mt-2 text-slate-600">Cargando egresos...</Text>
+              </View>
+            )}
+
+            <View className="flex-row justify-between items-center mb-4">
+              <View className="flex-row items-center gap-x-4">
+                <View className="w-60">
+                  <Dropdown
+                    style={styles.dropdownIngresos}
+                    data={dateFilterOptions}
+                    labelField="label"
+                    valueField="value"
+                    value={selectedEgresoDateFilter}
+                    onChange={handleEgresoFilterChange}
+                  />
+                </View>
+                <View className="flex-row items-center gap-x-2">
+                  <Switch
+                    trackColor={{ false: "#e5e7eb", true: "#a78bfa" }}
+                    thumbColor={syncDateFilters ? "#6F09EA" : "#f4f3f4"}
+                    onValueChange={setSyncDateFilters}
+                    value={syncDateFilters}
+                  />
+                  <Text className="text-slate-600 text-xs font-semibold uppercase">
+                    Sincronizar
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => handleOpenEgresoForm("add")}
+                className="bg-red-600 p-2 rounded-full shadow-md shadow-red-600/30 flex-row items-center px-4"
+              >
+                <Svg
+                  height="18"
+                  viewBox="0 -960 960 960"
+                  width="18"
+                  fill="#ffffff"
+                >
+                  <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+                </Svg>
+                <Text className="text-white font-bold ml-2">
+                  Agregar Egreso
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TablaEgresos
+              data={filteredEgresos}
+              onEdit={handleOpenEgresoForm}
+            />
+          </View>
+        )}
       </Tab.Screen>
     </Tab.Navigator>
   );
@@ -2157,55 +3166,73 @@ const TablaCursos = ({
             <SortHeader label="Acciones" k="Acciones" flex={0.2} center />
           </View>
 
-          {filtered.map((r, id_curso) => (
-            <Pressable
-              key={r.id_curso}
-              className={`flex-row items-center ${id_curso % 2 ? "bg-white" : "bg-slate-50"}`}
-              android_ripple={{ color: "rgba(0,0,0,0.04)" }}
-            >
-              <View style={{ flex: 0.1 }} className="py-3 px-3 items-center">
-                <Text className="text-slate-700">{r.id_curso}</Text>
-              </View>
-              <View style={{ flex: 1 }} className="py-3 px-3">
-                <Text numberOfLines={1} className="text-slate-800 font-medium">
-                  {r.nombre_curso}
-                </Text>
-              </View>
-              <View style={{ flex: 0.3 }} className="py-3 px-3">
-                <Text numberOfLines={1} className="text-slate-700">
-                  {currencyFormatter.format(r.costo_curso || 0)}
-                </Text>
-              </View>
-              <View
-                id="celda-acciones"
-                style={{ flex: 0.2 }}
-                className="py-3 px-3"
+          {filtered.length > 0 ? (
+            filtered.map((r, id_curso) => (
+              <Pressable
+                key={r.id_curso}
+                className={`flex-row items-center ${id_curso % 2 ? "bg-white" : "bg-slate-50"}`}
+                android_ripple={{ color: "rgba(0,0,0,0.04)" }}
               >
-                <View className="flex flex-row items-center justify-around">
-                  <TouchableOpacity onPress={() => onEdit(r)}>
-                    <Svg
-                      height="22"
-                      viewBox="0 -960 960 960"
-                      width="22"
-                      fill="#3b82f6"
-                    >
-                      <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                    </Svg>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => onDelete(r.id_curso)}>
-                    <Svg
-                      height="22"
-                      viewBox="0 -960 960 960"
-                      width="22"
-                      fill="#ef4444"
-                    >
-                      <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
-                    </Svg>
-                  </TouchableOpacity>
+                <View style={{ flex: 0.1 }} className="py-3 px-3 items-center">
+                  <Text className="text-slate-700">{r.id_curso}</Text>
                 </View>
-              </View>
-            </Pressable>
-          ))}
+                <View style={{ flex: 1 }} className="py-3 px-3">
+                  <Text
+                    numberOfLines={1}
+                    className="text-slate-800 font-medium"
+                  >
+                    {r.nombre_curso}
+                  </Text>
+                </View>
+                <View style={{ flex: 0.3 }} className="py-3 px-3">
+                  <Text numberOfLines={1} className="text-slate-700">
+                    {currencyFormatter.format(r.costo_curso || 0)}
+                  </Text>
+                </View>
+                <View
+                  id="celda-acciones"
+                  style={{ flex: 0.2 }}
+                  className="py-3 px-3"
+                >
+                  <View className="flex flex-row items-center justify-around">
+                    <TouchableOpacity onPress={() => onEdit(r)}>
+                      <Svg
+                        height="22"
+                        viewBox="0 -960 960 960"
+                        width="22"
+                        fill="#3b82f6"
+                      >
+                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                      </Svg>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => onDelete(r.id_curso)}>
+                      <Svg
+                        height="22"
+                        viewBox="0 -960 960 960"
+                        width="22"
+                        fill="#ef4444"
+                      >
+                        <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                      </Svg>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </Pressable>
+            ))
+          ) : (
+            <View className="p-8 items-center justify-center bg-white">
+              <Text className="text-slate-500 text-center font-medium">
+                {query
+                  ? "No se encontraron cursos para tu búsqueda."
+                  : "Aún no hay cursos registrados."}
+              </Text>
+              <Text className="text-slate-400 text-center text-sm mt-1">
+                {query
+                  ? "Intenta con otras palabras clave."
+                  : "¡Agrega un nuevo curso para comenzar!"}
+              </Text>
+            </View>
+          )}
         </ScrollView>
       </View>
       {isRefetching && (
@@ -2225,6 +3252,286 @@ const TablaCursos = ({
         </View>
       )}
     </View>
+  );
+};
+
+const CurrencyInput = ({ value, onChangeText, placeholder, editable }) => {
+  const isEditable = editable !== false;
+  const inputRef = React.useRef(null);
+
+  const handleFocus = () => {
+    if (isEditable && (value === null || value === "")) {
+      onChangeText("");
+    }
+    setTimeout(() => inputRef.current?.setSelection(99, 99), 0);
+  };
+
+  return (
+    <View
+      style={[
+        styles.currencyInputContainer,
+        !isEditable && styles.disabledInput,
+      ]}
+    >
+      <Text style={styles.currencySymbol}>$</Text>
+      <TextInput
+        style={[
+          styles.currencyInput,
+          (value === 0 || value === null) && styles.currencyInputPlaceholder,
+        ]}
+        ref={inputRef}
+        value={value === null ? "" : String(Math.floor(value))}
+        onChangeText={onChangeText}
+        onFocus={handleFocus}
+        placeholder={placeholder || "0"}
+        keyboardType="number-pad"
+        editable={isEditable}
+      />
+      <Text style={styles.currencyCents}>.00</Text>
+    </View>
+  );
+};
+
+const StepButton = ({ onPress, disabled, type, onPressIn, onPressOut }) => {
+  const isIncrement = type === "increment";
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      disabled={disabled}
+      style={[
+        styles.stepButton,
+        disabled && styles.stepButtonDisabled,
+        isIncrement ? { marginLeft: 8 } : { marginRight: 8 },
+      ]}
+    >
+      <Text
+        style={[
+          styles.stepButtonText,
+          disabled && styles.stepButtonTextDisabled,
+        ]}
+      >
+        {isIncrement ? "+" : "-"}
+      </Text>
+    </TouchableOpacity>
+  );
+};
+
+const ChipButton = ({ label, onPress, disabled, variant, isSelected }) => (
+  <TouchableOpacity
+    style={[
+      styles.chip,
+      isSelected && styles.chipSelected,
+      variant === "primary" && styles.chipPrimary,
+      variant === "clear" && styles.chipClear,
+      disabled && styles.chipDisabled,
+    ]}
+    onPress={onPress}
+    disabled={disabled}
+  >
+    <Text
+      style={[
+        styles.chipText,
+        isSelected && styles.chipTextSelected,
+        variant === "primary" && styles.chipTextPrimary,
+        variant === "clear" && styles.chipTextClear,
+        disabled && styles.chipTextDisabled,
+      ]}
+    >
+      {label}
+    </Text>
+  </TouchableOpacity>
+);
+
+const ChipButtonGroup = ({
+  chips,
+  onSelect,
+  disabled,
+  selectedValue,
+  clearLabel,
+}) => (
+  <View style={styles.chipContainer}>
+    {selectedValue !== null && selectedValue !== 0 && (
+      <ChipButton
+        label={clearLabel || "Limpiar"}
+        onPress={() => onSelect(0)}
+        disabled={disabled}
+        variant="clear"
+      />
+    )}
+    {chips.map((chip) => (
+      <ChipButton
+        key={chip.label}
+        label={chip.label}
+        onPress={() => {
+          if (chip.value === selectedValue) {
+            onSelect(0);
+          } else {
+            onSelect(chip.value);
+          }
+        }}
+        isSelected={chip.value === selectedValue && chip.value !== 0}
+        variant={chip.variant}
+        disabled={disabled || chip.disabled}
+      />
+    ))}
+  </View>
+);
+
+const AddCursoForm = ({
+  visible,
+  onClose,
+  onSave,
+  isSaving,
+  newCurso,
+  setNewCurso,
+}) => {
+  const anim = useRef(new Animated.Value(0)).current;
+  const intervalRef = useRef(null);
+  const [liveCosto, setLiveCosto] = useState(Number(newCurso.costo_curso) || 0);
+
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: visible ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [visible]);
+
+  useEffect(() => {
+    setLiveCosto(Number(newCurso.costo_curso) || 0);
+  }, [newCurso.costo_curso]);
+
+  const stopCounter = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  const handleCostoChange = (value) => {
+    setLiveCosto(value);
+    setNewCurso((c) => ({ ...c, costo_curso: String(value) }));
+  };
+
+  const formStyle = {
+    opacity: anim,
+    transform: [
+      {
+        translateY: anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [50, 0],
+        }),
+      },
+    ],
+  };
+
+  if (!visible && anim._value === 0) {
+    return null;
+  }
+
+  return (
+    <Animated.View
+      style={formStyle}
+      className="bg-white p-4 m-2 -mt-2 rounded-b-xl border-t-0 border border-slate-200 shadow-sm"
+    >
+      <View className="flex-row justify-between items-center mb-4">
+        <Text className="text-lg font-bold text-slate-800">
+          Agregar Nuevo Curso
+        </Text>
+        <TouchableOpacity onPress={onClose} hitSlop={10}>
+          <Svg height="24" viewBox="0 -960 960 960" width="24" fill="#64748b">
+            <Path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
+          </Svg>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.label}>Nombre del Curso</Text>
+      <TextInput
+        style={styles.input}
+        value={newCurso.nombre_curso}
+        onChangeText={(text) =>
+          setNewCurso((c) => ({ ...c, nombre_curso: text }))
+        }
+        placeholder="Ej. Curso de Verano STEAM"
+      />
+
+      <Text style={styles.label}>Precio del Curso</Text>
+      <View className="flex-row items-center">
+        <StepButton
+          type="decrement"
+          disabled={(Number(newCurso.costo_curso) || 0) <= 0}
+          onPress={() => handleCostoChange(Math.max(0, (liveCosto || 0) - 50))}
+          onPressIn={() => {
+            stopCounter();
+            intervalRef.current = setInterval(() => {
+              setLiveCosto((prev) => {
+                const newValue = Math.max(0, (prev || 0) - 50);
+                handleCostoChange(newValue);
+                return newValue;
+              });
+            }, 150);
+          }}
+          onPressOut={stopCounter}
+        />
+        <View style={{ flex: 1 }}>
+          <Slider
+            style={{ width: "100%", height: 40 }}
+            minimumValue={0}
+            maximumValue={5000}
+            step={50}
+            value={liveCosto}
+            onSlidingComplete={handleCostoChange}
+            minimumTrackTintColor={"#6F09EA"}
+            maximumTrackTintColor="#d1d5db"
+            thumbTintColor={"#6F09EA"}
+          />
+        </View>
+        <CurrencyInput
+          value={newCurso.costo_curso}
+          onChangeText={(text) => {
+            const numericValue =
+              text === "" ? 0 : parseInt(text.replace(/[^0-9]/g, ""), 10) || 0;
+            handleCostoChange(numericValue);
+          }}
+        />
+        <StepButton
+          type="increment"
+          onPress={() => handleCostoChange((liveCosto || 0) + 50)}
+          onPressIn={() => {
+            stopCounter();
+            intervalRef.current = setInterval(() => {
+              setLiveCosto((prev) => {
+                const newValue = (prev || 0) + 50;
+                handleCostoChange(newValue);
+                return newValue;
+              });
+            }, 150);
+          }}
+          onPressOut={stopCounter}
+        />
+      </View>
+      <ChipButtonGroup
+        chips={[500, 1000, 1500, 2000, 3000].map((v) => ({
+          label: `$${v}`,
+          value: v,
+        }))}
+        selectedValue={Number(newCurso.costo_curso)}
+        onSelect={handleCostoChange}
+      />
+      <TouchableOpacity
+        onPress={onSave}
+        disabled={isSaving}
+        className={`mt-4 px-5 py-3 rounded-lg self-end ${isSaving ? "bg-indigo-400" : "bg-indigo-600 shadow-md shadow-indigo-600/30"}`}
+      >
+        {isSaving ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text className="text-white font-bold">Guardar Curso</Text>
+        )}
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
@@ -2269,7 +3576,7 @@ const ScreenCursos = () => {
           {
             text: "Sí, descartar",
             style: "destructive",
-            onPress: () => setAddModalVisible(false), // Solo cierra si el usuario confirma
+            onPress: () => setAddModalVisible(false),
           },
         ]
       );
@@ -2431,200 +3738,146 @@ const ScreenCursos = () => {
       onPress={Platform.OS === "web" ? "" : Keyboard.dismiss}
       accessible={false}
     >
-      <View className={`flex-1 pb-20 bg-slate-50`}>
-        <View
-          className={`self-center flex-row items-center gap-x-4 m-2 box-content mb-7`}
-        >
-          <View
-            className={`border border-[#b5b8bb] justify-center items-center flex-row rounded-full`}
-          >
-            <View className="pl-3" pointerEvents="none">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+      >
+        <View className="flex-1 bg-slate-50">
+          <View className="flex-row items-center justify-between p-4">
+            <View className="flex-row items-center bg-white border border-slate-300 rounded-full px-3 py-1 shadow-sm">
               <Svg
-                xmlns="http://www.w3.org/2000/svg"
-                height="24px"
+                height="20"
                 viewBox="0 -960 960 960"
-                width="24px"
-                fill="#b5b8bb"
+                width="20"
+                fill="#9ca3af"
               >
                 <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
               </Svg>
+              <TextInput
+                placeholder="Buscar por ID, nombre o precio"
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+                className="ml-2 text-base"
+              />
             </View>
-            <TextInput
-              id="buscador-cursos"
-              placeholder="Buscar por ID, nombre o precio"
-              className={`py-2 px-2 pl-1 pr-4 min-w-[20em]`}
-              value={searchTerm}
-              onChangeText={setSearchTerm}
+            <View className="flex-row">
+              <TouchableOpacity
+                onPress={handleOpenAddModal}
+                className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
+              >
+                <Svg
+                  height="18"
+                  viewBox="0 -960 960 960"
+                  width="18"
+                  fill="#ffffff"
+                >
+                  <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+                </Svg>
+                <Text className="text-white font-bold ml-2">Agregar Curso</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={{ flex: 1 }}>
+            <TablaCursos
+              data={cursos}
+              loading={loading}
+              query={searchTerm}
+              isRefetching={isRefetching}
+              onEdit={handleOpenEditModal}
+              onDelete={handleDelete}
+              onRefresh={handleRefresh}
             />
           </View>
-          <TouchableOpacity
-            onPress={handleOpenAddModal}
-            className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
+          <AddCursoForm
+            visible={isAddModalVisible}
+            onClose={handleCancelAdd}
+            onSave={handleAddCurso}
+            isSaving={isSaving}
+            newCurso={newCurso}
+            setNewCurso={setNewCurso}
+          />
+
+          <Modal
+            transparent={true}
+            animationType="fade"
+            visible={isModalVisible}
+            onRequestClose={() => setModalVisible(false)}
           >
-            <Svg height="18" viewBox="0 -960 960 960" width="18" fill="#ffffff">
-              <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
-            </Svg>
-            <Text className="text-white font-bold ml-2">Agregar Curso</Text>
-          </TouchableOpacity>
+            <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+              <View className="flex-1 justify-center items-center bg-black/60 p-4">
+                <TouchableWithoutFeedback>
+                  <View className="bg-slate-50 rounded-2xl p-6 w-full max-w-lg shadow-xl">
+                    <Text className="text-2xl font-bold mb-6 text-slate-800">
+                      Editar Curso
+                    </Text>
+
+                    <Text style={styles.label}>Nombre del Curso</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={currentCurso?.nombre_curso}
+                      onChangeText={(text) =>
+                        setCurrentCurso((c) => ({ ...c, nombre_curso: text }))
+                      }
+                      placeholder="Nombre del curso"
+                    />
+
+                    <Text style={styles.label}>Precio del Curso</Text>
+                    <View
+                      style={styles.input}
+                      className="flex-row items-center"
+                    >
+                      <Text className="mr-1 text-slate-500">$</Text>
+                      <TextInput
+                        value={currentCurso?.costo_curso}
+                        onChangeText={(text) => {
+                          if (
+                            text.includes(".") &&
+                            text.split(".")[1].length > 2
+                          ) {
+                            return;
+                          }
+                          setCurrentCurso((c) => ({
+                            ...c,
+                            costo_curso: text,
+                          }));
+                        }}
+                        placeholder="0.00"
+                        keyboardType="numeric"
+                        className="flex-1"
+                      />
+                    </View>
+
+                    <View className="flex-row justify-end mt-6 gap-x-4">
+                      <TouchableOpacity
+                        onPress={() => setModalVisible(false)}
+                        className="bg-slate-200 px-5 py-3 rounded-lg"
+                      >
+                        <Text className="font-bold text-slate-600">
+                          Cancelar
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={handleSaveChanges}
+                        disabled={isSaving}
+                        className={`px-5 py-3 rounded-lg ${isSaving ? "bg-indigo-400" : "bg-indigo-600 shadow-md shadow-indigo-600/30"}`}
+                      >
+                        {isSaving ? (
+                          <ActivityIndicator color="#fff" />
+                        ) : (
+                          <Text className="text-white font-bold">
+                            Guardar Cambios
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </TouchableWithoutFeedback>
+              </View>
+            </TouchableWithoutFeedback>
+          </Modal>
         </View>
-        <TablaCursos
-          data={cursos}
-          loading={loading}
-          query={searchTerm}
-          isRefetching={isRefetching}
-          onEdit={handleOpenEditModal}
-          onDelete={handleDelete}
-          onRefresh={handleRefresh}
-        />
-
-        {/* --- Modal de Edición --- */}
-        <Modal
-          transparent={true}
-          animationType="fade"
-          visible={isModalVisible}
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-            <View className="flex-1 justify-center items-center bg-black/60 p-4">
-              <TouchableWithoutFeedback>
-                <View className="bg-slate-50 rounded-2xl p-6 w-full max-w-lg shadow-xl">
-                  <Text className="text-2xl font-bold mb-6 text-slate-800">
-                    Editar Curso
-                  </Text>
-
-                  <Text style={styles.label}>Nombre del Curso</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={currentCurso?.nombre_curso}
-                    onChangeText={(text) =>
-                      setCurrentCurso((c) => ({ ...c, nombre_curso: text }))
-                    }
-                    placeholder="Nombre del curso"
-                  />
-
-                  <Text style={styles.label}>Precio del Curso</Text>
-                  <View style={styles.input} className="flex-row items-center">
-                    <Text className="mr-1 text-slate-500">$</Text>
-                    <TextInput
-                      value={currentCurso?.costo_curso}
-                      onChangeText={(text) => {
-                        // Limita la entrada a 2 decimales
-                        if (
-                          text.includes(".") &&
-                          text.split(".")[1].length > 2
-                        ) {
-                          return;
-                        }
-                        // Permite borrar y escribir normalmente
-                        setCurrentCurso((c) => ({ ...c, costo_curso: text }));
-                      }}
-                      placeholder="0.00"
-                      keyboardType="numeric"
-                      className="flex-1"
-                    />
-                  </View>
-
-                  <View className="flex-row justify-end mt-6 gap-x-4">
-                    <TouchableOpacity
-                      onPress={() => setModalVisible(false)}
-                      className="bg-slate-200 px-5 py-3 rounded-lg"
-                    >
-                      <Text className="font-bold text-slate-600">Cancelar</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={handleSaveChanges}
-                      disabled={isSaving}
-                      className={`px-5 py-3 rounded-lg ${isSaving ? "bg-indigo-400" : "bg-indigo-600 shadow-md shadow-indigo-600/30"}`}
-                    >
-                      {isSaving ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <Text className="text-white font-bold">
-                          Guardar Cambios
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
-
-        {/* --- Modal de AGREGAR --- */}
-        <Modal
-          transparent={true}
-          animationType="fade"
-          visible={isAddModalVisible}
-          onRequestClose={handleCancelAdd}
-        >
-          <TouchableWithoutFeedback onPress={handleCancelAdd}>
-            <View className="flex-1 justify-center items-center bg-black/60 p-4">
-              <TouchableWithoutFeedback>
-                <View className="bg-slate-50 rounded-2xl p-6 w-full max-w-lg shadow-xl">
-                  <Text className="text-2xl font-bold mb-6 text-slate-800">
-                    Agregar Nuevo Curso
-                  </Text>
-
-                  <Text style={styles.label}>Nombre del Curso</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={newCurso.nombre_curso}
-                    onChangeText={(text) =>
-                      setNewCurso((c) => ({ ...c, nombre_curso: text }))
-                    }
-                    placeholder="Ej. Curso de Verano STEAM"
-                  />
-
-                  <Text style={styles.label}>Precio del Curso</Text>
-                  <View style={styles.input} className="flex-row items-center">
-                    <Text className="mr-1 text-slate-500">$</Text>
-                    <TextInput
-                      value={newCurso.costo_curso}
-                      onChangeText={(text) => {
-                        // Limita la entrada a 2 decimales
-                        if (
-                          text.includes(".") &&
-                          text.split(".")[1].length > 2
-                        ) {
-                          return;
-                        }
-                        // Permite borrar y escribir normalmente
-                        setNewCurso((c) => ({ ...c, costo_curso: text }));
-                      }}
-                      placeholder="Ej. 1200"
-                      keyboardType="numeric"
-                      className="flex-1"
-                    />
-                  </View>
-
-                  <View className="flex-row justify-end mt-6 gap-x-4">
-                    <TouchableOpacity
-                      onPress={handleCancelAdd}
-                      className="bg-slate-200 px-5 py-3 rounded-lg"
-                    >
-                      <Text className="font-bold text-slate-600">Cancelar</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={handleAddCurso}
-                      disabled={isSaving}
-                      className={`px-5 py-3 rounded-lg ${isSaving ? "bg-indigo-400" : "bg-indigo-600 shadow-md shadow-indigo-600/30"}`}
-                    >
-                      {isSaving ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <Text className="text-white font-bold">
-                          Guardar Curso
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
-      </View>
+      </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );
 };
@@ -2634,16 +3887,49 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [isRefetching, setIsRefetching] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState("list"); // 'list' o 'form'
+
+  // --- Estados para la animación del formulario ---
+  const [isFormVisible, setIsFormVisible] = useState(false);
+  const anim = useRef(new Animated.Value(0)).current;
 
   const handleGenerateSale = () => {
-    // Lógica para generar una nueva venta
-    setViewMode("form");
+    setIsFormVisible(true);
+    Animated.spring(anim, {
+      toValue: 1,
+      useNativeDriver: true,
+      bounciness: 4,
+    }).start();
+  };
+
+  const handleCloseForm = () => {
+    Animated.timing(anim, {
+      toValue: 0,
+      duration: 200, // Duración corta para una salida rápida
+      useNativeDriver: true,
+    }).start(() => {
+      setIsFormVisible(false); // Oculta el componente después de la animación
+    });
   };
 
   useEffect(() => {
-    onFormToggle(viewMode === "form");
-  }, [viewMode, onFormToggle]);
+    // Informa al componente padre si el formulario está visible para deshabilitar el swipe
+    onFormToggle(isFormVisible);
+  }, [isFormVisible, onFormToggle]);
+
+  // Estilos de animación que se aplicarán al contenedor del formulario
+  const formContainerStyle = {
+    // El formulario se escala desde 0.95 a 1 (zoom in)
+    transform: [
+      {
+        scale: anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.95, 1],
+        }),
+      },
+    ],
+    // El formulario se desvanece de 0 a 1
+    opacity: anim,
+  };
 
   const fetchEstudiantesConAdeudo = async () => {
     const { data, error } = await supabase
@@ -2671,15 +3957,6 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
     }, [])
   );
 
-  // Si estamos en modo formulario, renderizamos RegistroVenta
-  if (viewMode === "form") {
-    return (
-      <RegistroVenta
-        navigation={navigation}
-        onFormClose={() => setViewMode("list")}
-      />
-    );
-  }
   const SortHeader = ({ label, k, flex = 1, center }) => (
     <Pressable
       onPress={() => {
@@ -2702,7 +3979,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
   );
 
   return (
-    <View className="flex-1 bg-slate-50">
+    <View className="flex-1 bg-slate-50 relative">
       {loading ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#6F09EA" />
@@ -2729,7 +4006,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
             <View className="flex-row">
               <TouchableOpacity
                 onPress={handleGenerateSale}
-                className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
+                className="bg-teal-600 p-2 rounded-full shadow-md shadow-teal-600/30 flex-row items-center px-4"
               >
                 <Svg
                   height="18"
@@ -2744,103 +4021,176 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
             </View>
           </View>
 
-          <TablaEstudiantes
+          <TablaVentasPendientes
             data={estudiantesConAdeudo}
             query={searchTerm}
             isRefetching={isRefetching}
             onRefresh={handleRefresh}
             onEdit={(est) => console.log("Edit", est)}
             onReprint={(id) => console.log("Reprinting ticket for", id)}
-            // La función de borrar no es necesaria en esta tabla, la pasamos como nula
-            onDelete={null}
           />
         </>
+      )}
+
+      {/* El formulario ahora se renderiza sobre la lista y se anima */}
+      {isFormVisible && (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, formContainerStyle]}
+          className="absolute inset-0 z-10"
+        >
+          <RegistroVenta
+            navigation={navigation}
+            onFormClose={handleCloseForm}
+          />
+        </Animated.View>
       )}
     </View>
   );
 };
 
 const SeccionReportes = () => {
-  return (
-    <View className={`flex-1 p-2 bg-slate-50`}>
-      <Ripple
-        id="boton-venta"
-        rippleContainerBorderRadius={5}
-        className={`rounded bg-[#66b5ff] max-w-[20em] justify-center items-center self-start p-1 flex flex-row gap-x-1`}
-      >
-        <Svg
-          xmlns="http://www.w3.org/2000/svg"
-          height="24px"
-          viewBox="0 -960 960 960"
-          width="24px"
-          fill="#010101"
-        >
-          <Path d="M280-280h80v-200h-80v200Zm320 0h80v-400h-80v400Zm-160 0h80v-120h-80v120Zm0-200h80v-80h-80v80ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm0-560v560-560Z" />
-        </Svg>
-        <Text className={`font-semibold`}>Generar reporte</Text>
-      </Ripple>
-      <View
-        className={`flex-1 horizontal:justify-around items-center horizontal:flex-row vertical:flex-col`}
-      >
-        <View flex className={`gap-y-5`}>
-          <Text className={`uppercase font-semibold text-center`}>ventas</Text>
-          <BarChart
-            className={``}
-            roundedTop
-            hideRules
-            spacing={2}
-            showGradient
-            backgroundColor={`#F8FAFC`}
-            frontColor={`#6F09EA`}
-            gradientColor={`#A46CF5`}
-            width={`39`}
-            data={[
-              { value: 250, label: "Ene" },
-              { value: 500, label: "Feb" },
-              { value: 745, label: "Mar" },
-              { value: 320, label: "Abi" },
-              { value: 600, label: "May" },
-              { value: 256, label: "Jun" },
-              { value: 300, label: "Jul" },
-              { value: 250, label: "Ago" },
-              { value: 500, label: "Sep" },
-              { value: 745, label: "Oct" },
-              { value: 320, label: "Nov" },
-              { value: 600, label: "Dic" },
-            ]}
-          />
-        </View>
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [salesData, setSalesData] = useState([]);
+  const [studentsData, setStudentsData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-        <View className={`gap-y-5`}>
-          <Text className={`uppercase font-semibold text-center`}>alúmnos</Text>
-          <BarChart
-            className={``}
-            roundedTop
-            hideRules
-            spacing={2}
-            showGradient
-            backgroundColor={`#F8FAFC`}
-            frontColor={`#6F09EA`}
-            gradientColor={`#A46CF5`}
-            width={`39`}
-            data={[
-              { value: 250, label: "Ene" },
-              { value: 500, label: "Feb" },
-              { value: 745, label: "Mar" },
-              { value: 320, label: "Abi" },
-              { value: 600, label: "May" },
-              { value: 256, label: "Jun" },
-              { value: 300, label: "Jul" },
-              { value: 250, label: "Ago" },
-              { value: 500, label: "Sep" },
-              { value: 745, label: "Oct" },
-              { value: 320, label: "Nov" },
-              { value: 600, label: "Dic" },
-            ]}
+  const currencyFormatter = new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+  });
+
+  const years = Array.from({ length: 5 }, (_, i) => {
+    const y = new Date().getFullYear() - i;
+    return { label: String(y), value: y };
+  });
+
+  const fetchData = async (selectedYear) => {
+    setLoading(true);
+    const startDate = `${selectedYear}-01-01`;
+    const endDate = `${selectedYear}-12-31`;
+
+    // 1. Fetch Sales
+    // const { data: sales, error: salesError } = await supabase
+    //   .from("ventas")
+    //   .select("fecha_venta, monto_final")
+    //   .gte("fecha_venta", startDate)
+    //   .lte("fecha_venta", endDate);
+
+    // if (salesError) console.error("Error fetching sales:", salesError);
+
+    // 2. Fetch Students
+    // const { data: students, error: studentsError } = await supabase
+    //   .from("estudiantes")
+    //   .select("created_at")
+    //   .gte("created_at", startDate)
+    //   .lte("created_at", endDate);
+
+    // if (studentsError) console.error("Error fetching students:", studentsError);
+
+    // 3. Process data
+    const monthsTemplate = Array.from({ length: 12 }, (_, i) => ({
+      value: 0,
+      label: new Date(0, i).toLocaleString("es-MX", { month: "short" }),
+    }));
+
+    const monthlySales = JSON.parse(JSON.stringify(monthsTemplate));
+    sales?.forEach((sale) => {
+      const month = new Date(sale.fecha_venta).getMonth();
+      monthlySales[month].value += sale.monto_final;
+    });
+
+    const monthlyStudents = JSON.parse(JSON.stringify(monthsTemplate));
+    // students?.forEach((student) => {
+    //   const month = new Date(student.created_at).getMonth();
+    //   monthlyStudents[month].value += 1;
+    // });
+
+    setSalesData(monthlySales);
+    setStudentsData(monthlyStudents);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchData(year);
+  }, [year]);
+
+  const totalSales = useMemo(
+    () => salesData.reduce((sum, item) => sum + item.value, 0),
+    [salesData]
+  );
+  const totalStudents = useMemo(
+    () => studentsData.reduce((sum, item) => sum + item.value, 0),
+    [studentsData]
+  );
+
+  const ChartCard = ({ title, total, data, unit = "" }) => (
+    <View className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-1 min-w-[300px]">
+      <View className="flex-row justify-between items-baseline mb-4">
+        <Text className="text-lg font-bold text-slate-800">{title}</Text>
+        <Text className="text-xl font-extrabold text-indigo-600">
+          {unit === "$"
+            ? currencyFormatter.format(total)
+            : `${total} ${title.toLowerCase()}`}
+        </Text>
+      </View>
+      {loading ? (
+        <View className="h-60 justify-center items-center">
+          <ActivityIndicator color="#6F09EA" />
+        </View>
+      ) : (
+        <BarChart
+          data={data}
+          barWidth={20}
+          spacing={15}
+          roundedTop
+          hideRules
+          xAxisThickness={0}
+          yAxisThickness={0}
+          yAxisTextStyle={{ color: "#9ca3af" }}
+          noOfSections={4}
+          frontColor={"#6F09EA"}
+          showGradient
+          gradientColor={"#a78bfa"}
+          barStyle={{
+            shadowColor: "#6F09EA",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.5,
+            shadowRadius: 4,
+            elevation: 5,
+          }}
+        />
+      )}
+    </View>
+  );
+
+  return (
+    <ScrollView className={`flex-1 p-4 bg-slate-50`}>
+      <View className="flex-row justify-between items-center mb-6">
+        <Text className="text-2xl font-bold text-slate-800">Reporte Anual</Text>
+        <View className="w-40">
+          <Dropdown
+            style={styles.dropdownIngresos}
+            data={years}
+            labelField="label"
+            valueField="value"
+            value={year}
+            onChange={(item) => setYear(item.value)}
           />
         </View>
       </View>
-    </View>
+
+      <View
+        className={`flex-1 flex-wrap justify-center items-center flex-row gap-6`}
+      >
+        <ChartCard
+          title="Ventas"
+          total={totalSales}
+          data={salesData}
+          unit="$"
+        />
+        <ChartCard title="Alumnos" total={totalStudents} data={studentsData} />
+      </View>
+    </ScrollView>
   );
 };
 
@@ -3152,12 +4502,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   input: {
-    height: 50,
-    borderColor: "gray",
-    borderWidth: 0.5,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 15,
     justifyContent: "center",
   },
   dropdownModal: {
@@ -3169,13 +4513,16 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   dropdownIngresos: {
-    height: 40,
-    width: 150,
-    borderColor: "gray",
-    borderWidth: 0.5,
+    height: 42,
+    backgroundColor: "white",
+    borderColor: "#d1d5db",
+    borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 8,
-    marginBottom: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   label: {
     fontSize: 14,
@@ -3191,6 +4538,129 @@ const styles = StyleSheet.create({
     backgroundColor: "#e5e7eb",
     borderColor: "#d1d5db",
   },
+  dropdownItemText: {
+    color: "#1e293b",
+    fontSize: 16,
+  },
+  currencyInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "white",
+    height: 45,
+    width: 120,
+    marginLeft: 10,
+  },
+  currencySymbol: {
+    fontSize: 16,
+    color: "#4b5563",
+    marginRight: 4,
+  },
+  currencyInput: {
+    flex: 1,
+    fontSize: 16,
+    minWidth: 40,
+    maxWidth: "100%",
+    textAlign: "right",
+    alignSelf: "center",
+  },
+  currencyInputPlaceholder: {
+    color: "#9ca3af",
+  },
+  currencyCents: {
+    fontSize: 16,
+    color: "#6b7280",
+  },
+  stepButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#eef2ff",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#c7d2fe",
+  },
+  stepButtonDisabled: {
+    backgroundColor: "#f1f5f9",
+    borderColor: "#e2e8f0",
+  },
+  stepButtonText: {
+    color: "#4f46e5",
+    fontSize: 20,
+    fontWeight: "bold",
+    lineHeight: 22,
+  },
+  stepButtonTextDisabled: {
+    color: "#9ca3af",
+  },
+  chipContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
+    marginTop: 12,
+    gap: 8,
+  },
+  chip: {
+    backgroundColor: "#f1f5f9",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  chipDisabled: {
+    backgroundColor: "#f8fafc",
+    opacity: 0.6,
+  },
+  chipText: {
+    color: "#475569",
+    fontWeight: "500",
+    fontSize: 12,
+  },
+  chipSelected: {
+    backgroundColor: "#eef2ff",
+    borderColor: "#a5b4fc",
+  },
+  chipTextSelected: {
+    color: "#4338ca",
+    fontWeight: "bold",
+  },
+  chipPrimary: {
+    backgroundColor: "#fffbeb",
+    borderColor: "#fde68a",
+  },
+  chipTextPrimary: {
+    color: "#b45309",
+    fontWeight: "bold",
+  },
+  chipClear: {
+    backgroundColor: "#fee2e2",
+    borderColor: "#fca5a5",
+  },
+  chipTextClear: {
+    color: "#b91c1c",
+    fontWeight: "bold",
+  },
+  chipTextDisabled: {
+    color: "#9ca3af",
+    fontWeight: "500",
+  },
 });
 
-const styles_modal = StyleSheet.create({ ...styles });
+const styles_finanzas = StyleSheet.create({
+  half: {
+    width: "48%", // Ancho para crear el efecto de dos columnas
+  },
+  dropdown: {
+    height: 50,
+    borderColor: "#cbd5e1",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "white",
+  },
+});
