@@ -4,6 +4,7 @@ import {
   View,
   Pressable,
   Image,
+  useWindowDimensions,
   Dimensions,
   ScrollView,
   TouchableOpacity,
@@ -20,11 +21,9 @@ import {
   Alert,
   RefreshControl,
   KeyboardAvoidingView,
+  FlatList,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import equal from "fast-deep-equal";
-import * as Clipboard from "expo-clipboard";
-import "./global.css";
+
 import React, {
   useState,
   useRef,
@@ -32,6 +31,14 @@ import React, {
   useMemo,
   useCallback,
 } from "react";
+
+import { LinearGradient } from "expo-linear-gradient";
+import equal from "fast-deep-equal";
+import * as Clipboard from "expo-clipboard";
+import "./global.css";
+
+import { FlashList } from "@shopify/flash-list";
+
 import Svg, { Path } from "react-native-svg";
 import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
@@ -2216,6 +2223,88 @@ const TablaEgresos = ({ data, onEdit }) => {
   );
 };
 
+const CustomFinanzasTabBar = (props) => {
+  const { state, descriptors, navigation, position } = props;
+  const {
+    syncDateFilters,
+    setSyncDateFilters,
+    selectedIngresoDateFilter,
+    setSelectedEgresoDateFilter,
+  } = props.screenProps;
+
+  return (
+    <View className="flex-row items-center justify-between bg-slate-50 border-b border-slate-200 pr-4">
+      {/* Contenedor de las pestañas */}
+      <View className="flex-row">
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const label =
+            options.tabBarLabel !== undefined
+              ? options.tabBarLabel
+              : options.title !== undefined
+                ? options.title
+                : route.name;
+          const isFocused = state.index === index;
+
+          const onPress = () => {
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
+            }
+          };
+
+          return (
+            <TouchableOpacity
+              key={route.key}
+              onPress={onPress}
+              className={`py-3 px-4 border-b-2 ${isFocused ? "border-slate-900" : "border-transparent"}`}
+            >
+              <Text
+                className={`uppercase font-bold ${isFocused ? "text-slate-900" : "text-slate-500"}`}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Control de Sincronización */}
+      <View className="flex-row items-center gap-x-2">
+        <Text className="text-slate-600 text-xs font-semibold uppercase">
+          Sincronizar filtros
+        </Text>
+        <TouchableOpacity
+          onPress={() => {
+            const newValue = !syncDateFilters;
+            setSyncDateFilters(newValue);
+            if (newValue)
+              setSelectedEgresoDateFilter(selectedIngresoDateFilter);
+          }}
+          className={`p-1.5 rounded-full ${syncDateFilters ? "bg-indigo-100" : "bg-slate-200"}`}
+        >
+          <Svg
+            height="18"
+            viewBox="0 -960 960 960"
+            width="18"
+            fill={syncDateFilters ? "#6F09EA" : "#64748b"}
+          >
+            {syncDateFilters ? (
+              <Path d="M432-288H288q-79.68 0-135.84-56.23Q96-400.45 96-480.23 96-560 152.16-616q56.16-56 135.84-56h144v72H288q-50 0-85 35t-35 85q0 50 35 85t85 35h144v72Zm-96-156v-72h288v72H336Zm192 156v-72h144q50 0 85-35t35-85q0-50-35-85t-85-35H528v-72h144q79.68 0 135.84 56.23 56.16 56.22 56.16 136Q864-400 807.84-344 751.68-288 672-288H528Z" />
+            ) : (
+              <Path d="m754-308-56-55q41.78-11.3 67.89-43.65Q792-439 792-480q0-50-35-85t-85-35H528v-72h144q79.68 0 135.84 56.22 56.16 56.23 56.16 136Q864-425 834.5-379T754-308ZM618-444l-72-72h78v72h-6ZM768-90 90-768l51-51 678 678-51 51ZM432-288H288q-79.68 0-135.84-56.16T96-480q0-63.93 38-113.97Q172-644 242-673l70 73h-23q-51 0-86 35t-35 85q0 50 35 85t85 35h144v72Zm-96-156v-72h56l71 72H336Z" />
+            )}
+          </Svg>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
 const ScreenFinanzas = () => {
   const TablaIngresos = ({ data, onEdit }) => {
     const currencyFormatter = new Intl.NumberFormat("es-MX", {
@@ -2427,7 +2516,7 @@ const ScreenFinanzas = () => {
     useState("last_month");
   const [selectedEgresoDateFilter, setSelectedEgresoDateFilter] =
     useState("last_month");
-  const [syncDateFilters, setSyncDateFilters] = useState(true);
+  const [syncDateFilters, setSyncDateFilters] = useState(false);
   // --- Estados para controlar la vista de Egresos ---
   const [egresoViewMode, setEgresoViewMode] = useState("list"); // 'list' o 'form'
   const [editingEgreso, setEditingEgreso] = useState(null);
@@ -2786,26 +2875,24 @@ const ScreenFinanzas = () => {
   }
 
   return (
+    // Contenedor principal para la pantalla de Finanzas
     <Tab.Navigator
       initialRouteName="Ingresos"
       tabBarPosition="top"
-      screenOptions={{
-        tabBarActiveTintColor: "#1f1f1f",
-        tabBarInactiveTintColor: "#70757a",
-        swipeEnabled: false,
-
-        tabBarScrollEnabled: true,
-        tabBarItemStyle: { width: "auto", paddingHorizontal: 5 },
-        tabBarLabelStyle: {
-          fontSize: 14,
-          fontWeight: "bold",
-          textTransform: "uppercase",
-        },
-        tabBarStyle: { backgroundColor: "#f8fafc" },
-        tabBarIndicatorStyle: { backgroundColor: "#1f1f1f", height: 2 },
-      }}
+      tabBar={(props) => (
+        <CustomFinanzasTabBar
+          {...props}
+          screenProps={{
+            syncDateFilters,
+            setSyncDateFilters,
+            selectedIngresoDateFilter,
+            setSelectedEgresoDateFilter,
+          }}
+        />
+      )}
     >
-      <Tab.Screen name="Ingresos">
+      <Tab.Screen name="Ingresos" key="ingresos-tab">
+        {/* Añadido key para claridad */}
         {() => (
           <View id="tablas-ingresos" className={`flex-1 bg-slate-50 p-4`}>
             {loading && (
@@ -2818,28 +2905,16 @@ const ScreenFinanzas = () => {
             )}
 
             <View className="flex-row justify-between items-center mb-4">
-              <View className="flex-row items-center gap-x-4">
-                <View className="w-60">
-                  <Dropdown
-                    style={styles.dropdownIngresos}
-                    data={dateFilterOptions}
-                    labelField="label"
-                    valueField="value"
-                    value={selectedIngresoDateFilter}
-                    onChange={handleIngresoFilterChange}
-                  />
-                </View>
-                <View className="flex-row items-center gap-x-2">
-                  <Switch
-                    trackColor={{ false: "#e5e7eb", true: "#a78bfa" }}
-                    thumbColor={syncDateFilters ? "#6F09EA" : "#f4f3f4"}
-                    onValueChange={setSyncDateFilters}
-                    value={syncDateFilters}
-                  />
-                  <Text className="text-slate-600 text-xs font-semibold uppercase">
-                    Sincronizar
-                  </Text>
-                </View>
+              <View className="w-60">
+                {/* Contenedor para el Dropdown de Ingresos */}
+                <Dropdown
+                  style={styles.dropdownIngresos}
+                  data={dateFilterOptions}
+                  labelField="label"
+                  valueField="value"
+                  value={selectedIngresoDateFilter}
+                  onChange={handleIngresoFilterChange}
+                />
               </View>
 
               <TouchableOpacity
@@ -2867,7 +2942,8 @@ const ScreenFinanzas = () => {
           </View>
         )}
       </Tab.Screen>
-      <Tab.Screen name="Egresos" id="tablas-egresos">
+      <Tab.Screen name="Egresos" key="egresos-tab">
+        {/* Añadido key para claridad */}
         {() => (
           <View id="tablas-egresos" className={`flex-1 bg-slate-50 p-4`}>
             {loading && (
@@ -2878,28 +2954,16 @@ const ScreenFinanzas = () => {
             )}
 
             <View className="flex-row justify-between items-center mb-4">
-              <View className="flex-row items-center gap-x-4">
-                <View className="w-60">
-                  <Dropdown
-                    style={styles.dropdownIngresos}
-                    data={dateFilterOptions}
-                    labelField="label"
-                    valueField="value"
-                    value={selectedEgresoDateFilter}
-                    onChange={handleEgresoFilterChange}
-                  />
-                </View>
-                <View className="flex-row items-center gap-x-2">
-                  <Switch
-                    trackColor={{ false: "#e5e7eb", true: "#a78bfa" }}
-                    thumbColor={syncDateFilters ? "#6F09EA" : "#f4f3f4"}
-                    onValueChange={setSyncDateFilters}
-                    value={syncDateFilters}
-                  />
-                  <Text className="text-slate-600 text-xs font-semibold uppercase">
-                    Sincronizar
-                  </Text>
-                </View>
+              <View className="w-60">
+                {/* Contenedor para el Dropdown de Egresos */}
+                <Dropdown
+                  style={styles.dropdownIngresos}
+                  data={dateFilterOptions}
+                  labelField="label"
+                  valueField="value"
+                  value={selectedEgresoDateFilter}
+                  onChange={handleEgresoFilterChange}
+                />
               </View>
 
               <TouchableOpacity
@@ -2932,6 +2996,105 @@ const ScreenFinanzas = () => {
 };
 
 const ScreenCalendario = () => {
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+
+  // --- Constante para el ancho del calendario ---
+  const CALENDAR_WIDTH = 400;
+
+  // --- Estados para el modal de eventos ---
+  const [isEventModalVisible, setEventModalVisible] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    nombre: "",
+    descripcion: "",
+    hora: "09",
+    minutos: "00",
+  });
+  const [dateParts, setDateParts] = useState({ day: "", month: "", year: "" });
+  const [isDateEditable, setIsDateEditable] = useState(false);
+  const [isTimeEditable, setIsTimeEditable] = useState(false);
+
+  const monthInputRef = useRef(null);
+  const yearInputRef = useRef(null);
+
+  const handleDatePartChange = (part, value) => {
+    const numericValue = value.replace(/[^\d]/g, "");
+    let newParts = { ...dateParts, [part]: numericValue };
+
+    // Validaciones y auto-focus
+    if (part === "day") {
+      if (parseInt(numericValue, 10) > 31) newParts.day = "31";
+      if (numericValue.length === 2) monthInputRef.current?.focus();
+    }
+    if (part === "month") {
+      if (parseInt(numericValue, 10) > 12) newParts.month = "12";
+      if (numericValue.length === 2) yearInputRef.current?.focus();
+    }
+    if (part === "year" && numericValue.length === 4) {
+      Keyboard.dismiss();
+    }
+
+    setDateParts(newParts);
+  };
+
+  const openEventModal = () => {
+    // Captura la hora y minutos actuales al abrir el modal
+    const now = new Date();
+    const currentHour = String(now.getHours()).padStart(2, "0");
+    const currentMinutes = now.getMinutes();
+
+    // Redondea los minutos al intervalo de 15 más cercano (00, 15, 30, 45)
+    let closestMinute = "00";
+    if (currentMinutes >= 45) {
+      closestMinute = "45";
+    } else if (currentMinutes >= 30) {
+      closestMinute = "30";
+    } else if (currentMinutes >= 15) {
+      closestMinute = "15";
+    }
+
+    // Al abrir el modal, poblamos la fecha con la seleccionada en el calendario
+    const parts = selectedDate.split("-");
+    setDateParts({ year: parts[0], month: parts[1], day: parts[2] });
+    setIsDateEditable(false); // La fecha no es editable por defecto
+    setIsTimeEditable(false); // La hora tampoco es editable por defecto
+    setNewEvent({
+      nombre: "",
+      descripcion: "",
+      hora: currentHour,
+      minutos: closestMinute,
+    });
+    setEventModalVisible(true);
+  };
+
+  const handleSaveEvent = () => {
+    // Aquí iría la lógica para guardar el evento
+    console.log("Guardando evento:", {
+      ...newEvent,
+      fecha: `${dateParts.year}-${dateParts.month}-${dateParts.day}`,
+    });
+    setEventModalVisible(false);
+  };
+
+  const calendarRef = useRef(null);
+
+  // Función para volver al día y mes actual
+  const goToToday = () => {
+    const today = new Date().toISOString().split("T")[0];
+    setSelectedDate(today);
+
+    // Si el calendario ya está visible, lo forzamos a navegar al mes actual.
+    if (calendarRef.current) {
+      const todayDate = new Date();
+      const currentDate = new Date(calendarRef.current.props.current);
+      const monthDiff =
+        (todayDate.getFullYear() - currentDate.getFullYear()) * 12 +
+        (todayDate.getMonth() - currentDate.getMonth());
+      calendarRef.current.addMonth(monthDiff);
+    }
+  };
+
   LocaleConfig.locales["es"] = {
     monthNames: [
       "Enero",
@@ -2980,98 +3143,321 @@ const ScreenCalendario = () => {
 
   LocaleConfig.defaultLocale = "es";
 
+  // Objeto para marcar la fecha seleccionada
+  const markedDates = {
+    [selectedDate]: {
+      selected: true,
+      selectedColor: "#6F09EA",
+      disableTouchEvent: true,
+    },
+    // Aquí se podrían añadir más fechas con eventos (puntos, etc.)
+  };
+
   return (
-    <View className={`flex-1 bg-slate-50 p-2 flex-col`}>
+    <View className="flex-1 bg-slate-50 p-4">
       <View
-        className={`flex-1 horizontal:flex-row vertical:flex-col p-2 vertical:gap-y-10 horizontal:gap-x-10`}
+        className={`flex-1 flex-col lg:flex-row gap-6 sm:items-center lg:items-stretch`} // Usamos clases lg: para responsividad en web/tablets
       >
+        {/* Contenedor del Calendario */}
         <View
-          className={`horizontal:flex-col vertical:flex-col vertical:items-center horizontal:items-stretch `}
+          className="bg-white rounded-xl shadow-sm border border-slate-200 p-4"
+          style={{
+            width: CALENDAR_WIDTH,
+          }}
         >
           <Calendar
-            showSixWeeks={true}
-            pastScrollRange={1} // Limita a 1 mes en el pasado
-            futureScrollRange={1} // Limita a 1 mes en el futuro
+            // Props para el calendario
+            ref={calendarRef}
+            current={selectedDate} // Controlamos el mes visible con 'current'
+            onDayPress={(day) => setSelectedDate(day.dateString)}
+            markedDates={markedDates}
             enableSwipeMonths={true}
-            disabledByWeekDays={[0]}
-            disableAllTouchEventsForDisabledDays={true}
+            showSixWeeks
             style={{
-              width: 400,
-              borderRadius: 10,
-              borderColor: "#1f1f1f",
-              borderWidth: 1,
-              boxSizing: "border-box",
-              backgroundColor: "#f8fafc",
+              // El estilo ahora es más limpio, controlado por el contenedor
+              backgroundColor: "transparent",
             }}
             theme={{
-              calendarBackground: "#f8fafc",
+              // Tema visual del calendario
+              calendarBackground: "transparent",
+              textSectionTitleColor: "#64748b",
+              selectedDayBackgroundColor: "#6F09EA",
+              selectedDayTextColor: "#ffffff",
+              todayTextColor: "#6F09EA",
+              dayTextColor: "#1e293b",
+              textDisabledColor: "#9ca3af",
+              arrowColor: "#6F09EA",
+              monthTextColor: "#1e293b",
+              textDayFontWeight: "500",
+              textMonthFontWeight: "bold",
+              textDayHeaderFontWeight: "600",
+              textDayFontSize: 16,
+              textMonthFontSize: 18,
+              textDayHeaderFontSize: 14,
             }}
-            renderArrow={(direction) => {
-              if (direction === "left") {
-                return (
-                  <View
-                    style={{
-                      backgroundColor: "#B58EE2",
-                      // --- Sombra para los botones de flecha ---
-                      elevation: 4, // Sombra para Android
-                      shadowColor: "#000", // Sombra para iOS
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.25,
-                      shadowRadius: 3.84,
-                    }}
-                    className={`rounded-full p-1`}
+            renderHeader={(date) => {
+              const month = date.toString("MMMM yyyy");
+              return (
+                <View className="flex-row justify-center items-center relative px-10">
+                  {/* El título del mes se centra automáticamente */}
+                  <Text className="text-lg font-bold text-slate-800 capitalize">
+                    {month}
+                  </Text>
+                  {/* Botón "Hoy" con posicionamiento absoluto */}
+                  <TouchableOpacity
+                    onPress={goToToday}
+                    className="bg-indigo-100 px-3 py-1 rounded-full absolute"
+                    style={{ top: 0, right: -30 }}
                   >
-                    <Svg
-                      height="24"
-                      viewBox="0 -960 960 960"
-                      width="24"
-                      fill="#ffffff"
-                    >
-                      <Path d="M560-240 320-480l240-240 56 56-184 184 184 184-56 56Z" />
-                    </Svg>
-                  </View>
-                );
-              } else {
-                return (
-                  <View
-                    style={{
-                      backgroundColor: "#B58EE2",
-                      // --- Sombra para los botones de flecha ---
-                      elevation: 4, // Sombra para Android
-                      shadowColor: "#000", // Sombra para iOS
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.25,
-                      shadowRadius: 3.84,
-                    }}
-                    className={`rounded-full p-1`}
-                  >
-                    <Svg
-                      height="24"
-                      viewBox="0 -960 960 960"
-                      width="24"
-                      fill="#ffffff"
-                    >
-                      <Path d="M400-240 344-296l184-184-184-184 56-56 240 240-240 240Z" />
-                    </Svg>
-                  </View>
-                );
-              }
+                    <Text className="font-bold text-sm text-indigo-600">
+                      Hoy
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
             }}
           />
         </View>
-        <View
-          className={`flex-1 vertical:flex-row horizontal:flex-col vertical:gap-x-4 horizontal:gap-x-0`}
-        >
-          <View className={`flex-1`}>
-            <Text className={`uppercase font-bold border-b `}>
-              Próximos eventos
-            </Text>
-            <View className={`flex-1 items-center justify-center`}>
-              <Text>¡Vaya!, al parecer no quedan pedientes</Text>
+
+        {/* Contenedor de Eventos */}
+        <View className="flex-1 bg-white w-full rounded-xl shadow-sm border border-slate-200 p-4">
+          <View className="flex-1 ">
+            {/* Cabecera de la sección de eventos */}
+            <View className="flex-row justify-between items-center border-b border-slate-200 pb-3 mb-4">
+              <Text className="text-lg font-bold text-slate-800">
+                Eventos para el{" "}
+                <Text className="text-indigo-600">
+                  {(() => {
+                    // Solución robusta para el problema de la zona horaria.
+                    const parts = selectedDate.split("-");
+                    const utcDate = new Date(
+                      Date.UTC(parts[0], parts[1] - 1, parts[2])
+                    );
+                    return utcDate.toLocaleDateString("es-ES", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                      timeZone: "UTC",
+                    });
+                  })()}
+                </Text>
+              </Text>
+              <TouchableOpacity
+                onPress={openEventModal}
+                className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-3"
+              >
+                <Svg
+                  height="16"
+                  viewBox="0 -960 960 960"
+                  width="16"
+                  fill="#ffffff"
+                >
+                  <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+                </Svg>
+                <Text className="text-white font-bold ml-2 text-sm">
+                  Agregar
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View className="flex-1 items-center justify-center">
+              <Svg
+                height="60"
+                viewBox="0 -960 960 960"
+                width="60"
+                fill="#cbd5e1"
+              >
+                <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z" />
+              </Svg>
+              <Text className="text-slate-500 font-semibold mt-4 text-center">
+                No hay eventos para este día.
+              </Text>
+              <Text className="text-slate-400 text-sm mt-1 text-center">
+                Selecciona otro día o agrega un nuevo evento.
+              </Text>
             </View>
           </View>
         </View>
       </View>
+
+      {/* Modal para registrar evento */}
+      <Modal
+        transparent={true}
+        animationType="fade"
+        visible={isEventModalVisible}
+        onRequestClose={() => setEventModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View className="flex-1 justify-center items-center bg-black/60 p-4">
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <View className="bg-slate-50 rounded-2xl p-6 w-full max-w-lg shadow-xl">
+                <Text className="text-2xl font-bold mb-6 text-slate-800">
+                  Agregar Evento
+                </Text>
+
+                {/* Campo Nombre del Evento */}
+                <LabeledInput
+                  label="Nombre del Evento"
+                  containerClassName="mb-4"
+                >
+                  <TextInput
+                    className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white"
+                    placeholder="Ej. Reunión de equipo"
+                    value={newEvent.nombre}
+                    onChangeText={(text) =>
+                      setNewEvent({ ...newEvent, nombre: text })
+                    }
+                  />
+                </LabeledInput>
+
+                {/* Campo de Fecha */}
+                <View className="mb-4">
+                  <View className="flex-row items-center mb-1">
+                    <Text className="text-sm font-semibold text-slate-700">
+                      Fecha del Evento
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setIsDateEditable(!isDateEditable)}
+                      className="ml-2 p-1 rounded-full bg-slate-200"
+                    >
+                      <Svg
+                        height="14"
+                        viewBox="0 -960 960 960"
+                        width="14"
+                        fill="#475569"
+                      >
+                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                      </Svg>
+                    </TouchableOpacity>
+                  </View>
+                  <View
+                    className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isDateEditable ? "bg-white" : "bg-slate-100 opacity-70"}`}
+                  >
+                    <TextInput
+                      style={styles_registro_venta.dateInput}
+                      placeholder="DD"
+                      value={dateParts.day}
+                      editable={isDateEditable}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                      onChangeText={(text) => handleDatePartChange("day", text)}
+                    />
+                    <Text style={styles.dateSeparator}>/</Text>
+                    <TextInput
+                      ref={monthInputRef}
+                      style={styles_registro_venta.dateInput}
+                      placeholder="MM"
+                      value={dateParts.month}
+                      editable={isDateEditable}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                      onChangeText={(text) =>
+                        handleDatePartChange("month", text)
+                      }
+                    />
+                    <Text style={styles.dateSeparator}>/</Text>
+                    <TextInput
+                      ref={yearInputRef}
+                      style={[styles_registro_venta.dateInput, { flex: 1.5 }]}
+                      placeholder="AAAA"
+                      value={dateParts.year}
+                      editable={isDateEditable}
+                      keyboardType="number-pad"
+                      maxLength={4}
+                      onChangeText={(text) =>
+                        handleDatePartChange("year", text)
+                      }
+                    />
+                  </View>
+                </View>
+
+                {/* Selector de Hora */}
+                <View className="mb-4">
+                  <View className="flex-row items-center mb-1">
+                    <Text className="text-sm font-semibold text-slate-700">
+                      Hora del Evento (Formato 24HH)
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setIsTimeEditable(!isTimeEditable)}
+                      className="ml-2 p-1 rounded-full bg-slate-200"
+                    >
+                      <Svg
+                        height="14"
+                        viewBox="0 -960 960 960"
+                        width="14"
+                        fill="#475569"
+                      >
+                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                      </Svg>
+                    </TouchableOpacity>
+                  </View>
+                  <View
+                    className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isTimeEditable ? "bg-white" : "bg-slate-100 opacity-70"}`}
+                  >
+                    <TextInput
+                      className="flex-1 text-center text-base py-2"
+                      placeholder="HH"
+                      value={newEvent.hora}
+                      editable={isTimeEditable}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                      onChangeText={(text) => {
+                        const numericValue = text.replace(/[^\d]/g, "");
+                        if (parseInt(numericValue, 10) > 23) return;
+                        setNewEvent({ ...newEvent, hora: numericValue });
+                      }}
+                    />
+                    <Text className="text-xl font-bold text-slate-400">:</Text>
+                    <TextInput
+                      className="flex-1 text-center text-base py-2"
+                      placeholder="MM"
+                      value={newEvent.minutos}
+                      editable={isTimeEditable}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                      onChangeText={(text) => {
+                        const numericValue = text.replace(/[^\d]/g, "");
+                        if (parseInt(numericValue, 10) > 59) return;
+                        setNewEvent({ ...newEvent, minutos: numericValue });
+                      }}
+                    />
+                  </View>
+                </View>
+
+                {/* Campo Descripción */}
+                <LabeledInput label="Descripción (Opcional)">
+                  <TextInput
+                    placeholder="Detalles adicionales sobre el evento..."
+                    className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white h-20"
+                    style={{ textAlignVertical: "top" }}
+                    multiline
+                    value={newEvent.descripcion}
+                    onChangeText={(text) =>
+                      setNewEvent({ ...newEvent, descripcion: text })
+                    }
+                  />
+                </LabeledInput>
+
+                {/* Botones de Acción */}
+                <View className="flex-row justify-end mt-6 gap-x-4">
+                  <TouchableOpacity
+                    onPress={() => setEventModalVisible(false)}
+                    className="bg-slate-200 px-5 py-3 rounded-lg"
+                  >
+                    <Text className="font-bold text-slate-600">Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleSaveEvent}
+                    className="bg-indigo-600 px-5 py-3 rounded-lg shadow-md shadow-indigo-600/30"
+                  >
+                    <Text className="text-white font-bold">Guardar Evento</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };
@@ -4278,8 +4664,6 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
     require("./assets/Catalogo/Catalogo-12.png"),
     require("./assets/Catalogo/Catalogo-13.png"),
     require("./assets/Catalogo/Catalogo-14.png"),
-    require("./assets/Catalogo/Catalogo-15.png"),
-    require("./assets/Catalogo/Catalogo-16.png"), // Ejemplo
   ];
 
   const tarifarioImages = [
@@ -4434,6 +4818,28 @@ const MinimalistTabBar = ({ state }) => {
     </View>
   );
 };
+
+const styles_registro_venta = StyleSheet.create({
+  dateInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 8,
+    backgroundColor: "white",
+    paddingHorizontal: 8,
+  },
+  dateInput: {
+    flex: 1,
+    paddingVertical: 10,
+    fontSize: 16,
+    textAlign: "center",
+  },
+  dateSeparator: {
+    fontSize: 16,
+    color: "#9ca3af",
+  },
+});
 
 // Silenciar advertencias específicas de RN Web de terceros (no corregibles desde nuestro código)
 if (Platform.OS === "web") {
