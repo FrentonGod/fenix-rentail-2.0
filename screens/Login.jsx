@@ -34,30 +34,55 @@ const InputModal = ({
     <Modal
       transparent={true}
       visible={visible}
-      animationType="fade"
+      animationType={Platform.OS === "ios" ? "slide" : "fade"}
       onRequestClose={onClose}
     >
-      {/* Backdrop para cerrar al tocar fuera */}
       <BlurView
         intensity={100}
         tint="dark"
         className="flex-1 justify-center items-center"
       >
         <TouchableWithoutFeedback onPress={onClose}>
-          <View className="flex-1 justify-center items-center w-full p-4">
-            {/* Contenedor del input para evitar que el toque se propague al backdrop */}
-            <TouchableWithoutFeedback>
-              <View className="bg-slate-50 rounded-2xl p-6 w-full max-w-md shadow-xl">
-                <Text className="text-lg font-bold mb-4 text-slate-800">
-                  {label}
-                </Text>
-                <TextInput
-                  className="bg-white border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-base"
-                  value={value}
-                  onChangeText={onChangeText}
-                  autoFocus={true} // Poner el foco automáticamente al abrir
-                  {...textInputProps}
-                />
+          <View
+            className="flex-1 justify-center items-center w-full p-4"
+            style={Platform.OS === "ios" ? { paddingBottom: 100 } : {}}
+          >
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+                {/* Header con gradiente */}
+                <LinearGradient
+                  colors={["#6F09EA", "#7009E8"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  className="p-5 flex-row justify-between items-center"
+                >
+                  <Text className="text-xl font-bold text-white">{label}</Text>
+                  <Pressable
+                    onPress={onClose}
+                    hitSlop={15}
+                    className="p-1 rounded-full bg-black/20"
+                  >
+                    <Svg
+                      height="20"
+                      viewBox="0 -960 960 960"
+                      width="20"
+                      fill="#ffffff"
+                    >
+                      <Path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
+                    </Svg>
+                  </Pressable>
+                </LinearGradient>
+
+                {/* Cuerpo del modal */}
+                <View className="p-6">
+                  <TextInput
+                    className="bg-slate-100 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-base focus:border-violet-500 focus:ring-2 focus:ring-violet-200"
+                    value={value}
+                    onChangeText={onChangeText}
+                    autoFocus={true}
+                    {...textInputProps}
+                  />
+                </View>
               </View>
             </TouchableWithoutFeedback>
           </View>

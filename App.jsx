@@ -45,6 +45,7 @@ import Ripple from "react-native-material-ripple";
 import { BarChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { Dropdown } from "react-native-element-dropdown";
+import { BlurView } from "expo-blur";
 import Slider from "@react-native-community/slider";
 import {
   Calendar,
@@ -2995,6 +2996,90 @@ const ScreenFinanzas = () => {
   );
 };
 
+const InputModal = ({
+  visible,
+  onClose,
+  label,
+  value,
+  onChangeText,
+  ...textInputProps
+}) => {
+  return (
+    <Modal
+      transparent={true}
+      visible={visible}
+      animationType={Platform.OS === "ios" ? "slide" : "fade"}
+      onRequestClose={onClose}
+    >
+      <BlurView
+        intensity={Platform.OS === "ios" ? 90 : 60}
+        tint="dark"
+        className="flex-1 justify-center items-center"
+      >
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View
+            className="flex-1 justify-center items-center w-full p-4"
+            style={Platform.OS === "ios" ? { paddingBottom: 100 } : {}}
+          >
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+                {/* Header con gradiente */}
+                <LinearGradient
+                  colors={["#6F09EA", "#7009E8"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  className="p-5 flex-row justify-between items-center"
+                >
+                  <Text className="text-xl font-bold text-white">{label}</Text>
+                  <Pressable
+                    onPress={onClose}
+                    hitSlop={15}
+                    className="p-1 rounded-full bg-black/20"
+                  >
+                    <Svg
+                      height="20"
+                      viewBox="0 -960 960 960"
+                      width="20"
+                      fill="#ffffff"
+                    >
+                      <Path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
+                    </Svg>
+                  </Pressable>
+                </LinearGradient>
+
+                {/* Cuerpo del modal */}
+                <View className="p-6">
+                  <TextInput
+                    className="bg-slate-100 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-base focus:border-violet-500 focus:ring-2 focus:ring-violet-200"
+                    value={value}
+                    onChangeText={onChangeText}
+                    autoFocus={true}
+                    {...textInputProps}
+                  />
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </BlurView>
+    </Modal>
+  );
+};
+
+const PressableInput = ({ label, value, onPress, icon }) => (
+  <Pressable
+    onPress={onPress}
+    className="bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-3 flex-row items-center"
+    style={{ height: 48 }}
+  >
+    <View className="absolute left-3" pointerEvents="none">
+      {icon}
+    </View>
+    <Text className={value ? "text-slate-900" : "text-slate-400"}>
+      {value || label}
+    </Text>
+  </Pressable>
+);
 const ScreenCalendario = () => {
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -3002,6 +3087,15 @@ const ScreenCalendario = () => {
 
   // --- Constante para el ancho del calendario ---
   const CALENDAR_WIDTH = 400;
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+
+  // --- Estados para el modal de inputs en landscape ---
+  const [modalInputVisible, setModalInputVisible] = useState(false);
+  const [editingField, setEditingField] = useState(null);
+  const [fieldLabel, setFieldLabel] = useState("");
+  const [currentValue, setCurrentValue] = useState("");
+  const [inputProps, setInputProps] = useState({});
 
   // --- Estados para el modal de eventos ---
   const [isEventModalVisible, setEventModalVisible] = useState(false);
@@ -3036,6 +3130,14 @@ const ScreenCalendario = () => {
     }
 
     setDateParts(newParts);
+  };
+
+  const handleInputPress = (field, label, value, props = {}) => {
+    setEditingField(field);
+    setFieldLabel(label);
+    setCurrentValue(value);
+    setInputProps(props);
+    setModalInputVisible(true);
   };
 
   const openEventModal = () => {
@@ -3287,177 +3389,245 @@ const ScreenCalendario = () => {
         visible={isEventModalVisible}
         onRequestClose={() => setEventModalVisible(false)}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View className="flex-1 justify-center items-center bg-black/60 p-4">
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <View className="bg-slate-50 rounded-2xl p-6 w-full max-w-lg shadow-xl">
-                <Text className="text-2xl font-bold mb-6 text-slate-800">
-                  Agregar Evento
-                </Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          enabled={!isLandscape}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        >
+          <TouchableWithoutFeedback onPress={() => setEventModalVisible(false)}>
+            <View className="flex-1 justify-center items-center bg-black/60 p-4">
+              <TouchableWithoutFeedback>
+                <View className="bg-slate-50 rounded-2xl p-6 w-full max-w-lg shadow-xl">
+                  <Text className="text-2xl font-bold mb-6 text-slate-800">
+                    Agregar Evento
+                  </Text>
 
-                {/* Campo Nombre del Evento */}
-                <LabeledInput
-                  label="Nombre del Evento"
-                  containerClassName="mb-4"
-                >
-                  <TextInput
-                    className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white"
-                    placeholder="Ej. Reunión de equipo"
-                    value={newEvent.nombre}
-                    onChangeText={(text) =>
-                      setNewEvent({ ...newEvent, nombre: text })
-                    }
-                  />
-                </LabeledInput>
-
-                {/* Campo de Fecha */}
-                <View className="mb-4">
-                  <View className="flex-row items-center mb-1">
-                    <Text className="text-sm font-semibold text-slate-700">
-                      Fecha del Evento
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => setIsDateEditable(!isDateEditable)}
-                      className="ml-2 p-1 rounded-full bg-slate-200"
+                  {/* El ScrollView ahora se usa en ambas orientaciones */}
+                  <ScrollView keyboardShouldPersistTaps="handled">
+                    {/* Campo Nombre del Evento */}
+                    <LabeledInput
+                      label="Nombre del Evento"
+                      containerClassName="mb-4"
                     >
-                      <Svg
-                        height="14"
-                        viewBox="0 -960 960 960"
-                        width="14"
-                        fill="#475569"
+                      <TextInput
+                        className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white"
+                        placeholder="Ej. Reunión de equipo"
+                        value={newEvent.nombre}
+                        editable={!isLandscape}
+                        onPressIn={() => {
+                          if (isLandscape) {
+                            handleInputPress(
+                              "nombre",
+                              "Nombre del Evento",
+                              newEvent.nombre
+                            );
+                          }
+                        }}
+                      />
+                    </LabeledInput>
+
+                    {/* Campo de Fecha */}
+                    <View className="mb-4">
+                      <View className="flex-row items-center mb-1">
+                        <Text className="text-sm font-semibold text-slate-700">
+                          Fecha del Evento
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => setIsDateEditable(!isDateEditable)}
+                          className="ml-2 p-1 rounded-full bg-slate-200"
+                        >
+                          <Svg
+                            height="14"
+                            viewBox="0 -960 960 960"
+                            width="14"
+                            fill="#475569"
+                          >
+                            <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                          </Svg>
+                        </TouchableOpacity>
+                      </View>
+                      <View
+                        className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isDateEditable ? "bg-white" : "bg-slate-100 opacity-70"}`}
                       >
-                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                      </Svg>
+                        <TextInput
+                          style={styles_registro_venta.dateInput}
+                          placeholder="DD"
+                          value={dateParts.day}
+                          editable={isDateEditable}
+                          onPressIn={() => {
+                            if (isLandscape && !isDateEditable) {
+                              Alert.alert(
+                                "Campo no editable",
+                                "Presiona el ícono de lápiz para editar la fecha."
+                              );
+                            }
+                          }}
+                        />
+                        <Text style={styles.dateSeparator}>/</Text>
+                        <TextInput
+                          ref={monthInputRef}
+                          style={styles_registro_venta.dateInput}
+                          placeholder="MM"
+                          value={dateParts.month}
+                          editable={isDateEditable}
+                          onPressIn={() => {
+                            if (isLandscape && !isDateEditable) {
+                              Alert.alert(
+                                "Campo no editable",
+                                "Presiona el ícono de lápiz para editar la fecha."
+                              );
+                            }
+                          }}
+                        />
+                        <Text style={styles.dateSeparator}>/</Text>
+                        <TextInput
+                          ref={yearInputRef}
+                          style={[
+                            styles_registro_venta.dateInput,
+                            { flex: 1.5 },
+                          ]}
+                          placeholder="AAAA"
+                          value={dateParts.year}
+                          editable={isDateEditable}
+                          onPressIn={() => {
+                            if (isLandscape && !isDateEditable) {
+                              Alert.alert(
+                                "Campo no editable",
+                                "Presiona el ícono de lápiz para editar la fecha."
+                              );
+                            }
+                          }}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Selector de Hora */}
+                    <View className="mb-4">
+                      <View className="flex-row items-center mb-1">
+                        <Text className="text-sm font-semibold text-slate-700">
+                          Hora del Evento (Formato 24HH)
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => setIsTimeEditable(!isTimeEditable)}
+                          className="ml-2 p-1 rounded-full bg-slate-200"
+                        >
+                          <Svg
+                            height="14"
+                            viewBox="0 -960 960 960"
+                            width="14"
+                            fill="#475569"
+                          >
+                            <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                          </Svg>
+                        </TouchableOpacity>
+                      </View>
+                      <View
+                        className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isTimeEditable ? "bg-white" : "bg-slate-100 opacity-70"}`}
+                      >
+                        <TextInput
+                          className="flex-1 text-center text-base py-2"
+                          placeholder="HH"
+                          value={newEvent.hora}
+                          editable={isTimeEditable}
+                          onPressIn={() => {
+                            if (isLandscape && !isTimeEditable) {
+                              Alert.alert(
+                                "Campo no editable",
+                                "Presiona el ícono de lápiz para editar la hora."
+                              );
+                            }
+                          }}
+                        />
+                        <Text className="text-xl font-bold text-slate-400">
+                          :
+                        </Text>
+                        <TextInput
+                          className="flex-1 text-center text-base py-2"
+                          placeholder="MM"
+                          value={newEvent.minutos}
+                          editable={isTimeEditable}
+                          onPressIn={() => {
+                            if (isLandscape && !isTimeEditable) {
+                              Alert.alert(
+                                "Campo no editable",
+                                "Presiona el ícono de lápiz para editar la hora."
+                              );
+                            }
+                          }}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Campo Descripción */}
+                    <LabeledInput
+                      label="Descripción (Opcional)"
+                      containerClassName="mb-4"
+                    >
+                      <TextInput
+                        placeholder="Detalles adicionales sobre el evento..."
+                        className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white h-20"
+                        style={{ textAlignVertical: "top" }}
+                        multiline
+                        value={newEvent.descripcion}
+                        editable={!isLandscape}
+                        onPressIn={() => {
+                          if (isLandscape) {
+                            handleInputPress(
+                              "descripcion",
+                              "Descripción",
+                              newEvent.descripcion,
+                              { multiline: true }
+                            );
+                          }
+                        }}
+                      />
+                    </LabeledInput>
+                  </ScrollView>
+
+                  {/* Botones de Acción */}
+                  <View className="flex-row justify-end mt-6 gap-x-4">
+                    <TouchableOpacity
+                      onPress={() => setEventModalVisible(false)}
+                      className="bg-slate-200 px-5 py-3 rounded-lg"
+                    >
+                      <Text className="font-bold text-slate-600">Cancelar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleSaveEvent}
+                      className="bg-indigo-600 px-5 py-3 rounded-lg shadow-md shadow-indigo-600/30"
+                    >
+                      <Text className="text-white font-bold">
+                        Guardar Evento
+                      </Text>
                     </TouchableOpacity>
                   </View>
-                  <View
-                    className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isDateEditable ? "bg-white" : "bg-slate-100 opacity-70"}`}
-                  >
-                    <TextInput
-                      style={styles_registro_venta.dateInput}
-                      placeholder="DD"
-                      value={dateParts.day}
-                      editable={isDateEditable}
-                      keyboardType="number-pad"
-                      maxLength={2}
-                      onChangeText={(text) => handleDatePartChange("day", text)}
-                    />
-                    <Text style={styles.dateSeparator}>/</Text>
-                    <TextInput
-                      ref={monthInputRef}
-                      style={styles_registro_venta.dateInput}
-                      placeholder="MM"
-                      value={dateParts.month}
-                      editable={isDateEditable}
-                      keyboardType="number-pad"
-                      maxLength={2}
-                      onChangeText={(text) =>
-                        handleDatePartChange("month", text)
-                      }
-                    />
-                    <Text style={styles.dateSeparator}>/</Text>
-                    <TextInput
-                      ref={yearInputRef}
-                      style={[styles_registro_venta.dateInput, { flex: 1.5 }]}
-                      placeholder="AAAA"
-                      value={dateParts.year}
-                      editable={isDateEditable}
-                      keyboardType="number-pad"
-                      maxLength={4}
-                      onChangeText={(text) =>
-                        handleDatePartChange("year", text)
-                      }
-                    />
-                  </View>
                 </View>
-
-                {/* Selector de Hora */}
-                <View className="mb-4">
-                  <View className="flex-row items-center mb-1">
-                    <Text className="text-sm font-semibold text-slate-700">
-                      Hora del Evento (Formato 24HH)
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => setIsTimeEditable(!isTimeEditable)}
-                      className="ml-2 p-1 rounded-full bg-slate-200"
-                    >
-                      <Svg
-                        height="14"
-                        viewBox="0 -960 960 960"
-                        width="14"
-                        fill="#475569"
-                      >
-                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                      </Svg>
-                    </TouchableOpacity>
-                  </View>
-                  <View
-                    className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isTimeEditable ? "bg-white" : "bg-slate-100 opacity-70"}`}
-                  >
-                    <TextInput
-                      className="flex-1 text-center text-base py-2"
-                      placeholder="HH"
-                      value={newEvent.hora}
-                      editable={isTimeEditable}
-                      keyboardType="number-pad"
-                      maxLength={2}
-                      onChangeText={(text) => {
-                        const numericValue = text.replace(/[^\d]/g, "");
-                        if (parseInt(numericValue, 10) > 23) return;
-                        setNewEvent({ ...newEvent, hora: numericValue });
-                      }}
-                    />
-                    <Text className="text-xl font-bold text-slate-400">:</Text>
-                    <TextInput
-                      className="flex-1 text-center text-base py-2"
-                      placeholder="MM"
-                      value={newEvent.minutos}
-                      editable={isTimeEditable}
-                      keyboardType="number-pad"
-                      maxLength={2}
-                      onChangeText={(text) => {
-                        const numericValue = text.replace(/[^\d]/g, "");
-                        if (parseInt(numericValue, 10) > 59) return;
-                        setNewEvent({ ...newEvent, minutos: numericValue });
-                      }}
-                    />
-                  </View>
-                </View>
-
-                {/* Campo Descripción */}
-                <LabeledInput label="Descripción (Opcional)">
-                  <TextInput
-                    placeholder="Detalles adicionales sobre el evento..."
-                    className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white h-20"
-                    style={{ textAlignVertical: "top" }}
-                    multiline
-                    value={newEvent.descripcion}
-                    onChangeText={(text) =>
-                      setNewEvent({ ...newEvent, descripcion: text })
-                    }
-                  />
-                </LabeledInput>
-
-                {/* Botones de Acción */}
-                <View className="flex-row justify-end mt-6 gap-x-4">
-                  <TouchableOpacity
-                    onPress={() => setEventModalVisible(false)}
-                    className="bg-slate-200 px-5 py-3 rounded-lg"
-                  >
-                    <Text className="font-bold text-slate-600">Cancelar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={handleSaveEvent}
-                    className="bg-indigo-600 px-5 py-3 rounded-lg shadow-md shadow-indigo-600/30"
-                  >
-                    <Text className="text-white font-bold">Guardar Evento</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
+
+      {isLandscape && (
+        <InputModal
+          visible={modalInputVisible}
+          onClose={() => setModalInputVisible(false)}
+          label={fieldLabel}
+          value={currentValue}
+          onChangeText={(text) => {
+            // Actualiza el valor en el estado principal del formulario
+            setNewEvent((prev) => ({ ...prev, [editingField]: text }));
+            // También actualiza el valor que se muestra en el modal
+            setCurrentValue(text);
+          }}
+          // Pasa las props adicionales al TextInput del modal
+          {...inputProps}
+          // Asegura que el teclado se cierre al presionar Enter/Return
+          onSubmitEditing={() => setModalInputVisible(false)}
+          blurOnSubmit={false}
+        />
+      )}
     </View>
   );
 };
@@ -3663,7 +3833,8 @@ const CurrencyInput = ({ value, onChangeText, placeholder, editable }) => {
       <TextInput
         style={[
           styles.currencyInput,
-          (value === 0 || value === null) && styles.currencyInputPlaceholder,
+          (value === "0" || value === "" || value === null) &&
+            styles.currencyInputPlaceholder,
         ]}
         ref={inputRef}
         value={value === null ? "" : String(Math.floor(value))}
@@ -3820,7 +3991,7 @@ const AddCursoForm = ({
   return (
     <Animated.View
       style={formStyle}
-      className="bg-white p-4 m-2 -mt-2 rounded-b-xl border-t-0 border border-slate-200 shadow-sm"
+      className="bg-white p-4 m-2 -mt-2 rounded-xl border-t-0 border border-slate-200 shadow-sm"
     >
       <View className="flex-row justify-between items-center mb-4">
         <Text className="text-lg font-bold text-slate-800">
@@ -3832,16 +4003,18 @@ const AddCursoForm = ({
           </Svg>
         </TouchableOpacity>
       </View>
-
-      <Text style={styles.label}>Nombre del Curso</Text>
-      <TextInput
-        style={styles.input}
-        value={newCurso.nombre_curso}
-        onChangeText={(text) =>
-          setNewCurso((c) => ({ ...c, nombre_curso: text }))
-        }
-        placeholder="Ej. Curso de Verano STEAM"
-      />
+      <View className="mb-2">
+        <Text style={styles.label}>Nombre del Curso</Text>
+        <TextInput
+          className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white"
+          value={newCurso.nombre_curso}
+          onChangeText={(text) =>
+            setNewCurso((c) => ({ ...c, nombre_curso: text }))
+          }
+          placeholder="Ej. Curso de Verano STEAM"
+          placeholderTextColor="#9ca3af"
+        />
+      </View>
 
       <Text style={styles.label}>Precio del Curso</Text>
       <View className="flex-row items-center">
@@ -3922,6 +4095,9 @@ const AddCursoForm = ({
 };
 
 const ScreenCursos = () => {
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+
   const [cursos, setCursos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefetching, setIsRefetching] = useState(false);
@@ -3948,12 +4124,32 @@ const ScreenCursos = () => {
   const unformatCurrency = (formattedValue) =>
     parseFloat(String(formattedValue).replace(/[^0-9.-]+/g, "")) || 0;
 
-  const handleCancelAdd = () => {
-    // Revisa si el usuario ha escrito algo en el formulario
-    const hasData =
-      newCurso.nombre_curso.trim() !== "" || newCurso.costo_curso.trim() !== "";
+  // Estado para guardar los datos originales al editar
+  const [originalCursoData, setOriginalCursoData] = useState("");
 
-    if (hasData) {
+  const handleCancelAdd = () => {
+    let hasChanges = false;
+
+    if (originalCursoData) {
+      // Modo Edición: Comparamos el estado actual con el original.
+      // Normalizamos los valores para una comparación más precisa.
+      const currentNombre = newCurso.nombre_curso.trim();
+      const originalNombre = originalCursoData.nombre_curso.trim();
+
+      // Comparamos los costos como números para evitar problemas de tipo (string vs number)
+      const currentCosto = Number(newCurso.costo_curso) || 0;
+      const originalCosto = Number(originalCursoData.costo_curso) || 0;
+
+      hasChanges =
+        currentNombre !== originalNombre || currentCosto !== originalCosto;
+    } else {
+      // Modo Agregar: Comprobamos si se ha introducido algún dato.
+      hasChanges =
+        newCurso.nombre_curso.trim() !== "" ||
+        newCurso.costo_curso.trim() !== "";
+    }
+
+    if (hasChanges) {
       Alert.alert(
         "¿Descartar curso?",
         "Si cancelas, los datos que ingresaste se perderán. ¿Estás seguro?",
@@ -3962,27 +4158,32 @@ const ScreenCursos = () => {
           {
             text: "Sí, descartar",
             style: "destructive",
-            onPress: () => setAddModalVisible(false),
+            onPress: () => setAddModalVisible(false), // Cierra el modal si el usuario confirma
           },
         ]
       );
     } else {
-      // Si el formulario está vacío, simplemente cierra el modal
+      // Si no hay cambios, simplemente cierra el modal sin preguntar.
       setAddModalVisible(false);
     }
   };
 
   const handleOpenAddModal = () => {
+    setOriginalCursoData(null); // No hay datos originales en modo agregar
     setNewCurso({ nombre_curso: "", costo_curso: "" }); // Resetea el formulario
     setAddModalVisible(true);
   };
   const handleOpenEditModal = (curso) => {
-    // Formateamos el costo al abrir el modal
-    const formattedCost = new Intl.NumberFormat("es-MX", {
-      minimumFractionDigits: 2,
-    }).format(curso.costo_curso || 0);
-    setCurrentCurso({ ...curso, costo_curso: formattedCost });
-    setModalVisible(true);
+    // 1. Cargar los datos del curso a editar en el estado del formulario.
+    //    Aseguramos que el costo sea un string para el input.
+    setNewCurso({ ...curso, costo_curso: String(curso.costo_curso || "") });
+    // Guardamos una copia de los datos originales para comparar después.
+    setOriginalCursoData({
+      ...curso,
+      costo_curso: String(curso.costo_curso || ""),
+    });
+    // 2. Abrir el mismo formulario que se usa para agregar.
+    setAddModalVisible(true);
   };
 
   const handleRefresh = async () => {
@@ -4046,39 +4247,6 @@ const ScreenCursos = () => {
     );
   };
 
-  const handleSaveChanges = async () => {
-    if (
-      !currentCurso ||
-      !currentCurso.nombre_curso ||
-      !currentCurso.costo_curso
-    ) {
-      Alert.alert(
-        "Campos incompletos",
-        "Por favor, completa el nombre y el precio del curso."
-      );
-      return;
-    }
-    setIsSaving(true);
-    const { error } = await supabase
-      .from("cursos")
-      .update({
-        nombre_curso: currentCurso.nombre_curso,
-        costo_curso: unformatCurrency(currentCurso.costo_curso),
-      })
-      .eq("id_curso", currentCurso.id_curso);
-
-    setIsSaving(false);
-    if (error) {
-      Alert.alert("Error", "No se pudieron guardar los cambios.");
-      console.error("Error updating course:", error);
-    } else {
-      // En lugar de solo actualizar el estado local, recargamos los datos.
-      handleRefresh();
-      setModalVisible(false);
-      setCurrentCurso(null);
-    }
-  };
-
   const handleAddCurso = async () => {
     if (!newCurso.nombre_curso || !newCurso.costo_curso) {
       Alert.alert(
@@ -4089,31 +4257,33 @@ const ScreenCursos = () => {
     }
     setIsSaving(true);
 
-    // ADVERTENCIA: No se recomienda calcular el ID en el frontend.
-    // 1. Calcular el nuevo ID basándose en los datos actuales.
-    const newId =
-      cursos.length > 0 ? Math.max(...cursos.map((c) => c.id_curso)) + 1 : 1;
+    const payload = {
+      nombre_curso: newCurso.nombre_curso,
+      costo_curso: unformatCurrency(newCurso.costo_curso),
+    };
 
-    // 2. Insertar el nuevo curso incluyendo el ID calculado.
-    const { data, error } = await supabase
-      .from("cursos")
-      .insert({
-        id_curso: newId, // Se envía el ID explícitamente
-        nombre_curso: newCurso.nombre_curso,
-        costo_curso: unformatCurrency(newCurso.costo_curso),
-      })
-      .select()
-      .single();
-    setIsSaving(false);
-    if (error) {
-      Alert.alert("Error", "No se pudo crear el curso.");
-      console.error("Error creating course:", error);
+    let result;
+    // Si el curso tiene un ID, es una actualización (UPDATE).
+    if (newCurso.id_curso) {
+      result = await supabase
+        .from("cursos")
+        .update(payload)
+        .eq("id_curso", newCurso.id_curso);
     } else {
-      // Actualizar la UI agregando el nuevo curso al estado local
-      if (data) {
-        // Añadimos el nuevo curso al principio de la lista. Es más eficiente que reordenar todo.
-        setCursos((prevCursos) => [data, ...prevCursos]);
-      }
+      // Si no tiene ID, es una inserción (INSERT).
+      // Dejamos que Supabase genere el ID.
+      result = await supabase.from("cursos").insert(payload);
+    }
+
+    const { error } = result;
+    setIsSaving(false);
+
+    if (error) {
+      const action = newCurso.id_curso ? "actualizar" : "crear";
+      Alert.alert("Error", `No se pudo ${action} el curso.`);
+      console.error(`Error al ${action} el curso:`, error);
+    } else {
+      handleRefresh(); // Recargamos la lista para ver los cambios.
       setAddModalVisible(false);
       setNewCurso({ nombre_curso: "", costo_curso: "" });
     }
@@ -4125,6 +4295,7 @@ const ScreenCursos = () => {
       accessible={false}
     >
       <KeyboardAvoidingView
+        key={isLandscape ? "landscape" : "portrait"} // Clave para forzar el reseteo en cambio de orientación
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
@@ -4164,104 +4335,25 @@ const ScreenCursos = () => {
               </TouchableOpacity>
             </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <TablaCursos
-              data={cursos}
-              loading={loading}
-              query={searchTerm}
-              isRefetching={isRefetching}
-              onEdit={handleOpenEditModal}
-              onDelete={handleDelete}
-              onRefresh={handleRefresh}
-            />
-          </View>
-          <AddCursoForm
-            visible={isAddModalVisible}
-            onClose={handleCancelAdd}
-            onSave={handleAddCurso}
-            isSaving={isSaving}
-            newCurso={newCurso}
-            setNewCurso={setNewCurso}
+          <TablaCursos
+            data={cursos}
+            loading={loading}
+            query={searchTerm}
+            isRefetching={isRefetching}
+            onEdit={handleOpenEditModal}
+            onDelete={handleDelete}
+            onRefresh={handleRefresh}
           />
-
-          <Modal
-            transparent={true}
-            animationType="fade"
-            visible={isModalVisible}
-            onRequestClose={() => setModalVisible(false)}
-          >
-            <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-              <View className="flex-1 justify-center items-center bg-black/60 p-4">
-                <TouchableWithoutFeedback>
-                  <View className="bg-slate-50 rounded-2xl p-6 w-full max-w-lg shadow-xl">
-                    <Text className="text-2xl font-bold mb-6 text-slate-800">
-                      Editar Curso
-                    </Text>
-
-                    <Text style={styles.label}>Nombre del Curso</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={currentCurso?.nombre_curso}
-                      onChangeText={(text) =>
-                        setCurrentCurso((c) => ({ ...c, nombre_curso: text }))
-                      }
-                      placeholder="Nombre del curso"
-                    />
-
-                    <Text style={styles.label}>Precio del Curso</Text>
-                    <View
-                      style={styles.input}
-                      className="flex-row items-center"
-                    >
-                      <Text className="mr-1 text-slate-500">$</Text>
-                      <TextInput
-                        value={currentCurso?.costo_curso}
-                        onChangeText={(text) => {
-                          if (
-                            text.includes(".") &&
-                            text.split(".")[1].length > 2
-                          ) {
-                            return;
-                          }
-                          setCurrentCurso((c) => ({
-                            ...c,
-                            costo_curso: text,
-                          }));
-                        }}
-                        placeholder="0.00"
-                        keyboardType="numeric"
-                        className="flex-1"
-                      />
-                    </View>
-
-                    <View className="flex-row justify-end mt-6 gap-x-4">
-                      <TouchableOpacity
-                        onPress={() => setModalVisible(false)}
-                        className="bg-slate-200 px-5 py-3 rounded-lg"
-                      >
-                        <Text className="font-bold text-slate-600">
-                          Cancelar
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={handleSaveChanges}
-                        disabled={isSaving}
-                        className={`px-5 py-3 rounded-lg ${isSaving ? "bg-indigo-400" : "bg-indigo-600 shadow-md shadow-indigo-600/30"}`}
-                      >
-                        {isSaving ? (
-                          <ActivityIndicator color="#fff" />
-                        ) : (
-                          <Text className="text-white font-bold">
-                            Guardar Cambios
-                          </Text>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </TouchableWithoutFeedback>
-              </View>
-            </TouchableWithoutFeedback>
-          </Modal>
+          {isAddModalVisible && (
+            <AddCursoForm
+              visible={isAddModalVisible}
+              onClose={handleCancelAdd}
+              onSave={handleAddCurso}
+              isSaving={isSaving}
+              newCurso={newCurso}
+              setNewCurso={setNewCurso}
+            />
+          )}
         </View>
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
