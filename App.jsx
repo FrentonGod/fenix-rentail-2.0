@@ -22,6 +22,8 @@ import {
   RefreshControl,
   KeyboardAvoidingView,
   FlatList,
+  LayoutAnimation,
+  UIManager,
 } from "react-native";
 
 import React, {
@@ -76,6 +78,13 @@ import RegistroAsesor from "./components/asesores/RegistroAsesor";
 import RegistroVenta from "./components/ventas/RegistroVenta";
 const Tab = createMaterialTopTabNavigator(); //Aqui se esta creando el componente
 const Drawer = createDrawerNavigator();
+
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 function AuthFlow() {
   const { session, loading } = useAuthContext();
@@ -3098,7 +3107,7 @@ const ScreenCalendario = () => {
   const [inputProps, setInputProps] = useState({});
 
   // --- Estados para el modal de eventos ---
-  const [isEventModalVisible, setEventModalVisible] = useState(false);
+  const [isAddingEvent, setIsAddingEvent] = useState(false); // Controla la vista del formulario
   const [newEvent, setNewEvent] = useState({
     nombre: "",
     descripcion: "",
@@ -3140,7 +3149,7 @@ const ScreenCalendario = () => {
     setModalInputVisible(true);
   };
 
-  const openEventModal = () => {
+  const openAddEventForm = () => {
     // Captura la hora y minutos actuales al abrir el modal
     const now = new Date();
     const currentHour = String(now.getHours()).padStart(2, "0");
@@ -3167,7 +3176,8 @@ const ScreenCalendario = () => {
       hora: currentHour,
       minutos: closestMinute,
     });
-    setEventModalVisible(true);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
+    setIsAddingEvent(true); // Muestra el formulario en línea
   };
 
   const handleSaveEvent = () => {
@@ -3176,7 +3186,13 @@ const ScreenCalendario = () => {
       ...newEvent,
       fecha: `${dateParts.year}-${dateParts.month}-${dateParts.day}`,
     });
-    setEventModalVisible(false);
+    setIsAddingEvent(false); // Oculta el formulario
+  };
+
+  const handleCancelEvent = () => {
+    // Simplemente oculta el formulario sin guardar
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
+    setIsAddingEvent(false);
   };
 
   const calendarRef = useRef(null);
@@ -3258,74 +3274,83 @@ const ScreenCalendario = () => {
   return (
     <View className="flex-1 bg-slate-50 p-4">
       <View
-        className={`flex-1 flex-col lg:flex-row gap-6 sm:items-center lg:items-stretch`} // Usamos clases lg: para responsividad en web/tablets
+        className={`flex-1 lg:flex-row gap-6 lg:items-stretch`} // Usamos clases lg: para responsividad en web/tablets
       >
         {/* Contenedor del Calendario */}
-        <View
-          className="bg-white rounded-xl shadow-sm border border-slate-200 p-4"
-          style={{
-            width: CALENDAR_WIDTH,
-          }}
-        >
-          <Calendar
-            // Props para el calendario
-            ref={calendarRef}
-            current={selectedDate} // Controlamos el mes visible con 'current'
-            onDayPress={(day) => setSelectedDate(day.dateString)}
-            markedDates={markedDates}
-            enableSwipeMonths={true}
-            showSixWeeks
+        <View className={`flex items-center ${isLandscape ? "" : "w-full"}`}>
+          <View
+            className={`bg-white rounded-xl shadow-sm border ${isLandscape ? "h-full" : ""} border-slate-200 p-4`}
             style={{
-              // El estilo ahora es más limpio, controlado por el contenedor
-              backgroundColor: "transparent",
+              width: CALENDAR_WIDTH,
             }}
-            theme={{
-              // Tema visual del calendario
-              calendarBackground: "transparent",
-              textSectionTitleColor: "#64748b",
-              selectedDayBackgroundColor: "#6F09EA",
-              selectedDayTextColor: "#ffffff",
-              todayTextColor: "#6F09EA",
-              dayTextColor: "#1e293b",
-              textDisabledColor: "#9ca3af",
-              arrowColor: "#6F09EA",
-              monthTextColor: "#1e293b",
-              textDayFontWeight: "500",
-              textMonthFontWeight: "bold",
-              textDayHeaderFontWeight: "600",
-              textDayFontSize: 16,
-              textMonthFontSize: 18,
-              textDayHeaderFontSize: 14,
-            }}
-            renderHeader={(date) => {
-              const month = date.toString("MMMM yyyy");
-              return (
-                <View className="flex-row justify-center items-center relative px-10">
-                  {/* El título del mes se centra automáticamente */}
-                  <Text className="text-lg font-bold text-slate-800 capitalize">
-                    {month}
-                  </Text>
-                  {/* Botón "Hoy" con posicionamiento absoluto */}
-                  <TouchableOpacity
-                    onPress={goToToday}
-                    className="bg-indigo-100 px-3 py-1 rounded-full absolute"
-                    style={{ top: 0, right: -30 }}
-                  >
-                    <Text className="font-bold text-sm text-indigo-600">
-                      Hoy
+          >
+            <Calendar
+              // Props para el calendario
+              ref={calendarRef}
+              current={selectedDate} // Controlamos el mes visible con 'current'
+              onDayPress={(day) => setSelectedDate(day.dateString)}
+              markedDates={markedDates}
+              enableSwipeMonths={true}
+              showSixWeeks
+              style={{
+                // El estilo ahora es más limpio, controlado por el contenedor
+                backgroundColor: "transparent",
+              }}
+              theme={{
+                // Tema visual del calendario
+                calendarBackground: "transparent",
+                textSectionTitleColor: "#64748b",
+                selectedDayBackgroundColor: "#6F09EA",
+                selectedDayTextColor: "#ffffff",
+                todayTextColor: "#6F09EA",
+                dayTextColor: "#1e293b",
+                textDisabledColor: "#9ca3af",
+                arrowColor: "#6F09EA",
+                monthTextColor: "#1e293b",
+                textDayFontWeight: "500",
+                textMonthFontWeight: "bold",
+                textDayHeaderFontWeight: "600",
+                textDayFontSize: 16,
+                textMonthFontSize: 18,
+                textDayHeaderFontSize: 14,
+              }}
+              renderHeader={(date) => {
+                const month = date.toString("MMMM yyyy");
+                return (
+                  <View className="flex-row justify-center relative px-10">
+                    {/* El título del mes se centra automáticamente */}
+                    <Text className="text-lg font-bold text-slate-800 capitalize">
+                      {month}
                     </Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            }}
-          />
+                    {/* Botón "Hoy" con posicionamiento absoluto */}
+                    <TouchableOpacity
+                      onPress={goToToday}
+                      className="bg-indigo-100 px-3 py-1 rounded-full absolute"
+                      style={{ top: 0, right: -30 }}
+                    >
+                      <Text className="font-bold text-sm text-indigo-600">
+                        Hoy
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              }}
+            />
+          </View>
         </View>
 
         {/* Contenedor de Eventos */}
-        <View className="flex-1 bg-white w-full rounded-xl shadow-sm border border-slate-200 p-4">
-          <View className="flex-1 ">
+        <KeyboardAvoidingView
+          id="keyboard-avoiding"
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 40}
+        >
+          <View className="bg-white rounded-xl w-full h-full shadow-sm border border-slate-200 p-4">
             {/* Cabecera de la sección de eventos */}
-            <View className="flex-row justify-between items-center border-b border-slate-200 pb-3 mb-4">
+            <View
+              className={`flex-row justify-between items-center border-b border-slate-200 pb-3 mb-4`}
+            >
               <Text className="text-lg font-bold text-slate-800">
                 Eventos para el{" "}
                 <Text className="text-indigo-600">
@@ -3345,289 +3370,227 @@ const ScreenCalendario = () => {
                 </Text>
               </Text>
               <TouchableOpacity
-                onPress={openEventModal}
-                className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-3"
+                onPress={isAddingEvent ? handleCancelEvent : openAddEventForm}
+                className={`bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center ${isAddingEvent ? "px-2" : "px-3"}`}
               >
-                <Svg
-                  height="16"
-                  viewBox="0 -960 960 960"
-                  width="16"
-                  fill="#ffffff"
-                >
-                  <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
-                </Svg>
-                <Text className="text-white font-bold ml-2 text-sm">
-                  Agregar
-                </Text>
+                {isAddingEvent ? (
+                  <Svg
+                    height="18"
+                    viewBox="0 -960 960 960"
+                    width="18"
+                    fill="#ffffff"
+                  >
+                    <Path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
+                  </Svg>
+                ) : (
+                  <>
+                    <Svg
+                      height="16"
+                      viewBox="0 -960 960 960"
+                      width="16"
+                      fill="#ffffff"
+                    >
+                      <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+                    </Svg>
+                    <Text className="text-white font-bold ml-2 text-sm">
+                      Agregar
+                    </Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
 
-            <View className="flex-1 items-center justify-center">
-              <Svg
-                height="60"
-                viewBox="0 -960 960 960"
-                width="60"
-                fill="#cbd5e1"
-              >
-                <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z" />
-              </Svg>
-              <Text className="text-slate-500 font-semibold mt-4 text-center">
-                No hay eventos para este día.
-              </Text>
-              <Text className="text-slate-400 text-sm mt-1 text-center">
-                Selecciona otro día o agrega un nuevo evento.
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
+            {isAddingEvent ? (
+              // --- FORMULARIO PARA AGREGAR EVENTO ---
+              <ScrollView className="p-2">
+                <Text className="text-xl font-bold mb-4 text-slate-800">
+                  Agregar Evento
+                </Text>
 
-      {/* Modal para registrar evento */}
-      <Modal
-        transparent={true}
-        animationType="fade"
-        visible={isEventModalVisible}
-        onRequestClose={() => setEventModalVisible(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          enabled={!isLandscape}
-          style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-        >
-          <TouchableWithoutFeedback onPress={() => setEventModalVisible(false)}>
-            <View className="flex-1 justify-center items-center bg-black/60 p-4">
-              <TouchableWithoutFeedback>
-                <View className="bg-slate-50 rounded-2xl p-6 w-full max-w-lg shadow-xl">
-                  <Text className="text-2xl font-bold mb-6 text-slate-800">
-                    Agregar Evento
-                  </Text>
+                {/* Campo Nombre del Evento */}
+                <LabeledInput
+                  label="Nombre del Evento"
+                  containerClassName="mb-4"
+                >
+                  <TextInput
+                    className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white"
+                    placeholder="Ej. Reunión de equipo"
+                    value={newEvent.nombre}
+                    onChangeText={(text) =>
+                      setNewEvent((prev) => ({ ...prev, nombre: text }))
+                    }
+                  />
+                </LabeledInput>
 
-                  {/* El ScrollView ahora se usa en ambas orientaciones */}
-                  <ScrollView keyboardShouldPersistTaps="handled">
-                    {/* Campo Nombre del Evento */}
-                    <LabeledInput
-                      label="Nombre del Evento"
-                      containerClassName="mb-4"
-                    >
-                      <TextInput
-                        className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white"
-                        placeholder="Ej. Reunión de equipo"
-                        value={newEvent.nombre}
-                        editable={!isLandscape}
-                        onPressIn={() => {
-                          if (isLandscape) {
-                            handleInputPress(
-                              "nombre",
-                              "Nombre del Evento",
-                              newEvent.nombre
-                            );
-                          }
-                        }}
-                      />
-                    </LabeledInput>
-
-                    {/* Campo de Fecha */}
-                    <View className="mb-4">
-                      <View className="flex-row items-center mb-1">
-                        <Text className="text-sm font-semibold text-slate-700">
-                          Fecha del Evento
-                        </Text>
-                        <TouchableOpacity
-                          onPress={() => setIsDateEditable(!isDateEditable)}
-                          className="ml-2 p-1 rounded-full bg-slate-200"
-                        >
-                          <Svg
-                            height="14"
-                            viewBox="0 -960 960 960"
-                            width="14"
-                            fill="#475569"
-                          >
-                            <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                          </Svg>
-                        </TouchableOpacity>
-                      </View>
-                      <View
-                        className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isDateEditable ? "bg-white" : "bg-slate-100 opacity-70"}`}
-                      >
-                        <TextInput
-                          style={styles_registro_venta.dateInput}
-                          placeholder="DD"
-                          value={dateParts.day}
-                          editable={isDateEditable}
-                          onPressIn={() => {
-                            if (isLandscape && !isDateEditable) {
-                              Alert.alert(
-                                "Campo no editable",
-                                "Presiona el ícono de lápiz para editar la fecha."
-                              );
-                            }
-                          }}
-                        />
-                        <Text style={styles.dateSeparator}>/</Text>
-                        <TextInput
-                          ref={monthInputRef}
-                          style={styles_registro_venta.dateInput}
-                          placeholder="MM"
-                          value={dateParts.month}
-                          editable={isDateEditable}
-                          onPressIn={() => {
-                            if (isLandscape && !isDateEditable) {
-                              Alert.alert(
-                                "Campo no editable",
-                                "Presiona el ícono de lápiz para editar la fecha."
-                              );
-                            }
-                          }}
-                        />
-                        <Text style={styles.dateSeparator}>/</Text>
-                        <TextInput
-                          ref={yearInputRef}
-                          style={[
-                            styles_registro_venta.dateInput,
-                            { flex: 1.5 },
-                          ]}
-                          placeholder="AAAA"
-                          value={dateParts.year}
-                          editable={isDateEditable}
-                          onPressIn={() => {
-                            if (isLandscape && !isDateEditable) {
-                              Alert.alert(
-                                "Campo no editable",
-                                "Presiona el ícono de lápiz para editar la fecha."
-                              );
-                            }
-                          }}
-                        />
-                      </View>
-                    </View>
-
-                    {/* Selector de Hora */}
-                    <View className="mb-4">
-                      <View className="flex-row items-center mb-1">
-                        <Text className="text-sm font-semibold text-slate-700">
-                          Hora del Evento (Formato 24HH)
-                        </Text>
-                        <TouchableOpacity
-                          onPress={() => setIsTimeEditable(!isTimeEditable)}
-                          className="ml-2 p-1 rounded-full bg-slate-200"
-                        >
-                          <Svg
-                            height="14"
-                            viewBox="0 -960 960 960"
-                            width="14"
-                            fill="#475569"
-                          >
-                            <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                          </Svg>
-                        </TouchableOpacity>
-                      </View>
-                      <View
-                        className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isTimeEditable ? "bg-white" : "bg-slate-100 opacity-70"}`}
-                      >
-                        <TextInput
-                          className="flex-1 text-center text-base py-2"
-                          placeholder="HH"
-                          value={newEvent.hora}
-                          editable={isTimeEditable}
-                          onPressIn={() => {
-                            if (isLandscape && !isTimeEditable) {
-                              Alert.alert(
-                                "Campo no editable",
-                                "Presiona el ícono de lápiz para editar la hora."
-                              );
-                            }
-                          }}
-                        />
-                        <Text className="text-xl font-bold text-slate-400">
-                          :
-                        </Text>
-                        <TextInput
-                          className="flex-1 text-center text-base py-2"
-                          placeholder="MM"
-                          value={newEvent.minutos}
-                          editable={isTimeEditable}
-                          onPressIn={() => {
-                            if (isLandscape && !isTimeEditable) {
-                              Alert.alert(
-                                "Campo no editable",
-                                "Presiona el ícono de lápiz para editar la hora."
-                              );
-                            }
-                          }}
-                        />
-                      </View>
-                    </View>
-
-                    {/* Campo Descripción */}
-                    <LabeledInput
-                      label="Descripción (Opcional)"
-                      containerClassName="mb-4"
-                    >
-                      <TextInput
-                        placeholder="Detalles adicionales sobre el evento..."
-                        className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white h-20"
-                        style={{ textAlignVertical: "top" }}
-                        multiline
-                        value={newEvent.descripcion}
-                        editable={!isLandscape}
-                        onPressIn={() => {
-                          if (isLandscape) {
-                            handleInputPress(
-                              "descripcion",
-                              "Descripción",
-                              newEvent.descripcion,
-                              { multiline: true }
-                            );
-                          }
-                        }}
-                      />
-                    </LabeledInput>
-                  </ScrollView>
-
-                  {/* Botones de Acción */}
-                  <View className="flex-row justify-end mt-6 gap-x-4">
+                {/* Campo de Fecha */}
+                <View className="mb-4">
+                  <View className="flex-row items-center mb-1">
+                    <Text className="text-sm font-semibold text-slate-700">
+                      Fecha del Evento
+                    </Text>
                     <TouchableOpacity
-                      onPress={() => setEventModalVisible(false)}
-                      className="bg-slate-200 px-5 py-3 rounded-lg"
+                      onPress={() => setIsDateEditable(!isDateEditable)}
+                      className="ml-2 p-1 rounded-full bg-slate-200"
                     >
-                      <Text className="font-bold text-slate-600">Cancelar</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={handleSaveEvent}
-                      className="bg-indigo-600 px-5 py-3 rounded-lg shadow-md shadow-indigo-600/30"
-                    >
-                      <Text className="text-white font-bold">
-                        Guardar Evento
-                      </Text>
+                      <Svg
+                        height="14"
+                        viewBox="0 -960 960 960"
+                        width="14"
+                        fill="#475569"
+                      >
+                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                      </Svg>
                     </TouchableOpacity>
                   </View>
+                  <View
+                    className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isDateEditable ? "bg-white" : "bg-slate-100 opacity-70"}`}
+                  >
+                    <TextInput
+                      style={styles_registro_venta.dateInput}
+                      placeholder="DD"
+                      value={dateParts.day}
+                      editable={isDateEditable}
+                      onChangeText={(text) => handleDatePartChange("day", text)}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                    />
+                    <Text style={styles.dateSeparator}>/</Text>
+                    <TextInput
+                      ref={monthInputRef}
+                      style={styles_registro_venta.dateInput}
+                      placeholder="MM"
+                      value={dateParts.month}
+                      editable={isDateEditable}
+                      onChangeText={(text) =>
+                        handleDatePartChange("month", text)
+                      }
+                      keyboardType="number-pad"
+                      maxLength={2}
+                    />
+                    <Text style={styles.dateSeparator}>/</Text>
+                    <TextInput
+                      ref={yearInputRef}
+                      style={[styles_registro_venta.dateInput, { flex: 1.5 }]}
+                      placeholder="AAAA"
+                      value={dateParts.year}
+                      editable={isDateEditable}
+                      onChangeText={(text) =>
+                        handleDatePartChange("year", text)
+                      }
+                      keyboardType="number-pad"
+                      maxLength={4}
+                    />
+                  </View>
                 </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
-      </Modal>
 
-      {isLandscape && (
-        <InputModal
-          visible={modalInputVisible}
-          onClose={() => setModalInputVisible(false)}
-          label={fieldLabel}
-          value={currentValue}
-          onChangeText={(text) => {
-            // Actualiza el valor en el estado principal del formulario
-            setNewEvent((prev) => ({ ...prev, [editingField]: text }));
-            // También actualiza el valor que se muestra en el modal
-            setCurrentValue(text);
-          }}
-          // Pasa las props adicionales al TextInput del modal
-          {...inputProps}
-          // Asegura que el teclado se cierre al presionar Enter/Return
-          onSubmitEditing={() => setModalInputVisible(false)}
-          blurOnSubmit={false}
-        />
-      )}
+                {/* Selector de Hora */}
+                <View className="mb-4">
+                  <View className="flex-row items-center mb-1">
+                    <Text className="text-sm font-semibold text-slate-700">
+                      Hora del Evento (Formato 24HH)
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setIsTimeEditable(!isTimeEditable)}
+                      className="ml-2 p-1 rounded-full bg-slate-200"
+                    >
+                      <Svg
+                        height="14"
+                        viewBox="0 -960 960 960"
+                        width="14"
+                        fill="#475569"
+                      >
+                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                      </Svg>
+                    </TouchableOpacity>
+                  </View>
+                  <View
+                    className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isTimeEditable ? "bg-white" : "bg-slate-100 opacity-70"}`}
+                  >
+                    <TextInput
+                      className="flex-1 text-center text-base py-2"
+                      placeholder="HH"
+                      value={newEvent.hora}
+                      editable={isTimeEditable}
+                      onChangeText={(text) =>
+                        setNewEvent((prev) => ({ ...prev, hora: text }))
+                      }
+                      keyboardType="number-pad"
+                      maxLength={2}
+                    />
+                    <Text className="text-xl font-bold text-slate-400">:</Text>
+                    <TextInput
+                      className="flex-1 text-center text-base py-2"
+                      placeholder="MM"
+                      value={newEvent.minutos}
+                      editable={isTimeEditable}
+                      onChangeText={(text) =>
+                        setNewEvent((prev) => ({ ...prev, minutos: text }))
+                      }
+                      keyboardType="number-pad"
+                      maxLength={2}
+                    />
+                  </View>
+                </View>
+
+                {/* Campo Descripción */}
+                <LabeledInput
+                  label="Descripción (Opcional)"
+                  containerClassName="mb-4"
+                >
+                  <TextInput
+                    placeholder="Detalles adicionales sobre el evento..."
+                    className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white h-20"
+                    style={{ textAlignVertical: "top" }}
+                    multiline
+                    value={newEvent.descripcion}
+                    onChangeText={(text) =>
+                      setNewEvent((prev) => ({
+                        ...prev,
+                        descripcion: text,
+                      }))
+                    }
+                  />
+                </LabeledInput>
+
+                {/* Botones de Acción */}
+                <View className="flex-row justify-end mt-4 gap-x-4">
+                  <TouchableOpacity
+                    onPress={handleCancelEvent}
+                    className="bg-slate-200 px-5 py-3 rounded-lg"
+                  >
+                    <Text className="font-bold text-slate-600">Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleSaveEvent}
+                    className="bg-indigo-600 px-5 py-3 rounded-lg shadow-md shadow-indigo-600/30"
+                  >
+                    <Text className="text-white font-bold">Guardar Evento</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+            ) : (
+              // --- VISTA POR DEFECTO (LISTA DE EVENTOS O MENSAJE) ---
+              
+                <View className="flex-1 justify-center items-center">
+                <Svg
+                  height="60"
+                  viewBox="0 -960 960 960"
+                  width="60"
+                  fill="#cbd5e1"
+                >
+                  <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z" />
+                </Svg>
+                <Text className="text-slate-500 font-semibold mt-4 text-center">
+                  No hay eventos para este día.
+                </Text>
+                <Text className="text-slate-400 text-sm mt-1 text-center">
+                  Selecciona otro día o agrega un nuevo evento.
+                </Text>
+              </View>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </View>
     </View>
   );
 };
