@@ -1531,6 +1531,9 @@ const renderDropdownIcon = () => (
 );
 
 const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+
   const initialFormState = {
     id: null,
     nombre: "",
@@ -1600,149 +1603,161 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1, backgroundColor: "#f8fafc" }}
-      keyboardVerticalOffset={Platform.OS === "android" ? 30 : 0}
+    <TouchableWithoutFeedback
+      onPress={Platform.OS !== "web" ? Keyboard.dismiss : ""}
     >
-      <ScrollView
-        className="flex-1 bg-slate-50"
-        contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        enabled={isLandscape}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        style={{ flex: 1, backgroundColor: "#f8fafc" }}
+        keyboardVerticalOffset={Platform.OS === "android" ? 100 : 0}
       >
-        <View className="max-w-6xl self-start">
-          <TouchableOpacity
-            onPress={handleCancel}
-            className="flex-row items-center mb-4 opacity-80"
-          >
-            <Svg height="20" viewBox="0 -960 960 960" width="20" fill="#475569">
-              <Path d="M400-80 0-480l400-400 71 71-329 329 329 329-71 71Z" />
-            </Svg>
-            <Text className="text-slate-600 font-bold ml-1">
-              Volver a la lista
+        <View className="flex-1 bg-slate-50 p-[16] pb-[28]">
+          <View className="max-w-6xl self-start">
+            <TouchableOpacity
+              onPress={handleCancel}
+              className="flex-row items-center mb-4 opacity-80"
+            >
+              <Svg
+                height="20"
+                viewBox="0 -960 960 960"
+                width="20"
+                fill="#475569"
+              >
+                <Path d="M400-80 0-480l400-400 71 71-329 329 329 329-71 71Z" />
+              </Svg>
+              <Text className="text-slate-600 font-bold ml-1">
+                Volver a la lista
+              </Text>
+            </TouchableOpacity>
+            <Text className="text-slate-900 text-2xl font-extrabold">
+              {egresoToEdit ? "Editar Egreso" : "Agregar Egreso"}
             </Text>
-          </TouchableOpacity>
-          <Text className="text-slate-900 text-2xl font-extrabold">
-            {egresoToEdit ? "Editar Egreso" : "Agregar Egreso"}
-          </Text>
-          <Text className="text-slate-600">
-            Completa los campos para registrar un nuevo egreso.
-          </Text>
-        </View>
+            <Text className="text-slate-600">
+              Completa los campos para registrar un nuevo egreso.
+            </Text>
+          </View>
 
-        <View className="flex-1 max-w-6xl self-center mt-4">
-          <View className="flex-row flex-wrap gap-4">
-            <View style={{ width: "100%" }}>
-              <LabeledInput label="Nombre del Egreso" error={formErrors.nombre}>
-                <TextInput
-                  value={form.nombre}
-                  onChangeText={(text) => handleInputChange("nombre", text)}
-                  placeholder="Ej. Pago de servicio de luz"
-                  placeholderTextColor="#9ca3af"
-                  className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white ${formErrors.nombre ? "border-red-500" : ""}`}
-                />
-              </LabeledInput>
-            </View>
+          <ScrollView
+            id="form-egreso"
+            className="flex-1 max-w-6xl self-center mt-4"
+          >
+            <View className="flex-row flex-wrap gap-4">
+              <View style={{ width: "100%" }}>
+                <LabeledInput
+                  label="Nombre del Egreso"
+                  error={formErrors.nombre}
+                >
+                  <TextInput
+                    value={form.nombre}
+                    onChangeText={(text) => handleInputChange("nombre", text)}
+                    placeholder="Ej. Pago de servicio de luz"
+                    placeholderTextColor="#9ca3af"
+                    className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white ${formErrors.nombre ? "border-red-500" : ""}`}
+                  />
+                </LabeledInput>
+              </View>
 
-            <View style={{ width: "100%" }}>
-              <LabeledInput label="Descripción (Opcional)">
-                <TextInput
-                  value={form.descripcion}
-                  onChangeText={(text) =>
-                    handleInputChange("descripcion", text)
-                  }
-                  placeholder="Detalles adicionales sobre el egreso"
-                  placeholderTextColor="#9ca3af"
-                  multiline
-                  numberOfLines={3}
-                  className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white h-24"
-                  style={{ textAlignVertical: "top" }}
-                />
-              </LabeledInput>
-            </View>
-
-            <View style={{ width: "100%" }}>
-              <LabeledInput label="Monto">
-                <View className="flex-row items-center">
-                  <StepButton
-                    type="decrement"
-                    disabled={(Number(form.monto) || 0) <= 0}
-                    onPress={() =>
-                      handleMontoChange(Math.max(0, liveMonto - 50))
+              <View style={{ width: "100%" }}>
+                <LabeledInput label="Descripción (Opcional)">
+                  <TextInput
+                    value={form.descripcion}
+                    onChangeText={(text) =>
+                      handleInputChange("descripcion", text)
                     }
+                    placeholder="Detalles adicionales sobre el egreso"
+                    placeholderTextColor="#9ca3af"
+                    multiline
+                    numberOfLines={3}
+                    className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white h-24"
+                    style={{ textAlignVertical: "top" }}
                   />
-                  <Slider
-                    style={{ flex: 1, height: 40 }}
-                    minimumValue={0}
-                    maximumValue={maxSliderValue}
-                    step={50}
-                    value={liveMonto}
-                    onSlidingComplete={handleMontoChange}
-                    minimumTrackTintColor={"#6F09EA"}
-                    maximumTrackTintColor="#d1d5db"
-                    thumbTintColor={"#6F09EA"}
-                  />
-                  <CurrencyInput
-                    value={form.monto}
-                    onChangeText={(text) => {
-                      const numericText = text.replace(/[^0-9]/g, "");
-                      if (numericText.length > 4) {
-                        handleMontoChange(maxSliderValue);
-                      } else {
-                        handleMontoChange(Number(numericText) || 0);
+                </LabeledInput>
+              </View>
+
+              <View style={{ width: "100%" }}>
+                <LabeledInput label="Monto">
+                  <View className="flex-row items-center">
+                    <StepButton
+                      type="decrement"
+                      disabled={(Number(form.monto) || 0) <= 0}
+                      onPress={() =>
+                        handleMontoChange(Math.max(0, liveMonto - 50))
                       }
+                    />
+                    <Slider
+                      style={{ flex: 1, height: 40 }}
+                      minimumValue={0}
+                      maximumValue={maxSliderValue}
+                      step={50}
+                      value={liveMonto}
+                      onSlidingComplete={handleMontoChange}
+                      minimumTrackTintColor={"#6F09EA"}
+                      maximumTrackTintColor="#d1d5db"
+                      thumbTintColor={"#6F09EA"}
+                    />
+                    <CurrencyInput
+                      value={form.monto}
+                      onChangeText={(text) => {
+                        const numericText = text.replace(/[^0-9]/g, "");
+                        if (numericText.length > 4) {
+                          handleMontoChange(maxSliderValue);
+                        } else {
+                          handleMontoChange(Number(numericText) || 0);
+                        }
+                      }}
+                    />
+                    <StepButton
+                      type="increment"
+                      onPress={() => handleMontoChange(liveMonto + 50)}
+                    />
+                  </View>
+                  <ChipButtonGroup
+                    chips={useMemo(() => {
+                      const standardChips = new Set([
+                        500, 1000, 1500, 2000, 2500, 3000,
+                      ]);
+                      if (maxSliderValue > 3000) {
+                        for (let i = 3500; i <= maxSliderValue; i += 500) {
+                          standardChips.add(i);
+                        }
+                      }
+                      return Array.from(standardChips)
+                        .sort((a, b) => a - b)
+                        .map((v) => ({ label: `$${v}`, value: v }));
+                    }, [maxSliderValue])}
+                    selectedValue={Number(form.monto)}
+                    onSelect={(value) => {
+                      handleMontoChange(value);
+                      setMaxSliderValue((currentMax) =>
+                        Math.max(currentMax, value, 3000)
+                      );
                     }}
                   />
-                  <StepButton
-                    type="increment"
-                    onPress={() => handleMontoChange(liveMonto + 50)}
-                  />
-                </View>
-                <ChipButtonGroup
-                  chips={useMemo(() => {
-                    const standardChips = new Set([
-                      500, 1000, 1500, 2000, 2500, 3000,
-                    ]);
-                    if (maxSliderValue > 3000) {
-                      for (let i = 3500; i <= maxSliderValue; i += 500) {
-                        standardChips.add(i);
-                      }
-                    }
-                    return Array.from(standardChips)
-                      .sort((a, b) => a - b)
-                      .map((v) => ({ label: `$${v}`, value: v }));
-                  }, [maxSliderValue])}
-                  selectedValue={Number(form.monto)}
-                  onSelect={(value) => {
-                    handleMontoChange(value);
-                    setMaxSliderValue((currentMax) =>
-                      Math.max(currentMax, value, 3000)
-                    );
-                  }}
-                />
-              </LabeledInput>
+                </LabeledInput>
+              </View>
             </View>
-          </View>
 
-          <View className="mt-3 flex-row justify-end gap-2">
-            <Pressable
-              onPress={handleCancel}
-              className="px-4 py-3 rounded-xl border border-slate-300 bg-white"
-              android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-            >
-              <Text className="text-slate-700 font-semibold">Cancelar</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleSave}
-              className="px-5 py-3 rounded-xl items-center justify-center bg-[#6F09EA]"
-              android_ripple={{ color: "rgba(255,255,255,0.15)" }}
-            >
-              <Text className="text-white font-bold">Guardar</Text>
-            </Pressable>
-          </View>
+            <View className="mt-3 flex-row justify-end gap-2">
+              <Pressable
+                onPress={handleCancel}
+                className="px-4 py-3 rounded-xl border border-slate-300 bg-white"
+                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+              >
+                <Text className="text-slate-700 font-semibold">Cancelar</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleSave}
+                className="px-5 py-3 rounded-xl items-center justify-center bg-[#6F09EA]"
+                android_ripple={{ color: "rgba(255,255,255,0.15)" }}
+              >
+                <Text className="text-white font-bold">Guardar</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -1858,253 +1873,260 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
   ];
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={{ flex: 1, backgroundColor: "#f8fafc" }}
-      keyboardVerticalOffset={Platform.OS === "android" ? 30 : 0}
+    <TouchableWithoutFeedback
+      onPress={Platform.OS !== "web" ? Keyboard.dismiss : ""}
     >
-      <ScrollView
-        className="flex-1 bg-slate-50"
-        contentContainerStyle={{ padding: 16, paddingBottom: 28 }}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        style={{ flex: 1, backgroundColor: "#f8fafc" }}
+        keyboardVerticalOffset={Platform.OS === "android" ? 100 : 0}
       >
-        <View className="max-w-6xl self-start">
-          <TouchableOpacity
-            onPress={handleCancel}
-            className="flex-row items-center mb-4 opacity-80"
-          >
-            <Svg height="20" viewBox="0 -960 960 960" width="20" fill="#475569">
-              <Path d="M400-80 0-480l400-400 71 71-329 329 329 329-71 71Z" />
-            </Svg>
-            <Text className="text-slate-600 font-bold ml-1">
-              Volver a la lista
-            </Text>
-          </TouchableOpacity>
-          <Text className="text-slate-900 text-2xl font-extrabold">
-            {ingresoToEdit ? "Editar Ingreso" : "Agregar Ingreso"}
-          </Text>
-          <Text className="text-slate-600">
-            {ingresoToEdit
-              ? "Modifica los datos del ingreso."
-              : "Completa los siguientes campos para registrar un nuevo ingreso."}
-          </Text>
-        </View>
-
-        <View className="flex-1 max-w-6xl self-center mt-4">
-          <View className="flex-row flex-wrap gap-4">
-            <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-              <LabeledInput label="Nombre" error={formErrors.alumno}>
-                <TextInput
-                  value={form.alumno}
-                  onChangeText={(text) => handleInputChange("alumno", text)}
-                  placeholder="Ej. Juan Pére"
-                  placeholderTextColor="#9ca3af"
-                  className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white ${formErrors.alumno ? "border-red-500" : ""}`}
-                />
-              </LabeledInput>
-            </View>
-
-            <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-              <LabeledInput label="Curso/Asesoría" error={formErrors.curso}>
-                <Dropdown
-                  style={[
-                    styles_finanzas.dropdown,
-                    formErrors.curso ? { borderColor: "#ef4444" } : {},
-                  ]}
-                  data={cursos}
-                  labelField="label"
-                  valueField="value"
-                  placeholder="Seleccionar curso"
-                  value={form.curso}
-                  onChange={(item) => handleInputChange("curso", item.value)}
-                  renderRightIcon={renderDropdownIcon}
-                />
-              </LabeledInput>
-            </View>
-
-            <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-              <LabeledInput
-                label="Fecha de Inicio"
-                error={formErrors.fechaInicio}
+        <View className="flex-1 bg-slate-50 p-[16] pb-[28]">
+          <View className="max-w-6xl self-start">
+            <TouchableOpacity
+              onPress={handleCancel}
+              className="flex-row items-center mb-4 opacity-80"
+            >
+              <Svg
+                height="20"
+                viewBox="0 -960 960 960"
+                width="20"
+                fill="#475569"
               >
-                <TouchableOpacity
-                  onPress={() => setCalendarVisible(true)}
-                  className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white h-[50px] justify-center ${formErrors.fechaInicio ? "border-red-500" : ""}`}
+                <Path d="M400-80 0-480l400-400 71 71-329 329 329 329-71 71Z" />
+              </Svg>
+              <Text className="text-slate-600 font-bold ml-1">
+                Volver a la lista
+              </Text>
+            </TouchableOpacity>
+            <Text className="text-slate-900 text-2xl font-extrabold">
+              {ingresoToEdit ? "Editar Ingreso" : "Agregar Ingreso"}
+            </Text>
+            <Text className="text-slate-600">
+              {ingresoToEdit
+                ? "Modifica los datos del ingreso."
+                : "Completa los siguientes campos para registrar un nuevo ingreso."}
+            </Text>
+          </View>
+
+          <ScrollView className="flex-1 max-w-6xl self-center mt-4">
+            <View className="flex-row flex-wrap gap-4">
+              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+                <LabeledInput label="Nombre" error={formErrors.alumno}>
+                  <TextInput
+                    value={form.alumno}
+                    onChangeText={(text) => handleInputChange("alumno", text)}
+                    placeholder="Ej. Juan Pére"
+                    placeholderTextColor="#9ca3af"
+                    className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white ${formErrors.alumno ? "border-red-500" : ""}`}
+                  />
+                </LabeledInput>
+              </View>
+
+              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+                <LabeledInput label="Curso/Asesoría" error={formErrors.curso}>
+                  <Dropdown
+                    style={[
+                      styles_finanzas.dropdown,
+                      formErrors.curso ? { borderColor: "#ef4444" } : {},
+                    ]}
+                    data={cursos}
+                    labelField="label"
+                    valueField="value"
+                    placeholder="Seleccionar curso"
+                    value={form.curso}
+                    onChange={(item) => handleInputChange("curso", item.value)}
+                    renderRightIcon={renderDropdownIcon}
+                  />
+                </LabeledInput>
+              </View>
+
+              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+                <LabeledInput
+                  label="Fecha de Inicio"
+                  error={formErrors.fechaInicio}
                 >
-                  <Text
-                    className={
-                      form.fechaInicio ? "text-slate-900" : "text-gray-400"
-                    }
+                  <TouchableOpacity
+                    onPress={() => setCalendarVisible(true)}
+                    className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white h-[50px] justify-center ${formErrors.fechaInicio ? "border-red-500" : ""}`}
                   >
-                    {form.fechaInicio || "Seleccionar fecha"}
-                  </Text>
-                </TouchableOpacity>
-              </LabeledInput>
-            </View>
-
-            <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-              <LabeledInput label="Método de Pago">
-                <Dropdown
-                  style={styles_finanzas.dropdown}
-                  data={metodosPago}
-                  labelField="label"
-                  valueField="value"
-                  placeholder="Seleccionar método"
-                  value={form.metodoPago}
-                  onChange={(item) =>
-                    handleInputChange("metodoPago", item.value)
-                  }
-                  renderRightIcon={renderDropdownIcon}
-                />
-              </LabeledInput>
-            </View>
-
-            <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-              <LabeledInput label="Asesor">
-                <Dropdown
-                  style={styles_finanzas.dropdown}
-                  data={asesores}
-                  labelField="label"
-                  valueField="value"
-                  placeholder="Seleccionar asesor"
-                  value={form.asesor}
-                  onChange={(item) => handleInputChange("asesor", item.value)}
-                  renderRightIcon={renderDropdownIcon}
-                />
-              </LabeledInput>
-            </View>
-
-            <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-              <LabeledInput label="Estatus">
-                <Dropdown
-                  style={styles_finanzas.dropdown}
-                  data={estatusOptions}
-                  labelField="label"
-                  valueField="value"
-                  placeholder="Seleccionar estatus"
-                  value={form.estatus}
-                  onChange={(item) => handleInputChange("estatus", item.value)}
-                  renderRightIcon={renderDropdownIcon}
-                />
-              </LabeledInput>
-            </View>
-
-            <View style={{ width: "100%" }}>
-              <LabeledInput label="Importe">
-                <View className="flex-row items-center">
-                  <StepButton
-                    type="decrement"
-                    disabled={(Number(form.importe) || 0) <= 0}
-                    onPress={() =>
-                      handleImporteChange(Math.max(0, liveImporte - 50))
-                    }
-                  />
-                  <Slider
-                    style={{ flex: 1, height: 40 }}
-                    minimumValue={0}
-                    maximumValue={maxSliderValue}
-                    step={50}
-                    value={liveImporte}
-                    onSlidingComplete={handleImporteChange}
-                    minimumTrackTintColor={"#6F09EA"}
-                    maximumTrackTintColor="#d1d5db"
-                    thumbTintColor={"#6F09EA"}
-                  />
-                  <CurrencyInput
-                    value={form.importe}
-                    onChangeText={(text) => {
-                      const numericText = text.replace(/[^0-9]/g, "");
-                      if (numericText.length > 4) {
-                        handleImporteChange(maxSliderValue);
-                      } else {
-                        handleImporteChange(Number(numericText) || 0);
+                    <Text
+                      className={
+                        form.fechaInicio ? "text-slate-900" : "text-gray-400"
                       }
+                    >
+                      {form.fechaInicio || "Seleccionar fecha"}
+                    </Text>
+                  </TouchableOpacity>
+                </LabeledInput>
+              </View>
+
+              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+                <LabeledInput label="Método de Pago">
+                  <Dropdown
+                    style={styles_finanzas.dropdown}
+                    data={metodosPago}
+                    labelField="label"
+                    valueField="value"
+                    placeholder="Seleccionar método"
+                    value={form.metodoPago}
+                    onChange={(item) =>
+                      handleInputChange("metodoPago", item.value)
+                    }
+                    renderRightIcon={renderDropdownIcon}
+                  />
+                </LabeledInput>
+              </View>
+
+              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+                <LabeledInput label="Asesor">
+                  <Dropdown
+                    style={styles_finanzas.dropdown}
+                    data={asesores}
+                    labelField="label"
+                    valueField="value"
+                    placeholder="Seleccionar asesor"
+                    value={form.asesor}
+                    onChange={(item) => handleInputChange("asesor", item.value)}
+                    renderRightIcon={renderDropdownIcon}
+                  />
+                </LabeledInput>
+              </View>
+
+              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+                <LabeledInput label="Estatus">
+                  <Dropdown
+                    style={styles_finanzas.dropdown}
+                    data={estatusOptions}
+                    labelField="label"
+                    valueField="value"
+                    placeholder="Seleccionar estatus"
+                    value={form.estatus}
+                    onChange={(item) =>
+                      handleInputChange("estatus", item.value)
+                    }
+                    renderRightIcon={renderDropdownIcon}
+                  />
+                </LabeledInput>
+              </View>
+
+              <View style={{ width: "100%" }}>
+                <LabeledInput label="Importe">
+                  <View className="flex-row items-center">
+                    <StepButton
+                      type="decrement"
+                      disabled={(Number(form.importe) || 0) <= 0}
+                      onPress={() =>
+                        handleImporteChange(Math.max(0, liveImporte - 50))
+                      }
+                    />
+                    <Slider
+                      style={{ flex: 1, height: 40 }}
+                      minimumValue={0}
+                      maximumValue={maxSliderValue}
+                      step={50}
+                      value={liveImporte}
+                      onSlidingComplete={handleImporteChange}
+                      minimumTrackTintColor={"#6F09EA"}
+                      maximumTrackTintColor="#d1d5db"
+                      thumbTintColor={"#6F09EA"}
+                    />
+                    <CurrencyInput
+                      value={form.importe}
+                      onChangeText={(text) => {
+                        const numericText = text.replace(/[^0-9]/g, "");
+                        if (numericText.length > 4) {
+                          handleImporteChange(maxSliderValue);
+                        } else {
+                          handleImporteChange(Number(numericText) || 0);
+                        }
+                      }}
+                    />
+                    <StepButton
+                      type="increment"
+                      onPress={() => handleImporteChange(liveImporte + 50)}
+                    />
+                  </View>
+                  <ChipButtonGroup
+                    chips={useMemo(() => {
+                      const standardChips = new Set([
+                        500, 1000, 1500, 2000, 2500, 3000,
+                      ]);
+                      // Agrega chips adicionales en incrementos de 500 si el rango se expande
+                      if (maxSliderValue > 3000) {
+                        for (let i = 3500; i <= maxSliderValue; i += 500) {
+                          standardChips.add(i);
+                        }
+                      }
+                      return Array.from(standardChips)
+                        .sort((a, b) => a - b)
+                        .map((v) => ({
+                          label: `$${v}`,
+                          value: v,
+                        }));
+                    }, [maxSliderValue])}
+                    selectedValue={Number(form.importe)}
+                    onSelect={(value) => {
+                      // Primero, actualiza el valor del formulario y el estado visual del slider.
+                      handleImporteChange(value);
+                      // Luego, asegura que el rango máximo del slider se expanda si es necesario.
+                      setMaxSliderValue((currentMax) =>
+                        Math.max(currentMax, value, 3000)
+                      );
                     }}
                   />
-                  <StepButton
-                    type="increment"
-                    onPress={() => handleImporteChange(liveImporte + 50)}
+                </LabeledInput>
+              </View>
+            </View>
+
+            <View className="mt-3 flex-row justify-end gap-2">
+              <Pressable
+                onPress={handleCancel}
+                className="px-4 py-3 rounded-xl border border-slate-300 bg-white"
+                android_ripple={{ color: "rgba(0,0,0,0.06)" }}
+              >
+                <Text className="text-slate-700 font-semibold">Cancelar</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleSave}
+                className="px-5 py-3 rounded-xl items-center justify-center bg-[#6F09EA]"
+                android_ripple={{ color: "rgba(255,255,255,0.15)" }}
+              >
+                <Text className="text-white font-bold">Guardar</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </View>
+
+        <Modal
+          transparent={true}
+          animationType="fade"
+          visible={isCalendarVisible}
+          onRequestClose={() => setCalendarVisible(false)}
+        >
+          <TouchableWithoutFeedback onPress={() => setCalendarVisible(false)}>
+            <View className="flex-1 justify-center items-center bg-black/50">
+              <TouchableWithoutFeedback>
+                <View className="bg-white rounded-lg p-5">
+                  <Calendar
+                    onDayPress={(day) => {
+                      handleInputChange("fechaInicio", day.dateString);
+                      setCalendarVisible(false);
+                    }}
+                    markedDates={{
+                      [form.fechaInicio]: {
+                        selected: true,
+                        selectedColor: "#6F09EA",
+                      },
+                    }}
                   />
                 </View>
-                <ChipButtonGroup
-                  chips={useMemo(() => {
-                    const standardChips = new Set([
-                      500, 1000, 1500, 2000, 2500, 3000,
-                    ]);
-                    // Agrega chips adicionales en incrementos de 500 si el rango se expande
-                    if (maxSliderValue > 3000) {
-                      for (let i = 3500; i <= maxSliderValue; i += 500) {
-                        standardChips.add(i);
-                      }
-                    }
-                    return Array.from(standardChips)
-                      .sort((a, b) => a - b)
-                      .map((v) => ({
-                        label: `$${v}`,
-                        value: v,
-                      }));
-                  }, [maxSliderValue])}
-                  selectedValue={Number(form.importe)}
-                  onSelect={(value) => {
-                    // Primero, actualiza el valor del formulario y el estado visual del slider.
-                    handleImporteChange(value);
-                    // Luego, asegura que el rango máximo del slider se expanda si es necesario.
-                    setMaxSliderValue((currentMax) =>
-                      Math.max(currentMax, value, 3000)
-                    );
-                  }}
-                />
-              </LabeledInput>
+              </TouchableWithoutFeedback>
             </View>
-          </View>
-
-          <View className="mt-3 flex-row justify-end gap-2">
-            <Pressable
-              onPress={handleCancel}
-              className="px-4 py-3 rounded-xl border border-slate-300 bg-white"
-              android_ripple={{ color: "rgba(0,0,0,0.06)" }}
-            >
-              <Text className="text-slate-700 font-semibold">Cancelar</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleSave}
-              className="px-5 py-3 rounded-xl items-center justify-center bg-[#6F09EA]"
-              android_ripple={{ color: "rgba(255,255,255,0.15)" }}
-            >
-              <Text className="text-white font-bold">Guardar</Text>
-            </Pressable>
-          </View>
-        </View>
-      </ScrollView>
-
-      <Modal
-        transparent={true}
-        animationType="fade"
-        visible={isCalendarVisible}
-        onRequestClose={() => setCalendarVisible(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setCalendarVisible(false)}>
-          <View className="flex-1 justify-center items-center bg-black/50">
-            <TouchableWithoutFeedback>
-              <View className="bg-white rounded-lg p-5">
-                <Calendar
-                  onDayPress={(day) => {
-                    handleInputChange("fechaInicio", day.dateString);
-                    setCalendarVisible(false);
-                  }}
-                  markedDates={{
-                    [form.fechaInicio]: {
-                      selected: true,
-                      selectedColor: "#6F09EA",
-                    },
-                  }}
-                />
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-    </KeyboardAvoidingView>
+          </TouchableWithoutFeedback>
+        </Modal>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -3272,12 +3294,17 @@ const ScreenCalendario = () => {
   };
 
   return (
-    <View className="flex-1 bg-slate-50 p-4">
+    <TouchableWithoutFeedback
+      onPress={Platform.OS !== "web" ? Keyboard.dismiss : ""}
+    >
       <View
-        className={`flex-1 lg:flex-row gap-6 lg:items-stretch`} // Usamos clases lg: para responsividad en web/tablets
+        className={`flex-1 lg:flex-row gap-6 p-4 lg:items-stretch`} // Usamos clases lg: para responsividad en web/tablets
       >
         {/* Contenedor del Calendario */}
-        <View className={`flex items-center ${isLandscape ? "" : "w-full"}`}>
+        <View
+          id="contendor-calendario"
+          className={`flex items-center ${isLandscape ? "" : "w-full"}`}
+        >
           <View
             className={`bg-white rounded-xl shadow-sm border ${isLandscape ? "h-full" : ""} border-slate-200 p-4`}
             style={{
@@ -3341,10 +3368,18 @@ const ScreenCalendario = () => {
 
         {/* Contenedor de Eventos */}
         <KeyboardAvoidingView
-          id="keyboard-avoiding"
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          id="keyboard-avoiding-calendario-form"
+          behavior={
+            Platform.OS === "ios"
+              ? "padding"
+              : isLandscape
+                ? "padding"
+                : "height"
+          }
           style={{ flex: 1 }}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 40}
+          keyboardVerticalOffset={
+            Platform.OS === "ios" ? 90 : isLandscape ? 100 : 100
+          }
         >
           <View className="bg-white rounded-xl w-full h-full shadow-sm border border-slate-200 p-4">
             {/* Cabecera de la sección de eventos */}
@@ -3570,8 +3605,8 @@ const ScreenCalendario = () => {
               </ScrollView>
             ) : (
               // --- VISTA POR DEFECTO (LISTA DE EVENTOS O MENSAJE) ---
-              
-                <View className="flex-1 justify-center items-center">
+
+              <View className="flex-1 justify-center items-center">
                 <Svg
                   height="60"
                   viewBox="0 -960 960 960"
@@ -3591,7 +3626,7 @@ const ScreenCalendario = () => {
           </View>
         </KeyboardAvoidingView>
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   );
 };
 

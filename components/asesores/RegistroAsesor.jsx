@@ -354,17 +354,20 @@ export default function RegistroAsesor({
   const disabled = saving;
 
   return (
+    <TouchableWithoutFeedback onPress={Platform.OS !== "web" ? Keyboard.dismiss:undefined}>
     <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    onPress={Keyboard.dismiss}
+    enabled={isLandscape ? true : false}
+      behavior={Platform.OS === "ios" ? "padding" : "padding"}
       key={isLandscape ? "landscape" : "portrait"}
       style={{ flex: 1, backgroundColor: "#f8fafc" }}
       keyboardVerticalOffset={
-        isLandscape ? (Platform.OS === "ios" ? 80 : 40) : 0
+        isLandscape ? (Platform.OS === "ios" ? 80 : 280) : 0
       }
     >
-      <ScrollView
-        contentContainerStyle={contentStyle}
-        keyboardShouldPersistTaps="never"
+      <View
+      className={`p-[16] pb-0 ${isTablet ? "pt-[24]":""}`}
+
       >
           <View>
             {/* El resto del contenido del formulario va aquí dentro */}
@@ -408,7 +411,7 @@ export default function RegistroAsesor({
             </View>
 
             {/* Bloque del formulario centrado en tablets */}
-            <View className="max-w-6xl self-center mt-4">
+            <ScrollView id="formulario-asesores" className="max-w-6xl self-center mt-4">
               {/* Grid 2 columnas */}
               <View className="flex-row flex-wrap gap-4">
                 <View style={[styles.half, isSmall && { width: "100%" }]}>
@@ -710,13 +713,14 @@ export default function RegistroAsesor({
                   </Pressable>
                 </View>
               )}
-            </View>
+            </ScrollView>
 
             {/* Backdrop para cerrar el dropdown */}
             {/* Sin backdrop para evitar que bloquee clics en web; se cierra al seleccionar o al volver a tocar el campo */}
           </View>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 }
 
