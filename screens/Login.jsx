@@ -11,6 +11,8 @@ import {
   TouchableWithoutFeedback,
   Modal,
   Keyboard,
+  KeyboardAvoidingView,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import ConstellationBackground from "../components/backgrounds/ConstellationBackground";
@@ -199,12 +201,18 @@ export default function LoginScreen({ navigation }) {
     return !!domain && allowedDomains.includes(domain);
   };
 
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const onPasswordLogin = async () => {
     setErrorMsg("");
     setNeedsVerification(false);
     if (!email) return setErrorMsg("Ingresa tu correo.");
     if (!password) return setErrorMsg("Ingresa tu contraseña.");
+    if (!emailRe.test(email)) {
+      return setErrorMsg("El formato del correo es inválido.");
+    }
     if (!emailAllowed(email))
+      // Esta validación se mantiene
       return setErrorMsg("Este correo no está autorizado.");
     try {
       setSubmitting(true);
@@ -309,7 +317,7 @@ export default function LoginScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider className="flex-1">
       <LinearGradient
         colors={["#3d18c3", "#4816bf"]}
         start={{ x: 0, y: 0 }}
@@ -324,7 +332,11 @@ export default function LoginScreen({ navigation }) {
               editingField === "email" ? "Correo Electrónico" : "Contraseña"
             }
             value={editingField === "email" ? email : password}
-            onChangeText={editingField === "email" ? setEmail : setPassword}
+            onChangeText={
+              editingField === "email"
+                ? (text) => setEmail(text.replace(/\s/g, "")) // Elimina espacios para el correo
+                : setPassword
+            }
             placeholder={
               editingField === "email" ? "tucorreo@dominio.com" : "•••••••••"
             }
@@ -339,10 +351,21 @@ export default function LoginScreen({ navigation }) {
             }
           />
 
-          <TouchableWithoutFeedback
-            onPress={Platform.OS !== "web" && Keyboard.dismiss}
+          <KeyboardAvoidingView
+          behavior={Platform.OS !== "web" ? (!isLandscape && "padding"):""}
+          keyboardVerticalOffset={`0`}
+          className="flex-1 bg-[#f0ebfb]"
+          enabled={!isLandscape}
           >
-            <View className="flex-1 bg-slate-50">
+            <ScrollView
+            keyboardDismissMode="interactive"
+              contentContainerStyle={{
+                flex:1,
+                justifyContent: "center",
+                overflow: "hidden",
+              }}
+              className="flex bg-slate-50"
+            >
               <HeaderAdmin
                 logoSource={require("../assets/MQerK_logo.png")}
                 onLogoPress={() => {}}
@@ -368,7 +391,7 @@ export default function LoginScreen({ navigation }) {
 
                 <View
                   id="login-card"
-                  className="bg-white rounded-2xl overflow-hidden shadow-2xl"
+                  className="bg-white rounded-2xl overflow-hidden"
                 >
                   {/* Header compacto con logo + tagline */}
                   <View className="border border-b-0 border-[#8756E5] rounded-t-2xl box-content">
@@ -446,335 +469,356 @@ export default function LoginScreen({ navigation }) {
                   </View>
 
                   {/* Cuerpo del formulario */}
-                  <View className="p-7 border border-t-0 border-[#8756E5] bg-slate-50 rounded-b-2xl box-content">
-                    <Text
-                      className="text-slate-900 font-extrabold mb-1 text-center"
-                      style={{ fontSize: isLarge ? 30 : isTablet ? 28 : 24 }}
-                    >
-                      Inicio de sesión
-                    </Text>
-                    <Text className="text-slate-500 text-center mb-5">
-                      Accede a tu cuenta para continuar
-                    </Text>
-                    <View className="gap-y-3">
-                      <Text className="text-slate-800 font-bold">Correo</Text>
-                      <View className="relative">
-                        {isLandscape ? (
-                          <PressableInput
-                            label="tucorreo@dominio.com"
-                            value={email}
-                            onPress={() => handleInputPress("email")}
-                            icon={
-                              <Svg
-                                width={18}
-                                height={18}
-                                viewBox="0 -960 960 960"
-                                fill="#64748b"
-                              >
-                                <Path d="M160-200q-33 0-56.5-23.5T80-280v-400q0-33 23.5-56.5T160-760h640q33 0 56.5 23.5T880-680v400q0 33-23.5 56.5T800-200H160Zm320-260L160-640v360h640v-360L480-460Zm0-60 320-180H160l320 180Z" />
-                              </Svg>
-                            }
-                          />
-                        ) : (
-                          <>
-                            <View
-                              className="absolute left-3 top-1/2 -translate-y-1/2"
-                              pointerEvents="none"
-                            >
-                              <Svg
-                                width={18}
-                                height={18}
-                                viewBox="0 -960 960 960"
-                                fill="#64748b"
-                              >
-                                <Path d="M160-200q-33 0-56.5-23.5T80-280v-400q0-33 23.5-56.5T160-760h640q33 0 56.5 23.5T880-680v400q0 33-23.5 56.5T800-200H160Zm320-260L160-640v360h640v-360L480-460Zm0-60 320-180H160l320 180Z" />
-                              </Svg>
-                            </View>
-                            <TextInput
-                              placeholder="tucorreo@dominio.com"
-                              autoCapitalize="none"
-                              keyboardType="email-address"
-                              onChangeText={setEmail}
-                              className={`bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-3 text-slate-900`}
-                              onFocus={() => {
-                                if (Platform.OS !== "web")
-                                  setEmailFocused(true);
-                              }}
-                              onBlur={() => {
-                                if (Platform.OS !== "web")
-                                  setEmailFocused(false);
-                              }}
-                              style={[
-                                { height: 48 },
-                                Platform.OS !== "web" && emailFocused
-                                  ? { borderColor: "#6F09EA" }
-                                  : null,
-                              ]}
-                              autoCorrect={false}
-                              importantForAutofill="yes"
-                              textContentType={
-                                Platform.OS === "ios"
-                                  ? "emailAddress"
-                                  : undefined
-                              }
-                              autoComplete="email"
-                              blurOnSubmit={false}
-                              placeholderTextColor="#9ca3af"
-                              onKeyPress={(e) => {
-                                if (
-                                  Platform.OS === "web" &&
-                                  e?.nativeEvent?.key === "Enter"
-                                ) {
-                                  e.preventDefault?.();
-                                }
-                              }}
-                              value={email}
-                            />
-                          </>
-                        )}
-                      </View>
-
-                      <Text className="text-slate-800 font-bold">
-                        Contraseña
-                      </Text>
-                      <View className="relative">
-                        {isLandscape ? (
-                          <PressableInput
-                            label="•••••••••"
-                            value={password ? "•••••••••" : ""}
-                            onPress={() => handleInputPress("password")}
-                            icon={
-                              <Svg
-                                width={18}
-                                height={18}
-                                viewBox="0 -960 960 960"
-                                fill="#64748b"
-                              >
-                                <Path d="M240-440v-200q0-100 70-170t170-70q100 0 170 70t70 170v200h40q33 0 56.5 23.5T840-360v280q0 33-23.5 56.5T760-0H200q-33 0-56.5-23.5T120-80v-280q0-33 23.5-56.5T200-440h40Zm80 0h320v-200q0-67-46.5-113.5T480-800q-67 0-113.5 46.5T320-640v200Z" />
-                              </Svg>
-                            }
-                          />
-                        ) : (
-                          <>
-                            <View
-                              className="absolute left-3 top-1/2 -translate-y-1/2"
-                              pointerEvents="none"
-                            >
-                              <Svg
-                                width={18}
-                                height={18}
-                                viewBox="0 -960 960 960"
-                                fill="#64748b"
-                              >
-                                <Path d="M240-440v-200q0-100 70-170t170-70q100 0 170 70t70 170v200h40q33 0 56.5 23.5T840-360v280q0 33-23.5 56.5T760-0H200q-33 0-56.5-23.5T120-80v-280q0-33 23.5-56.5T200-440h40Zm80 0h320v-200q0-67-46.5-113.5T480-800q-67 0-113.5 46.5T320-640v200Z" />
-                              </Svg>
-                            </View>
-                            <TextInput
-                              id="password-input"
-                              placeholder="•••••••••"
-                              autoCapitalize="none"
-                              secureTextEntry={!showPwd}
-                              onChangeText={setPassword}
-                              className={`bg-white border border-slate-300 rounded-xl pl-10 pr-12 py-3 text-slate-900`}
-                              onFocus={() => {
-                                if (Platform.OS !== "web") setPwdFocused(true);
-                              }}
-                              onBlur={() => {
-                                if (Platform.OS !== "web") setPwdFocused(false);
-                              }}
-                              style={[
-                                { height: 48 },
-                                { fontSize: 14, letterSpacing: -1.5 },
-                                Platform.OS !== "web" ? { zIndex: 1 } : null,
-                                Platform.OS !== "web" && pwdFocused
-                                  ? { borderColor: "#6F09EA" }
-                                  : null,
-                              ]}
-                              autoCorrect={false}
-                              importantForAutofill="yes"
-                              textContentType={
-                                Platform.OS === "ios" ? "password" : undefined
-                              }
-                              autoComplete="current-password"
-                              blurOnSubmit={false}
-                              placeholderTextColor="#9ca3af"
-                              onKeyPress={(e) => {
-                                if (
-                                  Platform.OS === "web" &&
-                                  e?.nativeEvent?.key === "Enter"
-                                ) {
-                                  e.preventDefault?.();
-                                }
-                              }}
-                              value={password}
-                            />
-                            <Pressable
-                              onPress={() => setShowPwd((v) => !v)}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full items-center justify-center bg-white/70 border border-slate-300 shadow-sm active:opacity-80"
-                              hitSlop={10}
-                              accessibilityLabel={
-                                showPwd
-                                  ? "Ocultar contraseña"
-                                  : "Mostrar contraseña"
-                              }
-                              style={
-                                Platform.OS === "web"
-                                  ? { cursor: "pointer" }
-                                  : undefined
-                              }
-                            >
-                              {showPwd ? (
-                                <Svg
-                                  width={20}
-                                  height={20}
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                >
-                                  <Path
-                                    d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12Z"
-                                    stroke="#475569"
-                                    strokeWidth={2}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                  <Path
-                                    d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
-                                    stroke="#475569"
-                                    strokeWidth={2}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                </Svg>
-                              ) : (
-                                <Svg
-                                  width={20}
-                                  height={20}
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                >
-                                  <Path
-                                    d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12Z"
-                                    stroke="#475569"
-                                    strokeWidth={2}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                  <Path
-                                    d="M3 3l18 18"
-                                    stroke="#475569"
-                                    strokeWidth={2}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                </Svg>
-                              )}
-                            </Pressable>
-                          </>
-                        )}
-                      </View>
-
-                      <View className="flex-row items-center justify-between mt-1">
-                        <Pressable
-                          onPress={onResetPassword}
-                          disabled={submitting}
-                          hitSlop={8}
-                          android_ripple={{ color: "rgba(0,0,0,0.05)" }}
-                        >
-                          <Text className="text-[#6F09EA] font-bold">
-                            ¿Olvidaste tu contraseña?
-                          </Text>
-                        </Pressable>
-                      </View>
-
-                      <Pressable
-                        onPress={onPasswordLogin}
-                        disabled={submitting}
-                        className="mt-3 rounded-xl"
-                        hitSlop={10}
-                        android_ripple={{
-                          color: "rgba(255,255,255,0.15)",
-                          borderless: false,
-                        }}
-                        style={
-                          Platform.OS === "web"
-                            ? {
-                                cursor: submitting ? "not-allowed" : "pointer",
-                                borderRadius: 12,
-                              }
-                            : { borderRadius: 12 }
-                        }
+                  <KeyboardAvoidingView>
+                    <View className="p-7 border border-t-0 border-[#8756E5] bg-slate-50 rounded-b-2xl box-content">
+                      <Text
+                        className="text-slate-900 font-extrabold mb-1 text-center"
+                        style={{ fontSize: isLarge ? 30 : isTablet ? 28 : 24 }}
                       >
-                        <LinearGradient
-                          colors={
-                            submitting
-                              ? ["#9F7AEA", "#9F7AEA"]
-                              : ["#6F09EA", "#7009E8"]
-                          }
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 0 }}
-                          style={{
-                            borderRadius: 12,
-                            paddingVertical: 16,
-                            alignItems: "center",
-                          }}
-                        >
-                          {submitting ? (
-                            <ActivityIndicator color="#fff" />
+                        Inicio de sesión
+                      </Text>
+                      <Text className="text-slate-500 text-center mb-5">
+                        Accede a tu cuenta para continuar
+                      </Text>
+                      <View className="gap-y-3">
+                        <Text className="text-slate-800 font-bold">Correo</Text>
+                        <View className="relative">
+                          {isLandscape ? (
+                            <PressableInput
+                              label="tucorreo@dominio.com"
+                              value={email}
+                              onPress={() => handleInputPress("email")}
+                              icon={
+                                <Svg
+                                  width={18}
+                                  height={18}
+                                  viewBox="0 -960 960 960"
+                                  fill="#64748b"
+                                >
+                                  <Path d="M160-200q-33 0-56.5-23.5T80-280v-400q0-33 23.5-56.5T160-760h640q33 0 56.5 23.5T880-680v400q0 33-23.5 56.5T800-200H160Zm320-260L160-640v360h640v-360L480-460Zm0-60 320-180H160l320 180Z" />
+                                </Svg>
+                              }
+                            />
                           ) : (
-                            <Text className="text-white font-bold text-[16px]">
-                              Iniciar sesión
-                            </Text>
+                            <>
+                              <View
+                                pointerEvents="none"
+                                style={{
+                                  position: "absolute",
+                                  left: 12,
+                                  top: "50%",
+                                  transform: [{ translateY: -9 }],
+                                  zIndex: 1,
+                                }}
+                              >
+                                <Svg
+                                  width={18}
+                                  height={18}
+                                  viewBox="0 -960 960 960"
+                                  fill="#64748b"
+                                >
+                                  <Path d="M160-200q-33 0-56.5-23.5T80-280v-400q0-33 23.5-56.5T160-760h640q33 0 56.5 23.5T880-680v400q0 33-23.5 56.5T800-200H160Zm320-260L160-640v360h640v-360L480-460Zm0-60 320-180H160l320 180Z" />
+                                </Svg>
+                              </View>
+                              <TextInput
+                                placeholder="tucorreo@dominio.com"
+                                autoCapitalize="none"
+                                keyboardType="email-address"
+                                onChangeText={(text) => {
+                                  // Evita que se puedan ingresar espacios
+                                  setEmail(text.replace(/\s/g, ""));
+                                }}
+                                className={`bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-3 text-slate-900`}
+                                onFocus={() => {
+                                  if (Platform.OS !== "web")
+                                    setEmailFocused(true);
+                                }}
+                                onBlur={() => {
+                                  if (Platform.OS !== "web")
+                                    setEmailFocused(false);
+                                }}
+                                style={[
+                                  { height: 48 },
+                                  Platform.OS !== "web" && emailFocused
+                                    ? { borderColor: "#6F09EA" }
+                                    : null,
+                                ]}
+                                autoCorrect={false}
+                                importantForAutofill="yes"
+                                textContentType={
+                                  Platform.OS === "ios"
+                                    ? "emailAddress"
+                                    : undefined
+                                }
+                                autoComplete="email"
+                                blurOnSubmit={false}
+                                placeholderTextColor="#9ca3af"
+                                onKeyPress={(e) => {
+                                  if (
+                                    Platform.OS === "web" &&
+                                    e?.nativeEvent?.key === "Enter"
+                                  ) {
+                                    e.preventDefault?.();
+                                  }
+                                }}
+                                value={email}
+                              />
+                            </>
                           )}
-                        </LinearGradient>
-                      </Pressable>
+                        </View>
 
-                      {!!errorMsg && (
-                        <Text className="text-red-600 text-sm mt-1">
-                          {errorMsg}
+                        <Text className="text-slate-800 font-bold">
+                          Contraseña
                         </Text>
-                      )}
-                      {needsVerification && (
-                        <View className="mt-2 items-start">
+                        <View className="relative">
+                          {isLandscape ? (
+                            <PressableInput
+                              label="•••••••••"
+                              value={password ? "•••••••••" : ""}
+                              onPress={() => handleInputPress("password")}
+                              icon={
+                                <Svg
+                                  width={18}
+                                  height={18}
+                                  viewBox="0 -960 960 960"
+                                  fill="#64748b"
+                                >
+                                  <Path d="M240-440v-200q0-100 70-170t170-70q100 0 170 70t70 170v200h40q33 0 56.5 23.5T840-360v280q0 33-23.5 56.5T760-0H200q-33 0-56.5-23.5T120-80v-280q0-33 23.5-56.5T200-440h40Zm80 0h320v-200q0-67-46.5-113.5T480-800q-67 0-113.5 46.5T320-640v200Z" />
+                                </Svg>
+                              }
+                            />
+                          ) : (
+                            <>
+                              <View
+                                style={{
+                                  position: "absolute",
+                                  left: 12,
+                                  top: "50%",
+                                  transform: [{ translateY: -9 }],
+                                  zIndex: 2,
+                                }}
+                                pointerEvents="none"
+                              >
+                                <Svg
+                                  width={18}
+                                  height={18}
+                                  viewBox="0 -960 960 960"
+                                  fill="#64748b"
+                                >
+                                  <Path d="M240-440v-200q0-100 70-170t170-70q100 0 170 70t70 170v200h40q33 0 56.5 23.5T840-360v280q0 33-23.5 56.5T760-0H200q-33 0-56.5-23.5T120-80v-280q0-33 23.5-56.5T200-440h40Zm80 0h320v-200q0-67-46.5-113.5T480-800q-67 0-113.5 46.5T320-640v200Z" />
+                                </Svg>
+                              </View>
+                              <TextInput
+                                id="password-input"
+                                placeholder="•••••••••"
+                                autoCapitalize="none"
+                                secureTextEntry={!showPwd}
+                                onChangeText={setPassword}
+                                className={`bg-white border border-slate-300 rounded-xl pl-10 pr-12 py-3 text-slate-900`}
+                                onFocus={() => {
+                                  if (Platform.OS !== "web")
+                                    setPwdFocused(true);
+                                }}
+                                onBlur={() => {
+                                  if (Platform.OS !== "web")
+                                    setPwdFocused(false);
+                                }}
+                                style={[
+                                  { height: 48 },
+                                  { fontSize: 14 },
+                                  Platform.OS !== "web" ? { zIndex: 1 } : null,
+                                  Platform.OS !== "web" && pwdFocused
+                                    ? { borderColor: "#6F09EA" }
+                                    : null,
+                                ]}
+                                autoCorrect={false}
+                                importantForAutofill="yes"
+                                textContentType={
+                                  Platform.OS === "ios" ? "password" : undefined
+                                }
+                                autoComplete="current-password"
+                                blurOnSubmit={false}
+                                placeholderTextColor="#9ca3af"
+                                onKeyPress={(e) => {
+                                  if (
+                                    Platform.OS === "web" &&
+                                    e?.nativeEvent?.key === "Enter"
+                                  ) {
+                                    e.preventDefault?.();
+                                  }
+                                }}
+                                value={password}
+                              />
+                              <Pressable
+                                onPress={() => setShowPwd((v) => !v)}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full items-center justify-center bg-white/70 border border-slate-300 shadow-sm active:opacity-80"
+                                hitSlop={10}
+                                accessibilityLabel={
+                                  showPwd
+                                    ? "Ocultar contraseña"
+                                    : "Mostrar contraseña"
+                                }
+                                style={
+                                  Platform.OS === "web"
+                                    ? { cursor: "pointer" }
+                                    : { zIndex: 2 }
+                                }
+                              >
+                                {showPwd ? (
+                                  <Svg
+                                    width={20}
+                                    height={20}
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                  >
+                                    <Path
+                                      d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12Z"
+                                      stroke="#475569"
+                                      strokeWidth={2}
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                    <Path
+                                      d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+                                      stroke="#475569"
+                                      strokeWidth={2}
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </Svg>
+                                ) : (
+                                  <Svg
+                                    width={20}
+                                    height={20}
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                  >
+                                    <Path
+                                      d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12Z"
+                                      stroke="#475569"
+                                      strokeWidth={2}
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                    <Path
+                                      d="M3 3l18 18"
+                                      stroke="#475569"
+                                      strokeWidth={2}
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </Svg>
+                                )}
+                              </Pressable>
+                            </>
+                          )}
+                        </View>
+
+                        <View className="flex-row items-center justify-between mt-1">
                           <Pressable
-                            onPress={onResend}
-                            disabled={resending}
+                            onPress={onResetPassword}
+                            disabled={submitting}
                             hitSlop={8}
                             android_ripple={{ color: "rgba(0,0,0,0.05)" }}
                           >
-                            <Text
-                              className={`font-bold ${resending ? "text-slate-400" : "text-[#6F09EA]"}`}
-                            >
-                              {resending
-                                ? "Reenviando…"
-                                : "Reenviar verificación"}
+                            <Text className="text-[#6F09EA] font-bold">
+                              ¿Olvidaste tu contraseña?
                             </Text>
                           </Pressable>
                         </View>
-                      )}
-                      {allowedDomains.length > 0 && (
-                        <Text className="text-slate-500 text-xs">
-                          Solo se permiten correos de:{" "}
-                          {allowedDomains.join(", ")}
-                        </Text>
-                      )}
-                    </View>
 
-                    <View className="mt-6 items-center">
-                      <Text className="text-slate-600">
-                        ¿No tienes cuenta?{" "}
-                        <Text
-                          className="text-[#6F09EA] font-bold"
-                          onPress={() => navigation?.navigate("Register")}
+                        <Pressable
+                          onPress={onPasswordLogin}
+                          disabled={submitting}
+                          className="mt-3 rounded-xl"
+                          hitSlop={10}
+                          android_ripple={{
+                            color: "rgba(255,255,255,0.15)",
+                            borderless: false,
+                          }}
+                          style={
+                            Platform.OS === "web"
+                              ? {
+                                  cursor: submitting
+                                    ? "not-allowed"
+                                    : "pointer",
+                                  borderRadius: 12,
+                                }
+                              : { borderRadius: 12 }
+                          }
                         >
-                          Regístrate
+                          <LinearGradient
+                            colors={
+                              submitting
+                                ? ["#9F7AEA", "#9F7AEA"]
+                                : ["#6F09EA", "#7009E8"]
+                            }
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={{
+                              borderRadius: 12,
+                              paddingVertical: 16,
+                              alignItems: "center",
+                            }}
+                          >
+                            {submitting ? (
+                              <ActivityIndicator color="#fff" />
+                            ) : (
+                              <Text className="text-white font-bold text-[16px]">
+                                Iniciar sesión
+                              </Text>
+                            )}
+                          </LinearGradient>
+                        </Pressable>
+
+                        {!!errorMsg && (
+                          <Text className="text-red-600 text-sm mt-1">
+                            {errorMsg}
+                          </Text>
+                        )}
+                        {needsVerification && (
+                          <View className="mt-2 items-start">
+                            <Pressable
+                              onPress={onResend}
+                              disabled={resending}
+                              hitSlop={8}
+                              android_ripple={{ color: "rgba(0,0,0,0.05)" }}
+                            >
+                              <Text
+                                className={`font-bold ${resending ? "text-slate-400" : "text-[#6F09EA]"}`}
+                              >
+                                {resending
+                                  ? "Reenviando…"
+                                  : "Reenviar verificación"}
+                              </Text>
+                            </Pressable>
+                          </View>
+                        )}
+                        {allowedDomains.length > 0 && (
+                          <Text className="text-slate-500 text-xs">
+                            Solo se permiten correos de:{" "}
+                            {allowedDomains.join(", ")}
+                          </Text>
+                        )}
+                      </View>
+
+                      <View className="mt-6 items-center">
+                        <Text className="text-slate-600">
+                          ¿No tienes cuenta?{" "}
+                          <Text
+                            className="text-[#6F09EA] font-bold"
+                            onPress={() => navigation?.navigate("Register")}
+                          >
+                            Regístrate
+                          </Text>
                         </Text>
-                      </Text>
+                      </View>
                     </View>
-                  </View>
+                  </KeyboardAvoidingView>
                 </View>
               </View>
-            </View>
-          </TouchableWithoutFeedback>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </LinearGradient>
     </SafeAreaProvider>

@@ -39,15 +39,25 @@ const LabeledInput = ({
 }) => (
   <View className="mb-4">
     <Text
+      pointerEvents="none"
       className={`text-sm font-semibold text-slate-700 mb-1 ${labelCentered ? "text-center" : ""}`}
     >
       {label}
     </Text>
     {children}
     {!!helperText && !error && (
-      <Text className="text-slate-500 text-xs mt-1">{helperText}</Text>
+      <Text
+        pointerEvents="none"
+        className="text-slate-500 text-xs mt-1"
+      >
+        {helperText}
+      </Text>
     )}
-    {!!error && <Text className="text-red-500 text-xs mt-1">{error}</Text>}
+    {!!error && (
+      <Text pointerEvents="none" className="text-red-500 text-xs mt-1">
+        {error}
+      </Text>
+    )}
   </View>
 );
 
@@ -1079,8 +1089,10 @@ export default function RegistroVenta({ navigation, onFormClose }) {
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View className="flex-1">
         <View style={styles.header}>
           <TouchableOpacity
+            className={`flex flex-row justify-center`}
             onPress={() => {
               const isDirty = !equal(form, initialFormState);
               if (!isDirty) {
@@ -1102,27 +1114,34 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                 ]
               );
             }}
-            style={styles.backButton}
           >
-            <Svg height="24" viewBox="0 -960 960 960" width="24" fill="#475569">
+            <Svg
+              style={styles.backButton}
+              height="24"
+              viewBox="0 -960 960 960"
+              width="24"
+              fill="#475569"
+            >
               <Path d="M400-80 0-480l400-400 71 71-329 329 329 329-71 71Z" />
             </Svg>
+
+            <Text style={styles.headerTitle}>Registrar Nueva Venta</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Registrar Nueva Venta</Text>
         </View>
-      </TouchableWithoutFeedback>
+      
       <View style={{ flex: 1, flexDirection: "row" }}>
-        <KeyboardAvoidingView
-          key={isLandscape ? "landscape" : "portrait"} // Clave para forzar el reseteo
-          style={{ flex: 1.2 }}
-          behavior={Platform.OS === "ios" ? "padding" : "padding"}
-          enabled={true} // Habilitado en ambas orientaciones
-          keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 80}
-        >
-          <View style={{ flex: 1 }}>
+        <View style={{ flex: 1.2 }}>
+          <KeyboardAvoidingView
+            key={isLandscape ? "landscape" : "portrait"} // Clave para forzar el reseteo
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            enabled={true} // Habilitado en ambas orientaciones
+            keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 80}
+          >
             <ScrollView
+            nestedScrollEnabled
+              keyboardShouldPersistTaps="always"
               contentContainerStyle={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
             >
               <LabeledInput label="Nombre del Cliente/Estudiante">
                 <TextInput
@@ -1149,6 +1168,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
               <LabeledInput label="Dirección">
                 <Dropdown
                   style={styles.dropdown}
+                  
                   data={municipios}
                   labelField="label"
                   valueField="value"
@@ -2008,8 +2028,8 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
-        </KeyboardAvoidingView>
+          </KeyboardAvoidingView>
+        </View>
         {isLandscape && (
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View style={styles.previewContainer}>
@@ -2023,6 +2043,8 @@ export default function RegistroVenta({ navigation, onFormClose }) {
           </TouchableWithoutFeedback>
         )}
       </View>
+      </View>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }
@@ -2048,6 +2070,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 40, // Espacio extra al final
+    zIndex: 2,
   },
   input: {
     borderWidth: 1,

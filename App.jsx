@@ -1534,6 +1534,28 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
 
+  // --- Lógica para los inputs de fecha segmentados ---
+  const [isDateEditable, setIsDateEditable] = useState(false);
+  const [dateParts, setDateParts] = useState(() => {
+    const initialDate = egresoToEdit?.fecha
+      ? new Date(egresoToEdit.fecha + "T00:00:00") // Asegurar que se interprete como local
+      : new Date();
+    return {
+      day: String(initialDate.getDate()).padStart(2, "0"),
+      month: String(initialDate.getMonth() + 1).padStart(2, "0"),
+      year: initialDate.getFullYear().toString(),
+    };
+  });
+
+  const monthInputRef = useRef(null);
+  const yearInputRef = useRef(null);
+
+  const handleDateBlur = (part) => {
+    const value = dateParts[part];
+    if (value && value.length === 1) {
+      setDateParts((prev) => ({ ...prev, [part]: value.padStart(2, "0") }));
+    }
+  };
   const initialFormState = {
     id: null,
     nombre: "",
@@ -1548,6 +1570,38 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
       : initialFormState
   );
   const [formErrors, setFormErrors] = useState({ nombre: "" });
+
+  const handleDatePartChange = (part, value) => {
+    const numericValue = value.replace(/[^\d]/g, "");
+    let newParts = { ...dateParts, [part]: numericValue };
+
+    if (part === "day") {
+      if (parseInt(numericValue, 10) > 31) newParts.day = "31";
+      if (numericValue.length === 2) monthInputRef.current?.focus();
+    }
+    if (part === "month") {
+      if (parseInt(numericValue, 10) > 12) newParts.month = "12";
+      if (numericValue.length === 2) yearInputRef.current?.focus();
+    }
+    if (part === "year" && numericValue.length === 4) {
+      Keyboard.dismiss();
+    }
+
+    setDateParts(newParts);
+  };
+
+  useEffect(() => {
+    const { day, month, year } = dateParts;
+    if (day.length === 2 && month.length === 2 && year.length === 4) {
+      const newDateString = `${year}-${month}-${day}`;
+      const d = new Date(newDateString + "T00:00:00");
+      if (d && d.toISOString().slice(0, 10) === newDateString) {
+        if (newDateString !== form.fecha) {
+          setForm((prev) => ({ ...prev, fecha: newDateString }));
+        }
+      }
+    }
+  }, [dateParts]);
 
   // --- Lógica para el slider de Monto ---
   const [liveMonto, setLiveMonto] = useState(Number(egresoToEdit?.monto) || 0);
@@ -1676,6 +1730,70 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
               </View>
 
               <View style={{ width: "100%" }}>
+                <View className="mb-4">
+                  <View className="flex-row items-center mb-1">
+                    <Text className="text-slate-700 text-xs font-semibold uppercase tracking-wide">
+                      Fecha de Registro
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setIsDateEditable(!isDateEditable)}
+                      className="ml-2 p-1 rounded-full bg-slate-200"
+                    >
+                      <Svg
+                        height="14"
+                        viewBox="0 -960 960 960"
+                        width="14"
+                        fill="#475569"
+                      >
+                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                      </Svg>
+                    </TouchableOpacity>
+                  </View>
+                  <View
+                    className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isDateEditable ? "bg-white" : "bg-slate-100 opacity-70"}`}
+                  >
+                    <TextInput
+                      style={styles_registro_venta.dateInput}
+                      placeholder="DD"
+                      value={dateParts.day}
+                      editable={isDateEditable}
+                      onChangeText={(text) => handleDatePartChange("day", text)}
+                      onBlur={() => handleDateBlur("day")}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                    />
+                    <Text style={styles_registro_venta.dateSeparator}>/</Text>
+                    <TextInput
+                      ref={monthInputRef}
+                      style={styles_registro_venta.dateInput}
+                      placeholder="MM"
+                      value={dateParts.month}
+                      editable={isDateEditable}
+                      onChangeText={(text) =>
+                        handleDatePartChange("month", text)
+                      }
+                      onBlur={() => handleDateBlur("month")}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                    />
+                    <Text style={styles_registro_venta.dateSeparator}>/</Text>
+                    <TextInput
+                      ref={yearInputRef}
+                      style={[styles_registro_venta.dateInput, { flex: 1.5 }]}
+                      placeholder="AAAA"
+                      value={dateParts.year}
+                      editable={isDateEditable}
+                      onChangeText={(text) =>
+                        handleDatePartChange("year", text)
+                      }
+                      keyboardType="number-pad"
+                      maxLength={4}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              <View style={{ width: "100%" }}>
                 <LabeledInput label="Monto">
                   <View className="flex-row items-center">
                     <StepButton
@@ -1762,11 +1880,18 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
 };
 
 const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
+  const handleDateBlur = (part) => {
+    const value = dateParts[part];
+    if (value && value.length === 1) {
+      setDateParts((prev) => ({ ...prev, [part]: value.padStart(2, "0") }));
+    }
+  };
   const initialFormState = {
     id: null,
     alumno: "",
     curso: "",
     fechaInicio: "",
+    fechaInicio: new Date().toISOString().split("T")[0],
     asesor: null,
     metodoPago: null,
     importe: "",
@@ -1783,6 +1908,22 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
     curso: "",
     fechaInicio: "",
   });
+  // --- Lógica para los inputs de fecha segmentados ---
+  const [isDateEditable, setIsDateEditable] = useState(false);
+  const [dateParts, setDateParts] = useState(() => {
+    const initialDate = ingresoToEdit?.fechaInicio
+      ? new Date(ingresoToEdit.fechaInicio + "T00:00:00") // Asegurar que se interprete como local
+      : new Date();
+    return {
+      day: String(initialDate.getDate()).padStart(2, "0"),
+      month: String(initialDate.getMonth() + 1).padStart(2, "0"),
+      year: initialDate.getFullYear().toString(),
+    };
+  });
+
+  const monthInputRef = useRef(null);
+  const yearInputRef = useRef(null);
+
   const [isCalendarVisible, setCalendarVisible] = useState(false);
   const [liveImporte, setLiveImporte] = useState(
     Number(ingresoToEdit?.importe) || 0
@@ -1790,6 +1931,38 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
   const [maxSliderValue, setMaxSliderValue] = useState(
     Math.max(3000, Number(ingresoToEdit?.importe) || 0)
   );
+
+  const handleDatePartChange = (part, value) => {
+    const numericValue = value.replace(/[^\d]/g, "");
+    let newParts = { ...dateParts, [part]: numericValue };
+
+    if (part === "day") {
+      if (parseInt(numericValue, 10) > 31) newParts.day = "31";
+      if (numericValue.length === 2) monthInputRef.current?.focus();
+    }
+    if (part === "month") {
+      if (parseInt(numericValue, 10) > 12) newParts.month = "12";
+      if (numericValue.length === 2) yearInputRef.current?.focus();
+    }
+    if (part === "year" && numericValue.length === 4) {
+      Keyboard.dismiss();
+    }
+
+    setDateParts(newParts);
+  };
+
+  useEffect(() => {
+    const { day, month, year } = dateParts;
+    if (day.length === 2 && month.length === 2 && year.length === 4) {
+      const newDateString = `${year}-${month}-${day}`;
+      const d = new Date(newDateString + "T00:00:00");
+      if (d && d.toISOString().slice(0, 10) === newDateString) {
+        if (newDateString !== form.fechaInicio) {
+          handleInputChange("fechaInicio", newDateString);
+        }
+      }
+    }
+  }, [dateParts]);
 
   const handleInputChange = (field, value) => {
     setForm({ ...form, [field]: value });
@@ -1916,7 +2089,7 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                   <TextInput
                     value={form.alumno}
                     onChangeText={(text) => handleInputChange("alumno", text)}
-                    placeholder="Ej. Juan Pére"
+                    placeholder="Ej. Juan Pérez"
                     placeholderTextColor="#9ca3af"
                     className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white ${formErrors.alumno ? "border-red-500" : ""}`}
                   />
@@ -1944,20 +2117,82 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
               <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
                 <LabeledInput
                   label="Fecha de Inicio"
-                  error={formErrors.fechaInicio}
-                >
+                  error={formErrors.fechaInicio}>
                   <TouchableOpacity
                     onPress={() => setCalendarVisible(true)}
-                    className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white h-[50px] justify-center ${formErrors.fechaInicio ? "border-red-500" : ""}`}
-                  >
-                    <Text
-                      className={
-                        form.fechaInicio ? "text-slate-900" : "text-gray-400"
-                      }
+                    className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white h-[50px] justify-center ${formErrors.fechaInicio ? "border-red-500" : ""}`}></TouchableOpacity>
+                  <View className="mb-4">
+                    <View className="flex-row items-center mb-1">
+                      <Text className="text-slate-700 text-xs font-semibold uppercase tracking-wide">
+                        Fecha del Evento
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setIsDateEditable(!isDateEditable)}
+                        className="ml-2 p-1 rounded-full bg-slate-200"
+                      >
+                        <Svg
+                          height="14"
+                          viewBox="0 -960 960 960"
+                          width="14"
+                          fill="#475569"
+                        >
+                          <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                        </Svg>
+                      </TouchableOpacity>
+                    </View>
+                    <View
+                      className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isDateEditable ? "bg-white" : "bg-slate-100 opacity-70"} ${formErrors.fechaInicio ? "border-red-500" : ""}`}
                     >
-                      {form.fechaInicio || "Seleccionar fecha"}
-                    </Text>
-                  </TouchableOpacity>
+                      <TextInput
+                        style={styles_registro_venta.dateInput}
+                        placeholder="DD"
+                        value={dateParts.day}
+                        editable={isDateEditable}
+                        onChangeText={(text) =>
+                          handleDatePartChange("day", text)
+                        }
+                        onBlur={() => handleDateBlur("day")}
+                        keyboardType="number-pad"
+                        maxLength={2}
+                      />
+                      <Text style={styles_registro_venta.dateSeparator}>
+                        /
+                      </Text>
+                      <TextInput
+                        ref={monthInputRef}
+                        style={styles_registro_venta.dateInput}
+                        placeholder="MM"
+                        value={dateParts.month}
+                        editable={isDateEditable}
+                        onChangeText={(text) =>
+                          handleDatePartChange("month", text)
+                        }
+                        onBlur={() => handleDateBlur("month")}
+                        keyboardType="number-pad"
+                        maxLength={2}
+                      />
+                      <Text style={styles_registro_venta.dateSeparator}>
+                        /
+                      </Text>
+                      <TextInput
+                        ref={yearInputRef}
+                        style={[styles_registro_venta.dateInput, { flex: 1.5 }]}
+                        placeholder="AAAA"
+                        value={dateParts.year}
+                        editable={isDateEditable}
+                        onChangeText={(text) =>
+                          handleDatePartChange("year", text)
+                        }
+                        keyboardType="number-pad"
+                        maxLength={4}
+                      />
+                    </View>
+                    {!!formErrors.fechaInicio && (
+                      <Text className="text-red-600 text-xs mt-1">
+                        {formErrors.fechaInicio}
+                      </Text>
+                    )}
+                  </View>
                 </LabeledInput>
               </View>
 
@@ -2008,6 +2243,195 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                     renderRightIcon={renderDropdownIcon}
                   />
                 </LabeledInput>
+              </View>
+
+              <View style={{ width: "100%" }}>
+                <View className="mb-4">
+                  <View className="flex-row items-center mb-1">
+                    <Text className="text-slate-700 text-xs font-semibold uppercase tracking-wide">
+                      Fecha de Inicio
+                      Fecha de Registro
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setIsDateEditable(!isDateEditable)}
+                      className="ml-2 p-1 rounded-full bg-slate-200"
+                    >
+                      <Svg
+                        height="14"
+                        viewBox="0 -960 960 960"
+                        width="14"
+                        fill="#475569"
+                      >
+                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                      </Svg>
+                    </TouchableOpacity>
+                  </View>
+                  <View
+                    className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isDateEditable ? "bg-white" : "bg-slate-100 opacity-70"} ${formErrors.fechaInicio ? "border-red-500" : ""}`}
+                  >
+                    <Text
+                      className={
+                        form.fechaInicio ? "text-slate-900" : "text-gray-400"}>{form.fechaInicio || "Seleccionar fecha"}
+                  </Text>
+
+                    <TextInput
+                      style={styles_registro_venta.dateInput}
+                      placeholder="DD"
+                      value={dateParts.day}
+                      onChangeText={(text) =>
+                        handleDatePartChange("day", text)
+                      }
+                      keyboardType="number-pad"
+                      maxLength={2}
+                      onBlur={() => handleDateBlur("day")}
+                    />
+                    <Text style={styles_registro_venta.dateSeparator}>/</Text>
+                    <TextInput
+                      ref={monthInputRef}
+                      style={styles_registro_venta.dateInput}
+                      placeholder="MM"
+                      value={dateParts.month}
+                      editable={isDateEditable}
+                      onChangeText={(text) =>
+                        handleDatePartChange("month", text)
+                      }
+                    
+                      
+                    />
+                    <Text style={styles_registro_venta.dateSeparator}>/</Text>
+                    <TextInput
+                      ref={yearInputRef}
+                      style={[styles_registro_venta.dateInput, { flex: 1.5 }]}
+                      placeholder="AAAA"
+                      value={dateParts.year}
+                      editable={isDateEditable}
+                      onChangeText={(text) =>
+                        handleDatePartChange("year", text)
+                      }
+                      keyboardType="number-pad"
+                      maxLength={4}
+                    />
+                  </View>
+                  {!!formErrors.fechaInicio && (
+                    <Text className="text-red-600 text-xs mt-1">
+                      {formErrors.fechaInicio}
+                    </Text>
+                  
+                  )}
+                </View>
+              </View>
+
+              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+                <LabeledInput label="Método de Pago">
+                  <Dropdown
+                    style={styles_finanzas.dropdown}
+                    data={metodosPago}
+                    labelField="label"
+                    valueField="value"
+                    placeholder="Seleccionar método"
+                    value={form.metodoPago}
+                    onChange={(item) =>
+                      handleInputChange("metodoPago", item.value)
+                    }
+                    renderRightIcon={renderDropdownIcon}
+                  />
+                </LabeledInput>
+              </View>
+
+              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+                <LabeledInput label="Asesor">
+                  <Dropdown
+                    style={styles_finanzas.dropdown}
+                    data={asesores}
+                    labelField="label"
+                    valueField="value"
+                    placeholder="Seleccionar asesor"
+                    value={form.asesor}
+                    onChange={(item) => handleInputChange("asesor", item.value)}
+                    renderRightIcon={renderDropdownIcon}
+                  />
+                </LabeledInput>
+              </View>
+
+              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+                <LabeledInput label="Estatus">
+                  <Dropdown
+                    style={styles_finanzas.dropdown}
+                    data={estatusOptions}
+                    labelField="label"
+                    valueField="value"
+                    placeholder="Seleccionar estatus"
+                    value={form.estatus}
+                    onChange={(item) =>
+                      handleInputChange("estatus", item.value)
+                    }
+                    renderRightIcon={renderDropdownIcon}
+                  />
+                </LabeledInput>
+              </View>
+
+              <View style={{ width: "100%" }}>
+                <View className="mb-4">
+                  <View className="flex-row items-center mb-1">
+                    <Text className="text-slate-700 text-xs font-semibold uppercase tracking-wide">
+                      Fecha de Registro
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setIsDateEditable(!isDateEditable)}
+                      className="ml-2 p-1 rounded-full bg-slate-200"
+                    >
+                      <Svg
+                        height="14"
+                        viewBox="0 -960 960 960"
+                        width="14"
+                        fill="#475569"
+                      >
+                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                      </Svg>
+                    </TouchableOpacity>
+                  </View>
+                  <View
+                    className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isDateEditable ? "bg-white" : "bg-slate-100 opacity-70"}`}
+                  >
+                    <TextInput
+                      style={styles_registro_venta.dateInput}
+                      placeholder="DD"
+                      value={dateParts.day}
+                      editable={isDateEditable}
+                      onChangeText={(text) => handleDatePartChange("day", text)}
+                      onBlur={() => handleDateBlur("day")}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                    />
+                    <Text style={styles_registro_venta.dateSeparator}>/</Text>
+                    <TextInput
+                      ref={monthInputRef}
+                      style={styles_registro_venta.dateInput}
+                      placeholder="MM"
+                      value={dateParts.month}
+                      editable={isDateEditable}
+                      onChangeText={(text) =>
+                        handleDatePartChange("month", text)
+                      }
+                      onBlur={() => handleDateBlur("month")}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                    />
+                    <Text style={styles_registro_venta.dateSeparator}>/</Text>
+                    <TextInput
+                      ref={yearInputRef}
+                      style={[styles_registro_venta.dateInput, { flex: 1.5 }]}
+                      placeholder="AAAA"
+                      value={dateParts.year}
+                      editable={isDateEditable}
+                      onChangeText={(text) =>
+                        handleDatePartChange("year", text)
+                      }
+                      keyboardType="number-pad"
+                      maxLength={4}
+                    />
+                  </View>
+                </View>
               </View>
 
               <View style={{ width: "100%" }}>
@@ -2557,7 +2981,7 @@ const ScreenFinanzas = () => {
     id: null,
     alumno: "",
     curso: "",
-    fechaInicio: "",
+    fechaInicio: new Date().toISOString().split("T")[0],
     asesor: null,
     metodoPago: null,
     importe: "",
@@ -3142,6 +3566,37 @@ const ScreenCalendario = () => {
 
   const monthInputRef = useRef(null);
   const yearInputRef = useRef(null);
+
+  // Efecto para sincronizar los inputs de fecha cuando cambia la fecha del calendario
+  useEffect(() => {
+    if (selectedDate) {
+      const [year, month, day] = selectedDate.split("-");
+      // Solo actualiza si los valores son diferentes para evitar un bucle
+      if (
+        dateParts.year !== year ||
+        dateParts.month !== month ||
+        dateParts.day !== day
+      ) {
+        setDateParts({ year, month, day });
+      }
+    }
+  }, [selectedDate]);
+  // Efecto para sincronizar el input de fecha con el estado del calendario
+  useEffect(() => {
+    const { day, month, year } = dateParts;
+    // Solo proceder si tenemos una fecha completa y válida
+    if (day.length === 2 && month.length === 2 && year.length === 4) {
+      const newDateString = `${year}-${month}-${day}`;
+      // Validar que la fecha construida sea una fecha real (evita ej. 31/02/2024)
+      const d = new Date(newDateString);
+      if (d && d.toISOString().slice(0, 10) === newDateString) {
+        // Solo actualiza si la fecha es diferente para evitar bucles infinitos
+        if (newDateString !== selectedDate) {
+          setSelectedDate(newDateString);
+        }
+      }
+    }
+  }, [dateParts]); // Se ejecuta cada vez que cambia la fecha en los inputs
 
   const handleDatePartChange = (part, value) => {
     const numericValue = value.replace(/[^\d]/g, "");
@@ -4455,72 +4910,80 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
   );
 
   return (
-    <View className="flex-1 bg-slate-50 relative">
-      {loading ? (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#6F09EA" />
-        </View>
-      ) : (
-        <>
-          <View className="flex-row items-center justify-between p-4">
-            <View className="flex-row items-center bg-white border border-slate-300 rounded-full px-3 py-1 shadow-sm">
-              <Svg
-                height="20"
-                viewBox="0 -960 960 960"
-                width="20"
-                fill="#9ca3af"
-              >
-                <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
-              </Svg>
-              <TextInput
-                placeholder="Buscar por nombre, curso..."
-                value={searchTerm}
-                onChangeText={setSearchTerm}
-                className="ml-2 text-base"
-              />
-            </View>
-            <View className="flex-row">
-              <TouchableOpacity
-                onPress={handleGenerateSale}
-                className="bg-teal-600 p-2 rounded-full shadow-md shadow-teal-600/30 flex-row items-center px-4"
-              >
-                <Svg
-                  height="18"
-                  viewBox="0 -960 960 960"
-                  width="18"
-                  fill="#ffffff"
-                >
-                  <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
-                </Svg>
-                <Text className="text-white font-bold ml-2">Generar Venta</Text>
-              </TouchableOpacity>
-            </View>
+    <TouchableWithoutFeedback
+      onPress={Platform.OS !== "web" ? Keyboard.dismiss : ""}
+    >
+      <View className="flex-1 bg-slate-50 relative">
+        {loading ? (
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color="#6F09EA" />
           </View>
+        ) : (
+          <>
+            <View className="flex-row items-center justify-between p-4">
+              <View className="flex-row items-center bg-white border border-slate-300 rounded-full px-3 py-1 shadow-sm">
+                <Svg
+                  height="20"
+                  viewBox="0 -960 960 960"
+                  width="20"
+                  fill="#9ca3af"
+                >
+                  <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
+                </Svg>
+                <TextInput
 
-          <TablaVentasPendientes
-            data={estudiantesConAdeudo}
-            query={searchTerm}
-            isRefetching={isRefetching}
-            onRefresh={handleRefresh}
-            onEdit={(est) => console.log("Edit", est)}
-            onReprint={(id) => console.log("Reprinting ticket for", id)}
-          />
-        </>
-      )}
+                  editable={!isFormVisible}
+                  placeholder="Buscar por nombre, curso..."
+                  value={searchTerm}
+                  onChangeText={setSearchTerm}
+                  className="ml-2 text-base z-0"
+                />
+              </View>
+              <View className="flex-row">
+                <TouchableOpacity
+                  onPress={handleGenerateSale}
+                  className="bg-teal-600 p-2 rounded-full shadow-md shadow-teal-600/30 flex-row items-center px-4"
+                >
+                  <Svg
+                    height="18"
+                    viewBox="0 -960 960 960"
+                    width="18"
+                    fill="#ffffff"
+                  >
+                    <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+                  </Svg>
+                  <Text className="text-white font-bold ml-2">
+                    Generar Venta
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
-      {/* El formulario ahora se renderiza sobre la lista y se anima */}
-      {isFormVisible && (
-        <Animated.View
-          style={[StyleSheet.absoluteFill, formContainerStyle]}
-          className="absolute inset-0 z-10"
-        >
-          <RegistroVenta
-            navigation={navigation}
-            onFormClose={handleCloseForm}
-          />
-        </Animated.View>
-      )}
-    </View>
+            <TablaVentasPendientes
+              data={estudiantesConAdeudo}
+              query={searchTerm}
+              isRefetching={isRefetching}
+              onRefresh={handleRefresh}
+              onEdit={(est) => console.log("Edit", est)}
+              onReprint={(id) => console.log("Reprinting ticket for", id)}
+            />
+          </>
+        )}
+
+        {/* El formulario ahora se renderiza sobre la lista y se anima */}
+        {isFormVisible && (
+          <Animated.View
+            style={[StyleSheet.absoluteFill, formContainerStyle]}
+            className="absolute inset-0 z-10"
+          >
+            <RegistroVenta
+              navigation={navigation}
+              onFormClose={handleCloseForm}
+            />
+          </Animated.View>
+        )}
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 
