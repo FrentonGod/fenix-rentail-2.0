@@ -1514,13 +1514,13 @@ const ScreenPagos = ({ navigation }) => {
 
 function LabeledInput({ label, error, children, containerClassName = "" }) {
   return (
-    <View className={`w-full ${containerClassName}`}>
+    <TouchableOpacity activeOpacity={1} className={`w-full ${containerClassName}`}>
       <Text className="text-slate-700 text-xs font-semibold mb-1 uppercase tracking-wide">
         {label}
       </Text>
       {children}
       {!!error && <Text className="text-red-600 text-xs mt-1">{error}</Text>}
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -2082,8 +2082,9 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
             </Text>
           </View>
 
-          <ScrollView className="flex-1 max-w-6xl self-center mt-4">
-            <View className="flex-row flex-wrap gap-4">
+          <ScrollView className="flex-1 max-w-6xl self-center mt-4"
+          keyboardShouldPersistTaps='handled'>
+            <View pointerEvents="box-only" className="flex-row flex-wrap gap-4">
               <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
                 <LabeledInput label="Nombre" error={formErrors.alumno}>
                   <TextInput
@@ -2140,7 +2141,7 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                         </Svg>
                       </TouchableOpacity>
                     </View>
-                    <View
+                    <TouchableOpacity activeOpacity={1}
                       className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isDateEditable ? "bg-white" : "bg-slate-100 opacity-70"} ${formErrors.fechaInicio ? "border-red-500" : ""}`}
                     >
                       <TextInput
@@ -2186,7 +2187,7 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                         keyboardType="number-pad"
                         maxLength={4}
                       />
-                    </View>
+                    </TouchableOpacity>
                     {!!formErrors.fechaInicio && (
                       <Text className="text-red-600 text-xs mt-1">
                         {formErrors.fechaInicio}

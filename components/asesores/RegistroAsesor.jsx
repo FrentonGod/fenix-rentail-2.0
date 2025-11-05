@@ -47,7 +47,7 @@ function LabeledInput({
   ...rest
 }) {
   return (
-    <View className="w-full mb-2">
+    <TouchableOpacity activeOpacity={1} className="w-full mb-2">
       {customLabel ? (
         customLabel
       ) : (
@@ -77,7 +77,7 @@ function LabeledInput({
           </Text>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -569,7 +569,7 @@ export default function RegistroAsesor({
             keyboardShouldPersistTaps="handled"
           >
             {/* Sección de la foto de perfil */}
-            <View className="items-center mb-4">
+            <TouchableOpacity activeOpacity={1} className="items-center mb-4">
               <Text className="mb-2 uppercase text-wrap text-slate-700 text-xs font-semibold tracking-wide">
                 Foto de perfil
               </Text>
@@ -631,7 +631,7 @@ export default function RegistroAsesor({
                   </>
                 )}
               </View>
-            </View>
+            </TouchableOpacity>
             {onFormClose && (
               <View className="h-px bg-slate-200 my-2 mb-4" /> // Separador visual
             )}

@@ -37,28 +37,18 @@ const LabeledInput = ({
   labelCentered = false,
   helperText,
 }) => (
-  <View className="mb-4">
+  <TouchableOpacity activeOpacity={1} className="mb-4">
     <Text
-      pointerEvents="none"
       className={`text-sm font-semibold text-slate-700 mb-1 ${labelCentered ? "text-center" : ""}`}
     >
       {label}
     </Text>
     {children}
     {!!helperText && !error && (
-      <Text
-        pointerEvents="none"
-        className="text-slate-500 text-xs mt-1"
-      >
-        {helperText}
-      </Text>
+      <Text className="text-slate-500 text-xs mt-1">{helperText}</Text>
     )}
-    {!!error && (
-      <Text pointerEvents="none" className="text-red-500 text-xs mt-1">
-        {error}
-      </Text>
-    )}
-  </View>
+    {!!error && <Text className="text-red-500 text-xs mt-1">{error}</Text>}
+  </TouchableOpacity>
 );
 
 const DisabledCurrencyDisplay = ({ value }) => {
@@ -122,15 +112,18 @@ const StepButton = ({ onPress, disabled, type, onPressIn, onPressOut }) => {
   const isIncrement = type === "increment";
   return (
     <TouchableOpacity
-      onPress={onPress}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
-      disabled={disabled}
+      onPress={() => {
+        if (disabled) return; // El bisturí
+        onPress(); // Si no está deshabilitado, funciona normal
+      }}
       style={[
         styles.stepButton,
         disabled && styles.stepButtonDisabled,
         isIncrement ? { marginLeft: 8 } : { marginRight: 8 },
       ]}
+      activeOpacity={disabled ? 1.0 : 0.7}
     >
       <Text
         style={[
@@ -1088,8 +1081,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View className="flex-1">
+      <View className="flex-1">
         <View style={styles.header}>
           <TouchableOpacity
             className={`flex flex-row justify-center`}
@@ -1128,109 +1120,234 @@ export default function RegistroVenta({ navigation, onFormClose }) {
             <Text style={styles.headerTitle}>Registrar Nueva Venta</Text>
           </TouchableOpacity>
         </View>
-      
-      <View style={{ flex: 1, flexDirection: "row" }}>
-        <View style={{ flex: 1.2 }}>
-          <KeyboardAvoidingView
-            key={isLandscape ? "landscape" : "portrait"} // Clave para forzar el reseteo
-            style={{ flex: 1 }}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            enabled={true} // Habilitado en ambas orientaciones
-            keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 80}
-          >
-            <ScrollView
-            nestedScrollEnabled
-              keyboardShouldPersistTaps="always"
-              contentContainerStyle={styles.scrollContent}
+
+        <View style={{ flex: 1, flexDirection: "row" }}>
+          <View style={{ flex: 1.2 }}>
+            <KeyboardAvoidingView
+              key={isLandscape ? "landscape" : "portrait"} // Clave para forzar el reseteo
+              style={{ flex: 1 }}
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              enabled={true} // Habilitado en ambas orientaciones
+              keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 80}
             >
-              <LabeledInput label="Nombre del Cliente/Estudiante">
-                <TextInput
-                  style={styles.input}
-                  value={form.nombre_cliente}
-                  autoCapitalize="words" // Dejamos que esta propiedad maneje la capitalización
-                  autoCorrect={false}
-                  onChangeText={(newText) => {
-                    // Previene que se escriba un espacio si el campo está vacío.
-                    if (form.nombre_cliente === "" && newText === " ") {
-                      return;
-                    }
-                    // Remueve caracteres especiales y reemplaza múltiples espacios con uno solo
-                    const cleanedText = newText
-                      .replace(/[^a-zA-Z\sÁÉÍÓÚÜÑáéíóúüñ]/g, "")
-                      .replace(/\s\s+/g, " ");
-                    // Se elimina la función de formato manual y se establece el texto limpiado
-                    setForm({ ...form, nombre_cliente: cleanedText });
-                  }}
-                  placeholder="Ej. Maria Rodriguez"
-                />
-              </LabeledInput>
-
-              <LabeledInput label="Dirección">
-                <Dropdown
-                  style={styles.dropdown}
-                  
-                  data={municipios}
-                  labelField="label"
-                  valueField="value"
-                  placeholder="Selecciona un municipio"
-                  value={showCustomDireccion ? "Otra" : form.direccion}
-                  onChange={(item) => {
-                    if (item.value === "Otra") {
-                      setShowCustomDireccion(true);
-                      setForm({ ...form, direccion: "" }); // Limpia la dirección para el input manual
-                    } else {
-                      setShowCustomDireccion(false);
-                      setForm({ ...form, direccion: item.value });
-                    }
-                  }}
-                  renderRightIcon={() => (
-                    <Svg
-                      height="20"
-                      viewBox="0 -960 960 960"
-                      width="20"
-                      fill="#64748b"
-                    >
-                      <Path d="M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z" />
-                    </Svg>
-                  )}
-                  placeholderStyle={styles.dropdownPlaceholder}
-                  selectedTextStyle={styles.dropdownSelectedText}
-                  itemTextStyle={styles.dropdownItemText}
-                />
-                {showCustomDireccion && (
-                  <TextInput
-                    style={[styles.input, { marginTop: 10 }]}
-                    value={form.direccion}
-                    onChangeText={(newText) => {
-                      const processedText = newText
-                        .replace(/\s\s+/g, " ")
-                        .replace(/([^\w\sÁÉÍÓÚÜÑáéíóúüñ])\1+/g, "$1");
-                      setForm({ ...form, direccion: processedText });
-                    }}
-                    placeholder="Escribe la dirección completa"
-                    autoFocus={true}
-                  />
-                )}
-              </LabeledInput>
-
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                }}
+              <ScrollView
+                keyboardShouldPersistTaps="never"
+                contentContainerStyle={styles.scrollContent}
               >
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <LabeledInput label="Grupo Asignado">
+                <LabeledInput label="Nombre del Cliente/Estudiante">
+                  <TextInput
+                    style={styles.input}
+                    value={form.nombre_cliente}
+                    autoCapitalize="words" // Dejamos que esta propiedad maneje la capitalización
+                    autoCorrect={false}
+                    onChangeText={(newText) => {
+                      // Previene que se escriba un espacio si el campo está vacío.
+                      if (form.nombre_cliente === "" && newText === " ") {
+                        return;
+                      }
+                      // Remueve caracteres especiales y reemplaza múltiples espacios con uno solo
+                      const cleanedText = newText
+                        .replace(/[^a-zA-Z\sÁÉÍÓÚÜÑáéíóúüñ]/g, "")
+                        .replace(/\s\s+/g, " ");
+                      // Se elimina la función de formato manual y se establece el texto limpiado
+                      setForm({ ...form, nombre_cliente: cleanedText });
+                    }}
+                    placeholder="Ej. Maria Rodriguez"
+                  />
+                </LabeledInput>
+
+                <LabeledInput label="Dirección">
+                  <Dropdown
+                    style={styles.dropdown}
+                    data={municipios}
+                    labelField="label"
+                    valueField="value"
+                    placeholder="Selecciona un municipio"
+                    value={showCustomDireccion ? "Otra" : form.direccion}
+                    onChange={(item) => {
+                      if (item.value === "Otra") {
+                        setShowCustomDireccion(true);
+                        setForm({ ...form, direccion: "" }); // Limpia la dirección para el input manual
+                      } else {
+                        setShowCustomDireccion(false);
+                        setForm({ ...form, direccion: item.value });
+                      }
+                    }}
+                    renderRightIcon={() => (
+                      <Svg
+                        height="20"
+                        viewBox="0 -960 960 960"
+                        width="20"
+                        fill="#64748b"
+                      >
+                        <Path d="M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z" />
+                      </Svg>
+                    )}
+                    placeholderStyle={styles.dropdownPlaceholder}
+                    selectedTextStyle={styles.dropdownSelectedText}
+                    itemTextStyle={styles.dropdownItemText}
+                  />
+                  {showCustomDireccion && (
+                    <TextInput
+                      style={[styles.input, { marginTop: 10 }]}
+                      value={form.direccion}
+                      onChangeText={(newText) => {
+                        const processedText = newText
+                          .replace(/\s\s+/g, " ")
+                          .replace(/([^\w\sÁÉÍÓÚÜÑáéíóúüñ])\1+/g, "$1");
+                        setForm({ ...form, direccion: processedText });
+                      }}
+                      placeholder="Escribe la dirección completa"
+                      autoFocus={true}
+                    />
+                  )}
+                </LabeledInput>
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <LabeledInput label="Grupo Asignado">
+                      <Dropdown
+                        style={styles.dropdown}
+                        data={grupos}
+                        labelField="label"
+                        valueField="value"
+                        placeholder="Selecciona un grupo"
+                        value={form.grupo}
+                        onChange={(item) =>
+                          setForm({ ...form, grupo: item.value })
+                        }
+                        dropdownPosition="auto"
+                        renderRightIcon={() => (
+                          <Svg
+                            height="20"
+                            viewBox="0 -960 960 960"
+                            width="20"
+                            fill="#64748b"
+                          >
+                            <Path d="M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z" />
+                          </Svg>
+                        )}
+                        placeholderStyle={styles.dropdownPlaceholder}
+                        selectedTextStyle={styles.dropdownSelectedText}
+                        itemTextStyle={styles.dropdownItemText}
+                      />
+                    </LabeledInput>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 8 }}>
+                    <LabeledInput label="Frecuencia de Sesiones">
+                      <Dropdown
+                        style={styles.dropdown}
+                        data={frecuencias}
+                        labelField="label"
+                        valueField="value"
+                        placeholder="Selecciona frecuencia"
+                        value={form.frecuencia_sesiones}
+                        onChange={(item) =>
+                          setForm({ ...form, frecuencia_sesiones: item.value })
+                        }
+                        renderRightIcon={() => (
+                          <Svg
+                            height="20"
+                            viewBox="0 -960 960 960"
+                            width="20"
+                            fill="#64748b"
+                          >
+                            <Path d="M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z" />
+                          </Svg>
+                        )}
+                        placeholderStyle={styles.dropdownPlaceholder}
+                        selectedTextStyle={styles.dropdownSelectedText}
+                        itemTextStyle={styles.dropdownItemText}
+                      />
+                    </LabeledInput>
+                  </View>
+                </View>
+
+                <LabeledInput label="Número de Horas">
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <StepButton
+                      type="decrement"
+                      disabled={form.horas_sesion <= 1}
+                      onPress={() => {
+                        const newValue = Math.max(1, form.horas_sesion - 1);
+                        setLiveHoras(newValue);
+                        setForm((prev) => ({
+                          ...prev,
+                          horas_sesion: newValue,
+                        }));
+                      }}
+                    />
+                    <Slider
+                      style={{ flex: 1, height: SLIDER_HEIGHT }}
+                      minimumValue={1}
+                      maximumValue={30}
+                      step={1}
+                      value={liveHoras}
+                      // onValueChange se omite para deshabilitar el deslizamiento en tiempo real
+                      onSlidingComplete={(value) => {
+                        const roundedValue = Math.round(value);
+                        setForm((prev) => ({
+                          ...prev,
+                          horas_sesion: roundedValue,
+                        }));
+                      }}
+                      minimumTrackTintColor="#6F09EA"
+                      maximumTrackTintColor="#d1d5db"
+                      pointerEvents={true ? "none" : "auto"}
+                    />
+                    <TextInput
+                      style={[
+                        styles.input, // El TextInput ahora no necesita margen izquierdo
+                        { width: 70, marginLeft: 10, textAlign: "center" },
+                      ]}
+                      value={String(Math.round(form.horas_sesion))}
+                      onChangeText={(text) => {
+                        const numValue = Number(text) || 1;
+                        setLiveHoras(numValue);
+                        setForm((prev) => ({
+                          ...prev,
+                          horas_sesion: numValue,
+                        }));
+                      }}
+                      keyboardType="number-pad"
+                    />
+                    <StepButton
+                      type="increment"
+                      disabled={form.horas_sesion >= 30}
+                      onPress={() => {
+                        const newValue = Math.min(30, form.horas_sesion + 1);
+                        setLiveHoras(newValue);
+                        setForm((prev) => ({
+                          ...prev,
+                          horas_sesion: newValue,
+                        }));
+                      }}
+                    />
+                  </View>
+                </LabeledInput>
+
+                <LabeledInput label="Curso/Asesoría">
+                  <View>
                     <Dropdown
                       style={styles.dropdown}
-                      data={grupos}
+                      data={cursos}
                       labelField="label"
                       valueField="value"
-                      placeholder="Selecciona un grupo"
-                      value={form.grupo}
-                      onChange={(item) =>
-                        setForm({ ...form, grupo: item.value })
+                      placeholder={
+                        loadingCursos
+                          ? "Cargando cursos..."
+                          : "Selecciona un curso"
                       }
+                      value={form.curso_id}
+                      onChange={handleCursoChange}
+                      disable={loadingCursos}
+                      search
+                      searchPlaceholder="Buscar curso..."
                       dropdownPosition="auto"
                       renderRightIcon={() => (
                         <Svg
@@ -1246,805 +1363,726 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                       selectedTextStyle={styles.dropdownSelectedText}
                       itemTextStyle={styles.dropdownItemText}
                     />
-                  </LabeledInput>
-                </View>
-                <View style={{ flex: 1, marginLeft: 8 }}>
-                  <LabeledInput label="Frecuencia de Sesiones">
-                    <Dropdown
-                      style={styles.dropdown}
-                      data={frecuencias}
-                      labelField="label"
-                      valueField="value"
-                      placeholder="Selecciona frecuencia"
-                      value={form.frecuencia_sesiones}
-                      onChange={(item) =>
-                        setForm({ ...form, frecuencia_sesiones: item.value })
-                      }
-                      renderRightIcon={() => (
-                        <Svg
-                          height="20"
-                          viewBox="0 -960 960 960"
-                          width="20"
-                          fill="#64748b"
-                        >
-                          <Path d="M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z" />
-                        </Svg>
-                      )}
-                      placeholderStyle={styles.dropdownPlaceholder}
-                      selectedTextStyle={styles.dropdownSelectedText}
-                      itemTextStyle={styles.dropdownItemText}
-                    />
-                  </LabeledInput>
-                </View>
-              </View>
-
-              <LabeledInput label="Número de Horas">
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <StepButton
-                    type="decrement"
-                    disabled={form.horas_sesion <= 1}
-                    onPress={() => {
-                      const newValue = Math.max(1, form.horas_sesion - 1);
-                      setLiveHoras(newValue);
-                      setForm((prev) => ({
-                        ...prev,
-                        horas_sesion: newValue,
-                      }));
-                    }}
-                  />
-                  <Slider
-                    style={{ flex: 1, height: SLIDER_HEIGHT }}
-                    minimumValue={1}
-                    maximumValue={30}
-                    step={1}
-                    value={liveHoras}
-                    // onValueChange se omite para deshabilitar el deslizamiento en tiempo real
-                    onSlidingComplete={(value) => {
-                      const roundedValue = Math.round(value);
-                      setForm((prev) => ({
-                        ...prev,
-                        horas_sesion: roundedValue,
-                      }));
-                    }}
-                    minimumTrackTintColor="#6F09EA"
-                    maximumTrackTintColor="#d1d5db"
-                  />
-                  <TextInput
-                    style={[
-                      styles.input, // El TextInput ahora no necesita margen izquierdo
-                      { width: 70, marginLeft: 10, textAlign: "center" },
-                    ]}
-                    value={String(Math.round(form.horas_sesion))}
-                    onChangeText={(text) => {
-                      const numValue = Number(text) || 1;
-                      setLiveHoras(numValue);
-                      setForm((prev) => ({ ...prev, horas_sesion: numValue }));
-                    }}
-                    keyboardType="number-pad"
-                  />
-                  <StepButton
-                    type="increment"
-                    disabled={form.horas_sesion >= 30}
-                    onPress={() => {
-                      const newValue = Math.min(30, form.horas_sesion + 1);
-                      setLiveHoras(newValue);
-                      setForm((prev) => ({
-                        ...prev,
-                        horas_sesion: newValue,
-                      }));
-                    }}
-                  />
-                </View>
-              </LabeledInput>
-
-              <LabeledInput label="Curso/Asesoría">
-                <View>
-                  <Dropdown
-                    style={styles.dropdown}
-                    data={cursos}
-                    labelField="label"
-                    valueField="value"
-                    placeholder={
-                      loadingCursos
-                        ? "Cargando cursos..."
-                        : "Selecciona un curso"
-                    }
-                    value={form.curso_id}
-                    onChange={handleCursoChange}
-                    disable={loadingCursos}
-                    search
-                    searchPlaceholder="Buscar curso..."
-                    dropdownPosition="auto"
-                    renderRightIcon={() => (
-                      <Svg
-                        height="20"
-                        viewBox="0 -960 960 960"
-                        width="20"
-                        fill="#64748b"
-                      >
-                        <Path d="M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z" />
-                      </Svg>
-                    )}
-                    placeholderStyle={styles.dropdownPlaceholder}
-                    selectedTextStyle={styles.dropdownSelectedText}
-                    itemTextStyle={styles.dropdownItemText}
-                  />
-                  <View
-                    style={[
-                      styles.quantityContainer,
-                      !form.curso_id && styles.disabledQuantityContainer,
-                    ]}
-                  >
-                    <TouchableOpacity
-                      onPress={() =>
-                        handleCursoQuantityChange(form.curso_quantity - 1)
-                      }
-                      disabled={!form.curso_id || form.curso_quantity <= 1}
-                      style={styles.quantityButton}
-                    >
-                      <Text style={styles.quantityButtonText}>-</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.quantityText}>
-                      {form.curso_quantity}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() =>
-                        handleCursoQuantityChange(form.curso_quantity + 1)
-                      }
-                      disabled={!form.curso_id}
-                      style={styles.quantityButton}
-                    >
-                      <Text style={styles.quantityButtonText}>+</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </LabeledInput>
-
-              <LabeledInput label="Importe">
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <StepButton type="decrement" disabled />
-                  <Slider
-                    style={{ flex: 1, height: SLIDER_HEIGHT }}
-                    minimumValue={0}
-                    maximumValue={form.importe > 0 ? form.importe : 5000}
-                    value={form.importe}
-                    disabled={true}
-                    minimumTrackTintColor="#4b5563"
-                    maximumTrackTintColor="#d1d5db"
-                    thumbTintColor="#9ca3af"
-                  />
-                  <DisabledCurrencyDisplay value={form.importe} />
-                  <StepButton type="increment" disabled />
-                </View>
-              </LabeledInput>
-
-              <LabeledInput label="Anticipo">
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <StepButton
-                    type="decrement"
-                    disabled={isAnticipoDisabled || (form.anticipo || 0) <= 0}
-                    onPress={() =>
-                      handleDirectAnticipoChange(
-                        Math.max(0, (liveAnticipo || 0) - 50)
-                      )
-                    }
-                    onPressIn={() => {
-                      stopCounter(); // Limpia el anterior por si acaso
-                      intervalRef.current = setInterval(() => {
-                        // Usamos una función de callback para obtener el valor más reciente
-                        handleDirectAnticipoChange((prevValue) => {
-                          const newValue = Math.max(0, (prevValue || 0) - 50);
-                          return newValue;
-                        });
-                      }, 150); // Repite cada 150ms
-                    }}
-                    onPressOut={stopCounter}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Slider
-                      style={{ width: "100%", height: SLIDER_HEIGHT }}
-                      minimumValue={0}
-                      step={50}
-                      maximumValue={maxAnticipoPosible}
-                      value={Number(liveAnticipo) || 0}
-                      // onValueChange se omite para deshabilitar el deslizamiento
-                      onSlidingComplete={handleDirectAnticipoChange}
-                      disabled={isAnticipoDisabled}
-                      minimumTrackTintColor={
-                        isAnticipoDisabled ? "#9ca3af" : "#6F09EA"
-                      }
-                      maximumTrackTintColor="#d1d5db"
-                      thumbTintColor={
-                        isAnticipoDisabled ? "#9ca3af" : "#6F09EA"
-                      }
-                    />
-                  </View>
-                  <CurrencyInput
-                    value={form.anticipo}
-                    onChangeText={(text) => {
-                      const numericValue =
-                        text === ""
-                          ? 0
-                          : parseInt(text.replace(/[^0-9]/g, ""), 10) || 0;
-                      handleDirectAnticipoChange(numericValue);
-                    }}
-                    placeholder="0"
-                    editable={!isAnticipoDisabled}
-                  />
-                  <StepButton
-                    type="increment"
-                    disabled={
-                      isAnticipoDisabled || form.anticipo >= form.importe
-                    }
-                    onPress={() =>
-                      handleDirectAnticipoChange(
-                        Math.min(form.importe, (liveAnticipo || 0) + 50)
-                      )
-                    }
-                    onPressIn={() => {
-                      stopCounter();
-                      intervalRef.current = setInterval(() => {
-                        // Usamos una función de callback para obtener el valor más reciente
-                        handleDirectAnticipoChange((prevValue) => {
-                          const newValue = Math.min(
-                            form.importe,
-                            (prevValue || 0) + 50
-                          );
-                          return newValue;
-                        });
-                      }, 150);
-                    }}
-                    onPressOut={stopCounter}
-                  />
-                </View>
-                {form.curso_id && (
-                  <ChipButtonGroup
-                    clearLabel="Sin anticipo"
-                    disabled={isAnticipoDisabled}
-                    selectedValue={form.anticipo}
-                    chips={(() => {
-                      const importe = form.importe || 0;
-                      if (importe <= 0) return [];
-
-                      const standardChips = [50, 100, 200, 500];
-                      const dynamicChips = new Set();
-
-                      // 1. Añadir valores estándar que sean menores que el importe
-                      standardChips.forEach((v) => {
-                        if (v < importe) dynamicChips.add(v);
-                      });
-
-                      // 2. Generar valores grandes en decrementos de 500
-                      // Empezamos desde el múltiplo de 500 más cercano por debajo del importe
-                      let startValue = Math.floor((importe - 1) / 500) * 500;
-
-                      // Recorremos hacia abajo mientras el valor sea significativo (ej. > 500)
-                      while (startValue > 500) {
-                        dynamicChips.add(startValue);
-                        startValue -= 500;
-                      }
-
-                      // 3. Convertir el Set a un array de objetos, ordenar y añadir el botón "Total"
-                      const chipObjects = Array.from(dynamicChips)
-                        .sort((a, b) => a - b) // Ordenar de menor a mayor
-                        .map((v) => ({ label: `$${v}`, value: v }));
-
-                      chipObjects.push({
-                        label: "Total",
-                        value: importe,
-                        disabled: !importe || importe <= 0,
-                      });
-
-                      return chipObjects;
-                    })()}
-                    onSelect={handleDirectAnticipoChange}
-                  />
-                )}
-              </LabeledInput>
-
-              <LabeledInput
-                label={
-                  form.incentivo_premium
-                    ? "Pendiente (sin incentivo)"
-                    : "Total Final"
-                }
-              >
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <StepButton type="decrement" disabled />
-                  <Slider
-                    style={{ flex: 1, height: SLIDER_HEIGHT }}
-                    minimumValue={0}
-                    maximumValue={form.importe > 0 ? form.importe : 5000}
-                    value={
-                      pendienteSinIncentivo > 0 ? pendienteSinIncentivo : 0
-                    }
-                    disabled={true}
-                    minimumTrackTintColor="#4b5563"
-                    maximumTrackTintColor="#d1d5db"
-                    thumbTintColor="#9ca3af"
-                  />
-                  <DisabledCurrencyDisplay value={pendienteSinIncentivo} />
-                  <StepButton type="increment" disabled />
-                </View>
-              </LabeledInput>
-
-              <View style={styles.separator} />
-
-              <View
-                style={[
-                  styles.incentivoContainer,
-                  is_incentivo_disabled && styles.incentivoDisabledContainer,
-                ]}
-              >
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={handleIncentivoPress}
-                  onLongPress={
-                    Platform.OS !== "web" && is_incentivo_active
-                      ? handleIncentivoDeactivation
-                      : null
-                  }
-                  style={[
-                    styles.incentivoHeader,
-                    is_incentivo_active && styles.incentivoHeaderActive,
-                  ]}
-                  disabled={is_incentivo_disabled}
-                >
-                  <Svg
-                    height="18"
-                    viewBox="0 0 24 24"
-                    width="18"
-                    fill="#f59e0b"
-                  >
-                    <Path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3H5a2 2 0 00-2 2v1h20v-1a2 2 0 00-2-2z" />
-                  </Svg>
-                  <Text style={styles.premiumLabelText}>Incentivo Premium</Text>
-                </TouchableOpacity>
-
-                {is_incentivo_active && (
-                  <View style={styles.incentivoBody}>
-                    <View style={styles.segmentedControlContainer}>
-                      <TouchableOpacity
-                        style={[
-                          styles.segmentedChip,
-                          !incentivoEnPorcentaje && styles.segmentedChipActive,
-                        ]}
-                        onPress={() => {
-                          if (incentivoEnPorcentaje) toggleIncentivoTipo();
-                        }}
-                        disabled={is_incentivo_disabled}
-                      >
-                        <Text
-                          style={[
-                            styles.segmentedChipText,
-                            !incentivoEnPorcentaje &&
-                              styles.segmentedChipTextActive,
-                          ]}
-                        >
-                          Monto Fijo ($)
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[
-                          styles.segmentedChip,
-                          incentivoEnPorcentaje && styles.segmentedChipActive,
-                        ]}
-                        onPress={() => {
-                          if (!incentivoEnPorcentaje) toggleIncentivoTipo();
-                        }}
-                        disabled={is_incentivo_disabled}
-                      >
-                        <Text
-                          style={[
-                            styles.segmentedChipText,
-                            incentivoEnPorcentaje &&
-                              styles.segmentedChipTextActive,
-                          ]}
-                        >
-                          Porcentaje (%)
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
                     <View
-                      style={{ flexDirection: "row", alignItems: "center" }}
+                      style={[
+                        styles.quantityContainer,
+                        !form.curso_id && styles.disabledQuantityContainer,
+                      ]}
                     >
-                      <StepButton
-                        type="decrement"
-                        disabled={
-                          is_incentivo_disabled ||
-                          (form.incentivo_premium || 0) <= 0
-                        }
-                        onPress={() =>
-                          handleDirectIncentivoChange(
-                            Math.max(
-                              0,
-                              (liveIncentivo || 0) -
-                                (incentivoEnPorcentaje ? 5 : 50)
-                            )
-                          )
-                        }
-                        onPressIn={() => {
-                          stopCounter();
-                          intervalRef.current = setInterval(() => {
-                            // Usamos una función de callback para obtener el valor más reciente
-                            handleDirectIncentivoChange((prevValue) => {
-                              const step = incentivoEnPorcentaje ? 5 : 50;
-                              return Math.max(0, (prevValue || 0) - step);
-                            });
-                          }, 150);
+                      <TouchableOpacity
+                        // 1. Tu lógica combinada
+                        onPress={() => {
+                          // EL BISTURÍ (con doble chequeo):
+                          if (!form.curso_id || form.curso_quantity <= 1)
+                            return;
+
+                          // Si pasa, ejecuta la función:
+                          handleCursoQuantityChange(form.curso_quantity - 1);
                         }}
-                        onPressOut={stopCounter}
-                      />
-                      <View style={{ flex: 1 }}>
-                        <Slider
-                          style={{ width: "100%", height: SLIDER_HEIGHT }}
-                          minimumValue={0}
-                          maximumValue={
-                            incentivoEnPorcentaje ? 100 : pendienteSinIncentivo
-                          }
-                          step={incentivoEnPorcentaje ? 5 : 50}
-                          value={Number(liveIncentivo) || 0}
-                          // onValueChange se omite para deshabilitar el deslizamiento
-                          onSlidingComplete={handleDirectIncentivoChange}
-                          minimumTrackTintColor={
-                            is_incentivo_disabled ? "#4b5563" : "#6F09EA"
-                          }
-                          maximumTrackTintColor="#d1d5db"
-                          thumbTintColor={
-                            is_incentivo_disabled ? "#9ca3af" : "#6F09EA"
-                          }
-                          disabled={is_incentivo_disabled}
-                        />
-                      </View>
-                      {incentivoEnPorcentaje ? (
-                        <TextInput
-                          style={[
-                            styles.input,
-                            { width: 100, marginLeft: 10, textAlign: "right" },
-                            is_incentivo_disabled && styles.disabledInput,
-                          ]}
-                          value={
-                            form.incentivo_premium === null
-                              ? ""
-                              : `${Math.round(form.incentivo_premium)} %`
-                          }
-                          onChangeText={(text) => {
-                            const numericValue =
-                              text === ""
-                                ? null
-                                : parseInt(text.replace(/[^0-9]/g, ""), 10) ||
-                                  0;
-                            handleDirectIncentivoChange(numericValue);
-                          }}
-                          keyboardType="number-pad"
-                          placeholder="0 %"
-                          editable={!is_incentivo_disabled}
-                        />
-                      ) : (
-                        <CurrencyInput
-                          value={form.incentivo_premium}
-                          onChangeText={(text) => {
-                            const numericValue =
-                              text === ""
-                                ? 0
-                                : parseInt(text.replace(/[^0-9]/g, ""), 10) ||
-                                  0;
-                            handleDirectIncentivoChange(numericValue);
-                          }}
-                          editable={!is_incentivo_disabled}
-                        />
-                      )}
-                      <StepButton
-                        type="increment"
-                        disabled={
-                          is_incentivo_disabled ||
-                          (incentivoEnPorcentaje // Si es %, el límite es 100
-                            ? form.incentivo_premium >= 100 // Si es monto, el límite es el importe total del curso
-                            : form.incentivo_premium >= form.importe)
+                        // 2. (Opcional) El control de opacidad
+                        activeOpacity={
+                          !form.curso_id || form.curso_quantity <= 1 ? 1.0 : 0.7
                         }
-                        onPress={() =>
-                          handleDirectIncentivoChange(
-                            (liveIncentivo || 0) +
-                              (incentivoEnPorcentaje ? 5 : 50)
-                          )
-                        }
-                        onPressIn={() => {
-                          stopCounter();
-                          intervalRef.current = setInterval(() => {
-                            handleDirectIncentivoChange((prevValue) => {
-                              const step = incentivoEnPorcentaje ? 5 : 50;
-                              return (prevValue || 0) + step;
-                            });
-                          }, 150);
+                        // 3. ¡ELIMINADO!
+                        // disabled={!form.curso_id || form.curso_quantity <= 1} // <--- Fuera
+
+                        style={styles.quantityButton}
+                      >
+                        <Text style={styles.quantityButtonText}>-</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.quantityText}>
+                        {form.curso_quantity}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          // EL BISTURÍ: Si no hay curso_id, no hagas nada y sal de aquí.
+                          if (!form.curso_id) return;
+
+                          // Si todo bien, ejecuta tu función
+                          handleCursoQuantityChange(form.curso_quantity + 1);
                         }}
-                        onPressOut={stopCounter}
+                        // 2. (Opcional pero recomendado)
+                        // Controla el feedback visual manualmente.
+                        // Si está deshabilitado, opacidad 1 (sin feedback). Si no, 0.7 (el default).
+                        activeOpacity={!form.curso_id ? 1.0 : 0.7}
+                        // 3. ¡ADIÓS AL CULPABLE!
+                        // disabled={!form.curso_id} // <--- Eliminado
+
+                        style={styles.quantityButton}
+                      >
+                        <Text style={styles.quantityButtonText}>+</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </LabeledInput>
+
+                <LabeledInput label="Importe">
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <StepButton type="decrement" disabled />
+                    <Slider
+                      pointerEvents={true ? "none" : "auto"}
+                      style={{ flex: 1, height: SLIDER_HEIGHT }}
+                      minimumValue={0}
+                      maximumValue={form.importe > 0 ? form.importe : 5000}
+                      value={form.importe}
+                      disabled={true}
+                      minimumTrackTintColor="#4b5563"
+                      maximumTrackTintColor="#d1d5db"
+                      thumbTintColor="#9ca3af"
+                    />
+                    <DisabledCurrencyDisplay value={form.importe} />
+                    <StepButton type="increment" disabled />
+                  </View>
+                </LabeledInput>
+
+                <LabeledInput label="Anticipo">
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <StepButton
+                      type="decrement"
+                      disabled={isAnticipoDisabled || (form.anticipo || 0) <= 0}
+                      onPress={() =>
+                        handleDirectAnticipoChange(
+                          Math.max(0, (liveAnticipo || 0) - 50)
+                        )
+                      }
+                      onPressIn={() => {
+                        stopCounter(); // Limpia el anterior por si acaso
+                        intervalRef.current = setInterval(() => {
+                          // Usamos una función de callback para obtener el valor más reciente
+                          handleDirectAnticipoChange((prevValue) => {
+                            const newValue = Math.max(0, (prevValue || 0) - 50);
+                            return newValue;
+                          });
+                        }, 150); // Repite cada 150ms
+                      }}
+                      onPressOut={stopCounter}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Slider
+                        style={{ width: "100%", height: SLIDER_HEIGHT }}
+                        minimumValue={0}
+                        step={50}
+                        maximumValue={maxAnticipoPosible}
+                        value={Number(liveAnticipo) || 0}
+                        // onValueChange se omite para deshabilitar el deslizamiento
+                        onSlidingComplete={handleDirectAnticipoChange}
+                        disabled={isAnticipoDisabled}
+                        minimumTrackTintColor={
+                          isAnticipoDisabled ? "#9ca3af" : "#6F09EA"
+                        }
+                        maximumTrackTintColor="#d1d5db"
+                        thumbTintColor={
+                          isAnticipoDisabled ? "#9ca3af" : "#6F09EA"
+                        }
                       />
                     </View>
-                    <ChipButtonGroup
-                      clearLabel="Sin incentivo"
-                      disabled={is_incentivo_disabled} // El grupo se deshabilita si el incentivo no es aplicable
-                      selectedValue={form.incentivo_premium}
-                      chips={
-                        incentivoEnPorcentaje
-                          ? [
-                              { label: "10%", value: 10 },
-                              { label: "25%", value: 25 },
-                              { label: "50%", value: 50 },
-                              { label: "75%", value: 75 },
-                              {
-                                label: "100%",
-                                value: 100,
-                              }, // Botón especial
-                            ]
-                          : (() => {
-                              // Lógica para chips de monto fijo
-                              const maxIncentivo = form.importe || 0;
-                              if (maxIncentivo <= 0) return [];
-
-                              const standardChips = [50, 100, 200, 500];
-                              const dynamicChips = new Set();
-
-                              standardChips.forEach((v) => {
-                                if (v < maxIncentivo) dynamicChips.add(v);
-                              });
-
-                              let startValue =
-                                Math.floor((maxIncentivo - 1) / 500) * 500;
-                              while (startValue > 500) {
-                                dynamicChips.add(startValue);
-                                startValue -= 500;
-                              }
-
-                              const chipObjects = Array.from(dynamicChips)
-                                .sort((a, b) => a - b)
-                                .map((v) => ({ label: `$${v}`, value: v }));
-
-                              chipObjects.push({
-                                label: "Máximo",
-                                value: maxIncentivo,
-                                disabled: !maxIncentivo || maxIncentivo <= 0,
-                              });
-
-                              return chipObjects;
-                            })()
+                    <CurrencyInput
+                      value={form.anticipo}
+                      onChangeText={(text) => {
+                        const numericValue =
+                          text === ""
+                            ? 0
+                            : parseInt(text.replace(/[^0-9]/g, ""), 10) || 0;
+                        handleDirectAnticipoChange(numericValue);
+                      }}
+                      placeholder="0"
+                      editable={!isAnticipoDisabled}
+                    />
+                    <StepButton
+                      type="increment"
+                      disabled={
+                        isAnticipoDisabled || form.anticipo >= form.importe
                       }
-                      onSelect={handleDirectIncentivoChange}
+                      onPress={() =>
+                        handleDirectAnticipoChange(
+                          Math.min(form.importe, (liveAnticipo || 0) + 50)
+                        )
+                      }
+                      onPressIn={() => {
+                        stopCounter();
+                        intervalRef.current = setInterval(() => {
+                          // Usamos una función de callback para obtener el valor más reciente
+                          handleDirectAnticipoChange((prevValue) => {
+                            const newValue = Math.min(
+                              form.importe,
+                              (prevValue || 0) + 50
+                            );
+                            return newValue;
+                          });
+                        }, 150);
+                      }}
+                      onPressOut={stopCounter}
                     />
                   </View>
-                )}
-              </View>
+                  {form.curso_id && (
+                    <ChipButtonGroup
+                      clearLabel="Sin anticipo"
+                      disabled={isAnticipoDisabled}
+                      selectedValue={form.anticipo}
+                      chips={(() => {
+                        const importe = form.importe || 0;
+                        if (importe <= 0) return [];
 
-              {form.incentivo_premium > 0 ? (
-                <LabeledInput label="Pendiente (con incentivo)">
+                        const standardChips = [50, 100, 200, 500];
+                        const dynamicChips = new Set();
+
+                        // 1. Añadir valores estándar que sean menores que el importe
+                        standardChips.forEach((v) => {
+                          if (v < importe) dynamicChips.add(v);
+                        });
+
+                        // 2. Generar valores grandes en decrementos de 500
+                        // Empezamos desde el múltiplo de 500 más cercano por debajo del importe
+                        let startValue = Math.floor((importe - 1) / 500) * 500;
+
+                        // Recorremos hacia abajo mientras el valor sea significativo (ej. > 500)
+                        while (startValue > 500) {
+                          dynamicChips.add(startValue);
+                          startValue -= 500;
+                        }
+
+                        // 3. Convertir el Set a un array de objetos, ordenar y añadir el botón "Total"
+                        const chipObjects = Array.from(dynamicChips)
+                          .sort((a, b) => a - b) // Ordenar de menor a mayor
+                          .map((v) => ({ label: `$${v}`, value: v }));
+
+                        chipObjects.push({
+                          label: "Total",
+                          value: importe,
+                          disabled: !importe || importe <= 0,
+                        });
+
+                        return chipObjects;
+                      })()}
+                      onSelect={handleDirectAnticipoChange}
+                    />
+                  )}
+                </LabeledInput>
+
+                <LabeledInput
+                  label={
+                    form.incentivo_premium
+                      ? "Pendiente (sin incentivo)"
+                      : "Total Final"
+                  }
+                >
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
                     <StepButton type="decrement" disabled />
                     <Slider
                       style={{ flex: 1, height: SLIDER_HEIGHT }}
                       minimumValue={0}
                       maximumValue={form.importe > 0 ? form.importe : 5000}
-                      value={totalFinal > 0 ? totalFinal : 0}
+                      value={
+                        pendienteSinIncentivo > 0 ? pendienteSinIncentivo : 0
+                      }
                       disabled={true}
                       minimumTrackTintColor="#4b5563"
                       maximumTrackTintColor="#d1d5db"
                       thumbTintColor="#9ca3af"
                     />
-                    <DisabledCurrencyDisplay value={totalFinal} />
+                    <DisabledCurrencyDisplay value={pendienteSinIncentivo} />
                     <StepButton type="increment" disabled />
                   </View>
                 </LabeledInput>
-              ) : null}
 
-              <LabeledInput label="Total a pagar">
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <StepButton type="decrement" disabled />
-                  <Slider
-                    style={{ flex: 1, height: SLIDER_HEIGHT }}
-                    minimumValue={0}
-                    maximumValue={form.importe > 0 ? form.importe : 5000} // El máximo sigue siendo el importe original
-                    value={totalConIncentivo > 0 ? totalConIncentivo : 0}
-                    disabled={true}
-                    minimumTrackTintColor="#4b5563"
-                    maximumTrackTintColor="#d1d5db"
-                    thumbTintColor="#9ca3af"
-                  />
-                  <DisabledCurrencyDisplay value={totalConIncentivo} />
-                  <StepButton type="increment" disabled />
-                </View>
-              </LabeledInput>
+                {/* <TouchableWithoutFeedback activeOpacity={1} style={styles.separator} /> */}
 
-              <LabeledInput
-                label="Fecha Límite de Pago"
-                helperText={defineFechaLimite ? formattedFechaLimite : null}
-              >
-                {isPagoCompleto && form.curso_id ? (
-                  <View
-                    style={styles.pagoCompletoContainer}
-                    pointerEvents="none"
-                  >
-                    <Text style={styles.pagoCompletoText}>
-                      El pago ha sido cubierto en su totalidad.
-                    </Text>
-                  </View>
-                ) : (
-                  <>
-                    <View style={styles.switchContainer}>
-                      <Text style={styles.switchLabel}>
-                        Establecer fecha límite de pago
-                      </Text>
-                      <Switch
-                        trackColor={{ false: "#e5e7eb", true: "#a78bfa" }}
-                        thumbColor={defineFechaLimite ? "#6F09EA" : "#f4f3f4"}
-                        onValueChange={() =>
-                          setDefineFechaLimite((prev) => !prev)
-                        }
-                        disabled={!form.curso_id}
-                        value={defineFechaLimite}
-                      />
-                    </View>
-                    {defineFechaLimite ? (
-                      <View
-                        style={[styles.dateInputContainer, { marginTop: 4 }]}
-                      >
-                        <TextInput
-                          style={styles.dateInput}
-                          placeholder="DD"
-                          value={dateParts.day}
-                          onChangeText={(text) =>
-                            handleDatePartChange("day", text)
-                          }
-                          keyboardType="number-pad"
-                          maxLength={2}
-                          onBlur={() => handleDateBlur("day")}
-                        />
-                        <Text style={styles.dateSeparator}>/</Text>
-                        <TextInput
-                          ref={monthInputRef}
-                          style={styles.dateInput}
-                          placeholder="MM"
-                          value={dateParts.month}
-                          onChangeText={(text) =>
-                            handleDatePartChange("month", text)
-                          }
-                          keyboardType="number-pad"
-                          maxLength={2}
-                          onBlur={() => handleDateBlur("month")}
-                        />
-                        <Text style={styles.dateSeparator}>/</Text>
-                        <TextInput
-                          ref={yearInputRef}
-                          style={[styles.dateInput, { flex: 1.5 }]}
-                          placeholder="AAAA"
-                          value={dateParts.year}
-                          onChangeText={(text) =>
-                            handleDatePartChange("year", text)
-                          }
-                          keyboardType="number-pad"
-                          maxLength={4}
-                        />
-                      </View>
-                    ) : (
-                      <Text style={styles.helperText}>
-                        La fecha de pago es indefinida
-                      </Text>
-                    )}
-                  </>
-                )}
-              </LabeledInput>
-
-              <LabeledInput label="Descripción">
-                <View
-                  style={{ flexDirection: "row", alignItems: "flex-start" }}
+                <TouchableOpacity
+                  activeOpacity={1}
+                  style={[
+                    styles.incentivoContainer,
+                    is_incentivo_disabled && styles.incentivoDisabledContainer,
+                  ]}
                 >
-                  <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        height: 100,
-                        textAlignVertical: "top",
-                        flex: 1,
-                        marginRight: 8,
-                      },
-                    ]}
-                    value={form.descripcion}
-                    onChangeText={(newText) => {
-                      // Si el usuario escribe, activamos el modo manual
-                      if (!isDescripcionManual) setIsDescripcionManual(true);
-                      setForm({ ...form, descripcion: newText });
-                    }}
-                    placeholder="Añade notas o detalles adicionales sobre la venta..."
-                    multiline
-                  />
                   <TouchableOpacity
+                    activeOpacity={is_incentivo_disabled ? 1.0 : 0.8}
                     onPress={() => {
-                      if (isDescripcionManual) {
-                        // Si es manual, restauramos la automática
-                        setIsDescripcionManual(false);
-                      } else {
-                        // Si es automática, la limpiamos y activamos modo manual
-                        setIsDescripcionManual(true);
-                        setForm({ ...form, descripcion: "" });
-                      }
+                      // El "bisturí": Si está deshabilitado, no hagas nada.
+                      if (is_incentivo_disabled) return;
+
+                      // Si pasa el chequeo, ejecuta tu función original.
+                      handleIncentivoPress();
                     }}
-                    style={styles.clearDescriptionButton}
+                    onLongPress={
+                      Platform.OS !== "web" && is_incentivo_active
+                        ? handleIncentivoDeactivation
+                        : null
+                    }
+                    style={[
+                      styles.incentivoHeader,
+                      is_incentivo_active && styles.incentivoHeaderActive,
+                    ]}
                   >
-                    {isDescripcionManual ? (
-                      <Svg
-                        height="22"
-                        viewBox="0 -960 960 960"
-                        width="22"
-                        fill="#4f46e5"
-                      >
-                        <Path d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T744-744l-56 56q-44-34-96-54.5T480-770q-109 0-184.5 75.5T220-510q0 109 75.5 184.5T480-250q100 0 172-66l56 56q-86 80-208 80Z" />
-                      </Svg>
-                    ) : (
-                      <Svg
-                        height="22"
-                        viewBox="0 -960 960 960"
-                        width="22"
-                        fill="#ef4444"
-                      >
-                        <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
-                      </Svg>
-                    )}
-                    <Text
-                      style={[
-                        styles.clearDescriptionButtonText,
-                        { color: isDescripcionManual ? "#4f46e5" : "#ef4444" },
-                      ]}
+                    <Svg
+                      height="18"
+                      viewBox="0 0 24 24"
+                      width="18"
+                      fill="#f59e0b"
                     >
-                      {isDescripcionManual ? "Restaurar" : "Limpiar"}
+                      <Path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3H5a2 2 0 00-2 2v1h20v-1a2 2 0 00-2-2z" />
+                    </Svg>
+                    <Text style={styles.premiumLabelText}>
+                      Incentivo Premium
                     </Text>
                   </TouchableOpacity>
-                </View>
-              </LabeledInput>
-            </ScrollView>
-            <View style={styles.actionsContainer}>
-              <TouchableOpacity
-                style={styles.clearButton}
-                onPress={handleClearForm}
-              >
-                <Text style={styles.clearButtonText}>Limpiar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.submitButton,
-                  { flex: 1 },
-                  !isFormValid && styles.submitButtonDisabled,
-                  isSaving && styles.submitButtonDisabled, // isSaving debe ir al final para prevalecer
-                ]}
-                disabled={!isFormValid || isSaving}
-                onPress={handleRegisterSale}
-              >
-                {isSaving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.submitButtonText}>Registrar Venta</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </KeyboardAvoidingView>
+
+                  {is_incentivo_active && (
+                    <TouchableOpacity
+                      activeOpacity={1}
+                      style={styles.incentivoBody}
+                    >
+                      <View style={styles.segmentedControlContainer}>
+                        <TouchableOpacity
+                          style={[
+                            styles.segmentedChip,
+                            !incentivoEnPorcentaje &&
+                              styles.segmentedChipActive,
+                          ]}
+                          onPress={() => {
+                            if (incentivoEnPorcentaje) toggleIncentivoTipo();
+                          }}
+                          disabled={is_incentivo_disabled}
+                        >
+                          <Text
+                            style={[
+                              styles.segmentedChipText,
+                              !incentivoEnPorcentaje &&
+                                styles.segmentedChipTextActive,
+                            ]}
+                          >
+                            Monto Fijo ($)
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.segmentedChip,
+                            incentivoEnPorcentaje && styles.segmentedChipActive,
+                          ]}
+                          onPress={() => {
+                            if (!incentivoEnPorcentaje) toggleIncentivoTipo();
+                          }}
+                          disabled={is_incentivo_disabled}
+                        >
+                          <Text
+                            style={[
+                              styles.segmentedChipText,
+                              incentivoEnPorcentaje &&
+                                styles.segmentedChipTextActive,
+                            ]}
+                          >
+                            Porcentaje (%)
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                      <View
+                        style={{ flexDirection: "row", alignItems: "center" }}
+                      >
+                        <StepButton
+                          type="decrement"
+                          disabled={
+                            is_incentivo_disabled ||
+                            (form.incentivo_premium || 0) <= 0
+                          }
+                          onPress={() =>
+                            handleDirectIncentivoChange(
+                              Math.max(
+                                0,
+                                (liveIncentivo || 0) -
+                                  (incentivoEnPorcentaje ? 5 : 50)
+                              )
+                            )
+                          }
+                          onPressIn={() => {
+                            stopCounter();
+                            intervalRef.current = setInterval(() => {
+                              // Usamos una función de callback para obtener el valor más reciente
+                              handleDirectIncentivoChange((prevValue) => {
+                                const step = incentivoEnPorcentaje ? 5 : 50;
+                                return Math.max(0, (prevValue || 0) - step);
+                              });
+                            }, 150);
+                          }}
+                          onPressOut={stopCounter}
+                        />
+                        <View style={{ flex: 1 }}>
+                          <Slider
+                            style={{ width: "100%", height: SLIDER_HEIGHT }}
+                            minimumValue={0}
+                            maximumValue={
+                              incentivoEnPorcentaje
+                                ? 100
+                                : pendienteSinIncentivo
+                            }
+                            step={incentivoEnPorcentaje ? 5 : 50}
+                            value={Number(liveIncentivo) || 0}
+                            // onValueChange se omite para deshabilitar el deslizamiento
+                            onSlidingComplete={handleDirectIncentivoChange}
+                            minimumTrackTintColor={
+                              is_incentivo_disabled ? "#4b5563" : "#6F09EA"
+                            }
+                            maximumTrackTintColor="#d1d5db"
+                            thumbTintColor={
+                              is_incentivo_disabled ? "#9ca3af" : "#6F09EA"
+                            }
+                            disabled={is_incentivo_disabled}
+                          />
+                        </View>
+                        {incentivoEnPorcentaje ? (
+                          <TextInput
+                            style={[
+                              styles.input,
+                              {
+                                width: 100,
+                                marginLeft: 10,
+                                textAlign: "right",
+                              },
+                              is_incentivo_disabled && styles.disabledInput,
+                            ]}
+                            value={
+                              form.incentivo_premium === null
+                                ? ""
+                                : `${Math.round(form.incentivo_premium)} %`
+                            }
+                            onChangeText={(text) => {
+                              const numericValue =
+                                text === ""
+                                  ? null
+                                  : parseInt(text.replace(/[^0-9]/g, ""), 10) ||
+                                    0;
+                              handleDirectIncentivoChange(numericValue);
+                            }}
+                            keyboardType="number-pad"
+                            placeholder="0 %"
+                            editable={!is_incentivo_disabled}
+                          />
+                        ) : (
+                          <CurrencyInput
+                            value={form.incentivo_premium}
+                            onChangeText={(text) => {
+                              const numericValue =
+                                text === ""
+                                  ? 0
+                                  : parseInt(text.replace(/[^0-9]/g, ""), 10) ||
+                                    0;
+                              handleDirectIncentivoChange(numericValue);
+                            }}
+                            editable={!is_incentivo_disabled}
+                          />
+                        )}
+                        <StepButton
+                          type="increment"
+                          disabled={
+                            is_incentivo_disabled ||
+                            (incentivoEnPorcentaje // Si es %, el límite es 100
+                              ? form.incentivo_premium >= 100 // Si es monto, el límite es el importe total del curso
+                              : form.incentivo_premium >= form.importe)
+                          }
+                          onPress={() =>
+                            handleDirectIncentivoChange(
+                              (liveIncentivo || 0) +
+                                (incentivoEnPorcentaje ? 5 : 50)
+                            )
+                          }
+                          onPressIn={() => {
+                            stopCounter();
+                            intervalRef.current = setInterval(() => {
+                              handleDirectIncentivoChange((prevValue) => {
+                                const step = incentivoEnPorcentaje ? 5 : 50;
+                                return (prevValue || 0) + step;
+                              });
+                            }, 150);
+                          }}
+                          onPressOut={stopCounter}
+                        />
+                      </View>
+                      <ChipButtonGroup
+                        clearLabel="Sin incentivo"
+                        disabled={is_incentivo_disabled} // El grupo se deshabilita si el incentivo no es aplicable
+                        selectedValue={form.incentivo_premium}
+                        chips={
+                          incentivoEnPorcentaje
+                            ? [
+                                { label: "10%", value: 10 },
+                                { label: "25%", value: 25 },
+                                { label: "50%", value: 50 },
+                                { label: "75%", value: 75 },
+                                {
+                                  label: "100%",
+                                  value: 100,
+                                }, // Botón especial
+                              ]
+                            : (() => {
+                                // Lógica para chips de monto fijo
+                                const maxIncentivo = form.importe || 0;
+                                if (maxIncentivo <= 0) return [];
+
+                                const standardChips = [50, 100, 200, 500];
+                                const dynamicChips = new Set();
+
+                                standardChips.forEach((v) => {
+                                  if (v < maxIncentivo) dynamicChips.add(v);
+                                });
+
+                                let startValue =
+                                  Math.floor((maxIncentivo - 1) / 500) * 500;
+                                while (startValue > 500) {
+                                  dynamicChips.add(startValue);
+                                  startValue -= 500;
+                                }
+
+                                const chipObjects = Array.from(dynamicChips)
+                                  .sort((a, b) => a - b)
+                                  .map((v) => ({ label: `$${v}`, value: v }));
+
+                                chipObjects.push({
+                                  label: "Máximo",
+                                  value: maxIncentivo,
+                                  disabled: !maxIncentivo || maxIncentivo <= 0,
+                                });
+
+                                return chipObjects;
+                              })()
+                        }
+                        onSelect={handleDirectIncentivoChange}
+                      />
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+
+                {form.incentivo_premium > 0 ? (
+                  <LabeledInput label="Pendiente (con incentivo)">
+                    <View
+                      style={{ flexDirection: "row", alignItems: "center" }}
+                    >
+                      <StepButton type="decrement" disabled />
+                      <Slider
+                        style={{ flex: 1, height: SLIDER_HEIGHT }}
+                        minimumValue={0}
+                        maximumValue={form.importe > 0 ? form.importe : 5000}
+                        value={totalFinal > 0 ? totalFinal : 0}
+                        disabled={true}
+                        minimumTrackTintColor="#4b5563"
+                        maximumTrackTintColor="#d1d5db"
+                        thumbTintColor="#9ca3af"
+                      />
+                      <DisabledCurrencyDisplay value={totalFinal} />
+                      <StepButton type="increment" disabled />
+                    </View>
+                  </LabeledInput>
+                ) : null}
+
+                <LabeledInput label="Total a pagar">
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <StepButton type="decrement" disabled />
+                    <Slider
+                      style={{ flex: 1, height: SLIDER_HEIGHT }}
+                      minimumValue={0}
+                      maximumValue={form.importe > 0 ? form.importe : 5000} // El máximo sigue siendo el importe original
+                      value={totalConIncentivo > 0 ? totalConIncentivo : 0}
+                      disabled={true}
+                      minimumTrackTintColor="#4b5563"
+                      maximumTrackTintColor="#d1d5db"
+                      thumbTintColor="#9ca3af"
+                    />
+                    <DisabledCurrencyDisplay value={totalConIncentivo} />
+                    <StepButton type="increment" disabled />
+                  </View>
+                </LabeledInput>
+
+                <LabeledInput
+                  label="Fecha Límite de Pago"
+                  helperText={defineFechaLimite ? formattedFechaLimite : null}
+                >
+                  {isPagoCompleto && form.curso_id ? (
+                    <View
+                      style={styles.pagoCompletoContainer}
+                      pointerEvents="none"
+                    >
+                      <Text style={styles.pagoCompletoText}>
+                        El pago ha sido cubierto en su totalidad.
+                      </Text>
+                    </View>
+                  ) : (
+                    <>
+                      <View style={styles.switchContainer}>
+                        <Text style={styles.switchLabel}>
+                          Establecer fecha límite de pago
+                        </Text>
+                        <Switch
+                          trackColor={{ false: "#e5e7eb", true: "#a78bfa" }}
+                          thumbColor={defineFechaLimite ? "#6F09EA" : "#f4f3f4"}
+                          onValueChange={() =>
+                            setDefineFechaLimite((prev) => !prev)
+                          }
+                          disabled={!form.curso_id}
+                          value={defineFechaLimite}
+                        />
+                      </View>
+                      {defineFechaLimite ? (
+                        <View
+                          style={[styles.dateInputContainer, { marginTop: 4 }]}
+                        >
+                          <TextInput
+                            style={styles.dateInput}
+                            placeholder="DD"
+                            value={dateParts.day}
+                            onChangeText={(text) =>
+                              handleDatePartChange("day", text)
+                            }
+                            keyboardType="number-pad"
+                            maxLength={2}
+                            onBlur={() => handleDateBlur("day")}
+                          />
+                          <Text style={styles.dateSeparator}>/</Text>
+                          <TextInput
+                            ref={monthInputRef}
+                            style={styles.dateInput}
+                            placeholder="MM"
+                            value={dateParts.month}
+                            onChangeText={(text) =>
+                              handleDatePartChange("month", text)
+                            }
+                            keyboardType="number-pad"
+                            maxLength={2}
+                            onBlur={() => handleDateBlur("month")}
+                          />
+                          <Text style={styles.dateSeparator}>/</Text>
+                          <TextInput
+                            ref={yearInputRef}
+                            style={[styles.dateInput, { flex: 1.5 }]}
+                            placeholder="AAAA"
+                            value={dateParts.year}
+                            onChangeText={(text) =>
+                              handleDatePartChange("year", text)
+                            }
+                            keyboardType="number-pad"
+                            maxLength={4}
+                          />
+                        </View>
+                      ) : (
+                        <Text style={styles.helperText}>
+                          La fecha de pago es indefinida
+                        </Text>
+                      )}
+                    </>
+                  )}
+                </LabeledInput>
+
+                <LabeledInput label="Descripción">
+                  <View
+                    style={{ flexDirection: "row", alignItems: "flex-start" }}
+                  >
+                    <TextInput
+                      style={[
+                        styles.input,
+                        {
+                          height: 100,
+                          textAlignVertical: "top",
+                          flex: 1,
+                          marginRight: 8,
+                        },
+                      ]}
+                      value={form.descripcion}
+                      onChangeText={(newText) => {
+                        // Si el usuario escribe, activamos el modo manual
+                        if (!isDescripcionManual) setIsDescripcionManual(true);
+                        setForm({ ...form, descripcion: newText });
+                      }}
+                      placeholder="Añade notas o detalles adicionales sobre la venta..."
+                      multiline
+                    />
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (isDescripcionManual) {
+                          // Si es manual, restauramos la automática
+                          setIsDescripcionManual(false);
+                        } else {
+                          // Si es automática, la limpiamos y activamos modo manual
+                          setIsDescripcionManual(true);
+                          setForm({ ...form, descripcion: "" });
+                        }
+                      }}
+                      style={styles.clearDescriptionButton}
+                    >
+                      {isDescripcionManual ? (
+                        <Svg
+                          height="22"
+                          viewBox="0 -960 960 960"
+                          width="22"
+                          fill="#4f46e5"
+                        >
+                          <Path d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T744-744l-56 56q-44-34-96-54.5T480-770q-109 0-184.5 75.5T220-510q0 109 75.5 184.5T480-250q100 0 172-66l56 56q-86 80-208 80Z" />
+                        </Svg>
+                      ) : (
+                        <Svg
+                          height="22"
+                          viewBox="0 -960 960 960"
+                          width="22"
+                          fill="#ef4444"
+                        >
+                          <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                        </Svg>
+                      )}
+                      <Text
+                        style={[
+                          styles.clearDescriptionButtonText,
+                          {
+                            color: isDescripcionManual ? "#4f46e5" : "#ef4444",
+                          },
+                        ]}
+                      >
+                        {isDescripcionManual ? "Restaurar" : "Limpiar"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </LabeledInput>
+              </ScrollView>
+              <View style={styles.actionsContainer}>
+                <TouchableOpacity
+                  style={styles.clearButton}
+                  onPress={handleClearForm}
+                >
+                  <Text style={styles.clearButtonText}>Limpiar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.submitButton,
+                    { flex: 1 },
+                    !isFormValid && styles.submitButtonDisabled,
+                    isSaving && styles.submitButtonDisabled, // isSaving debe ir al final para prevalecer
+                  ]}
+                  disabled={!isFormValid || isSaving}
+                  onPress={handleRegisterSale}
+                >
+                  {isSaving ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.submitButtonText}>Registrar Venta</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </KeyboardAvoidingView>
+          </View>
+          <View
+            id="ticket"
+            className={isLandscape ? "" : "hidden"}
+            style={styles.previewContainer}
+          >
+            <TicketPreview
+              form={form}
+              curso={selectedCursoInfo}
+              totalFinal={totalFinal}
+              totalConIncentivo={totalConIncentivo}
+            />
+          </View>
         </View>
-        {isLandscape && (
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={styles.previewContainer}>
-              <TicketPreview
-                form={form}
-                curso={selectedCursoInfo}
-                totalFinal={totalFinal}
-                totalConIncentivo={totalConIncentivo}
-              />
-            </View>
-          </TouchableWithoutFeedback>
-        )}
       </View>
-      </View>
-      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }
@@ -2070,7 +2108,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 40, // Espacio extra al final
-    zIndex: 2,
   },
   input: {
     borderWidth: 1,
