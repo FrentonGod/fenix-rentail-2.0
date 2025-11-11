@@ -30,6 +30,11 @@ import { Dropdown } from "react-native-element-dropdown";
 import Slider from "@react-native-community/slider";
 import Svg, { Path } from "react-native-svg";
 
+import * as Print from "expo-print";
+import { shareAsync } from "expo-sharing";
+
+import Logo from "../../assets/MQerK_logo.jpg";
+
 const LabeledInput = ({
   label,
   error,
@@ -204,6 +209,137 @@ const TicketPreview = ({ form, curso, totalFinal, totalConIncentivo }) => {
     style: "currency",
     currency: "MXN",
   });
+
+  const html = `
+    <div style="flex: 1 1 0%; background-color: #ffffff; font-family: monospace; font-size: 0.75rem; line-height: 1rem; color: #000000;">
+      <div style="display: flex; height: 4.5rem; margin-top: -0.75rem; justify-content: center; position: relative;">
+        <h1 style="position: absolute; top: 1.75rem; letter-spacing: .025em; font-family: sans-serif; font-weight: 700; font-size: 12px; z-index: 1;">
+          MQerK
+        </h1>
+        <h2 style="position: absolute; bottom: 1.125rem; left: 4.375rem; letter-spacing: .3em; font-family: sans-serif; font-size: 10px; font-weight: 300; z-index: 1;">
+          Academy
+        </h2>
+        <svg viewBox="0 0 500 400" style="position: absolute; bottom: -3.625rem; z-index: 1;">
+          <path id="curva-eslogan" d="M 50 150 C 150 250, 350 250, 450 150" fill="transparent" stroke="transparent" />
+          <text style="font-size: 6.5px; font-family: sans-serif; font-weight: 700; fill: rgb(31 41 55); letter-spacing: 2px;">
+            <textPath xlink:href="#curva-eslogan" startOffset="50%" textAnchor="middle">
+              Sé un Ciudadano, sé Profesional
+            </textPath>
+          </text>
+        </svg>
+        <div style="position: absolute; top: 1.5rem; right: 3.75rem; border-radius: 9999px; padding: 2.5px; border-width: 0.8px;"></div>
+        <p style="font-size: 5px; position: absolute; top: 1.2rem; right: 3.875rem; font-weight: 700;">
+          R
+        </p>
+        <img style="object-fit: contain; width: 5rem; position: absolute;" src="${Logo}" alt="Logo MQerk Academy" />
+      </div>
+      <div>
+        <p>Asesores Especializados en la enseñanza de la Ciencia y Tecnología</p>
+        <p>C. Benito Juárez #25 Col. Centro</p>
+        <p>Tuxtepec, Oaxaca</p>
+        <p>C.P. 68300</p>
+        <p>Tel. 287-181-1231</p>
+        <p>RFC: GORK980908K61</p>
+        <p>${today.toLocaleString("es-MX")}</p>
+        <p>Folio: MQ-2026-0001</p>
+        <h4 style="font-size: 0.875rem; line-height: 1.25rem;">Comprobante de Venta</h4>
+      </div>
+
+      <div style="margin-bottom: 0.25rem;">
+        <h5 style="font-size: 0.75rem; line-height: 1rem; font-weight: 700; border-bottom: 1px solid #000;">
+          Cliente
+        </h5>
+        <p>${form.nombre_cliente || "No especificado"}</p>
+        <p>${form.direccion || "No especificado"}</p>
+
+        <p>${form.descripcion}</p>
+        <p>Sesiones Mensuales (8 horas)</p>
+        <p>${form.grupo || "No especificado"}</p>
+        <p>Compra de 3 cursos react native avanzado</p>
+      </div>
+
+      <div style="margin-bottom: 0.25rem;">
+        <h5 style="font-size: 0.75rem; line-height: 1rem; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 0.25rem; margin-bottom: 0.25rem;">
+          Detalles
+        </h5>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+          ${
+            form.curso_id
+              ? `
+              <p style="flex-shrink: 1; margin-right: 0.5rem;">
+                ${form.curso_quantity}x ${curso?.label || "Curso..."}
+              </p>
+              <p>${currencyFormatter.format(form.importe)}</p>
+            `
+              : `
+              <p>Curso(s) no seleccionado(s)</p>
+              <p>${currencyFormatter.format(0)}</p>
+            `
+          }
+        </div>
+      </div>
+
+      ${
+        form.incentivo_premium > 0
+          ? `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+          <p>Incentivo Premium:</p>
+          <p>- ${currencyFormatter.format(form.importe - totalConIncentivo)}</p>
+        </div>
+      `
+          : ""
+      }
+
+      <div style="border-top: 1px dashed #000;"></div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <p style="padding: 0.25rem 0;">Anticipo:</p>
+        <p>- ${currencyFormatter.format(form.anticipo || 0)}</p>
+      </div>
+
+      <div style="border-top: 1px dashed #000;"></div>
+
+      ${
+        form.anticipo > 0 && form.curso_id
+          ? `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <p style="font-weight: 700;">Pendiente:</p>
+          <p style="font-size: 1rem; line-height: 1.5rem; font-weight: 700;">
+            ${currencyFormatter.format(totalFinal < 0 ? 0 : totalFinal)}
+          </p>
+        </div>
+      `
+          : ""
+      }
+
+      ${
+        form.fecha_limite_pago
+          ? `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.25rem; font-size: 0.75rem; line-height: 1rem;">
+          <p>Fecha de pago:</p>
+          <p>${form.fecha_limite_pago}</p>
+        </div>
+      `
+          : ""
+      }
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+        <p style="font-weight: 600;">Total a Pagar:</p>
+        <p style="font-weight: 600; font-size: 1rem; line-height: 1.5rem;">
+          ${currencyFormatter.format(totalConIncentivo)}
+        </p>
+      </div>
+      <div style="border-top: 1px solid; border-bottom: 1px solid;">
+        <p>Forma de pago: Efectivo</p>
+      </div>
+      <p style="font-weight: 700;">*CONSERVE ESTE COMPROBANTE*</p>
+      <p>PAGO REALIZADO CON EXITO</p>
+      <p>NO HAY DEVOLUCION DEL PAGO POR CUALQUIER SERVICIO PRESTADO EN NUESTRA INSTITUCIÓN</p>
+      <p>Dudas o quejas al: 287-181-1231</p>
+      <p>¡GRACIAS POR LA CONFIANZA!</p>
+      <p>Direccion: Lic. Kelvin Valentin Gómez Ramírez</p>
+    </div>
+  `;
 
   return (
     <View style={styles.ticketContainer}>
@@ -877,13 +1013,13 @@ export default function RegistroVenta({ navigation, onFormClose }) {
     { label: "Otra", value: "Otra" },
   ];
   const grupos = [
-    { label: "Vespertino 1", value: "vespertino_1" },
-    { label: "Vespertino 2", value: "vespertino_2" },
-    { label: "Vespertino 3", value: "vespertino_3" },
-    { label: "Sabatino", value: "sabatino" },
-    { label: "Matutino 1", value: "matutino_1" },
-    { label: "Matutino 2", value: "matutino_2" },
-    { label: "Matutino 3", value: "matutino_3" },
+    { label: "Vespertino 1", value: "Vespertino 1" },
+    { label: "Vespertino 2", value: "Vespertino 2" },
+    { label: "Vespertino 3", value: "Vespertino 3" },
+    { label: "Sabatino", value: "Sabatino" },
+    { label: "Matutino 1", value: "Matutino 1" },
+    { label: "Matutino 2", value: "Matutino 2" },
+    { label: "Matutino 3", value: "Matutino 3" },
   ];
 
   const frecuencias = [
@@ -1079,6 +1215,155 @@ export default function RegistroVenta({ navigation, onFormClose }) {
     }
   }, [form, isFormValid, incentivoEnPorcentaje, totalFinal, onFormClose]);
 
+  const [selectedPrinter, setSelectedPrinter] = useState();
+
+  const today = new Date();
+
+  const html = `
+  <html>
+    <head>
+    <style></style>
+    </head>
+    <body style="width:181px; background-color: #ffffff; font-family: monospace; font-size: 0.75rem; line-height: 1rem; color: #000000;">
+      <div style="display: flex; height: 2rem; justify-content: center; position: relative;">
+      
+        <h1 style="position: absolute; top: -0.6rem; letter-spacing: .025em; font-family: sans-serif; font-weight: 700; font-size: 12px; z-index: 1;">
+          MQerK
+        </h1>
+        <h2 style="position: absolute; bottom: 0rem; left: 4.375rem; letter-spacing: .3em; font-family: sans-serif; font-size: 10px; font-weight: 300; z-index: 1;">
+          Academy
+        </h2>
+        
+        <div style="position: absolute; top: 0rem; right: 3.75rem; border-radius: 9999px; padding: 0.2rem; border-width: 1px; border-style: solid; border-color: #000000;"></div>
+        <p style="font-size: 0.01rem; position: absolute; top: -0.2rem; right: 3.85rem; font-weight: 700;">
+          R
+        </p>
+      </div>
+      <header>
+        <p style="margin: -1px 0px -1px 0px;">Asesores Especializados en la enseñanza de la Ciencia y Tecnología</p>
+        <p style="margin: -1px 0px -1px 0px;">C. Benito Juárez #25 Col. Centro</p>
+        <p style="margin: -1px 0px -1px 0px;">Tuxtepec, Oaxaca</p>
+        <p style="margin: -1px 0px -1px 0px;">C.P. 68300</p>
+        <p style="margin: -1px 0px -1px 0px;">Tel. 287-181-1231</p>
+        <p style="margin: -1px 0px -1px 0px;">RFC: GORK980908K61</p>
+        <p style="margin: -1px 0px -1px 0px;">${today.toLocaleString("es-MX")}</p>
+        <p style="margin: -1px 0px -1px 0px;">Folio: ${form.folio || "MQ-0000-0000"}</p>
+        <h4 style="font-size: 0.875rem; margin: -1px 0px -18px 0px; line-height: 1.25rem;">Comprobante de Venta</h4>
+      </header>
+
+      <article style="margin-bottom: -1rem;">
+        <h5 style="font-size: 0.75rem; line-height: 1rem; font-weight: 700; border-bottom: 1px solid #000;">
+          Cliente
+        </h5>
+        <p style="margin: -15px 0px 0px 0px;">${form.nombre_cliente || "No especificado"}</p>
+        <p style="margin: 0px 0px 0px 0px;">${form.direccion || "No especificado"}</p>
+        <p style="margin: 0px 0px 0px 0px;">${form.grupo || "No especificado"}</p>
+        <p style="margin: 0px 0px 0px 0px;">${form.descripcion}</p>
+      </article>
+
+      <div style="margin-bottom: -1rem;">
+        <h5 style="font-size: 0.75rem; line-height: 1rem; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 0.25rem; margin-bottom: 0.25rem;">
+          Detalles
+        </h5>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: -0.75rem 0 0 0">
+          ${
+            form.curso_id
+              ? `
+              <p style="flex-shrink: 1; margin-right: 0.5rem;">
+                ${form.curso_quantity}x ${selectedCursoInfo?.label || "Curso..."}
+              </p>
+              <p>${currencyFormatter.format(form.importe)}</p>
+            `
+              : `
+              <p>Curso(s) no seleccionado(s)</p>
+              <p>${currencyFormatter.format(0)}</p>
+            `
+          }
+        </div>
+      </div>
+      
+
+      ${
+        form.incentivo_premium > 0
+          ? `
+        <div style="margin: 0 0 -0.75rem 0; display: flex; justify-content: space-between; align-items: center;">
+          <p>Incentivo Premium:</p>
+          <p style="white-space: nowrap;">- ${currencyFormatter.format(form.importe - totalConIncentivo)}</p>
+        </div>
+      `
+          : ""
+      }
+
+      <div style="border-top: 1px dashed #000;"></div>
+
+      <div style="margin: -0.75rem 0;display: flex; justify-content: space-between; align-items: center;">
+        <p>Anticipo:</p>
+        <p>- ${currencyFormatter.format(form.anticipo || 0)}</p>
+      </div>
+
+      <div style="border-top: 1px dashed #000;"></div>
+
+      ${
+        form.anticipo > 0 && form.curso_id
+          ? `
+        <div style="display: flex; margin: -0.75rem 0; justify-content: space-between; align-items: center;">
+          <p style="font-weight: 700;">Pendiente:</p>
+          <p style="font-size: 1rem; line-height: 1.5rem; font-weight: 700;">
+            ${currencyFormatter.format(totalFinal < 0 ? 0 : totalFinal)}
+          </p>
+        </div>
+      `
+          : ""
+      }
+
+      ${
+        form.fecha_limite_pago
+          ? `
+        <div style="display: flex; margin: -1.25rem 0; justify-content: space-between; align-items: center; font-size: 0.75rem; line-height: 1rem;">
+          <p>Fecha de pago:</p>
+          <p>${form.fecha_limite_pago}</p>
+        </div>
+      `
+          : ""
+      }
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.2rem;">
+        <p style="font-weight: 600;">Total a Pagar:</p>
+        <p style="font-weight: 600; font-size: 1rem; line-height: 1.5rem;">
+          ${currencyFormatter.format(totalConIncentivo)}
+        </p>
+      </div>
+      <div style="border-top: 1px solid; border-bottom: 1px solid;">
+        <p>Forma de pago: Efectivo</p>
+      </div>
+      <p style="font-weight: 700; text-align:center; margin: -0.05rem 0;">*CONSERVE ESTE COMPROBANTE*</p>
+      <p style="margin: -0.05rem 0;">PAGO REALIZADO CON EXITO</p>
+      <p style="margin: -0.05rem 0;">NO HAY DEVOLUCION DEL PAGO POR CUALQUIER SERVICIO PRESTADO EN NUESTRA INSTITUCIÓN</p>
+      <p style="margin: -0.05rem 0;">Dudas o quejas al: 287-181-1231</p>
+      <p style="margin: -0.05rem 0;">¡GRACIAS POR LA CONFIANZA!</p>
+      <p style="margin: -0.05rem 0;">Direccion: Lic. Kelvin Valentin Gómez Ramírez</p>
+    </div>
+    </body>
+    </html>
+  `;
+
+  const print = async () => {
+    // On iOS/android prints the given html. On web prints the HTML from the current page.
+    await Print.printAsync({
+      html,
+      printerUrl: selectedPrinter?.url, // iOS only
+    });
+  };
+
+  const printToFile = async () => {
+    // On iOS/android prints the given html. On web prints the HTML from the current page.
+    const { uri } = await Print.printToFileAsync({
+      html:html,
+      width:200
+    });
+    console.log("File has been saved to:", uri);
+    await shareAsync(uri, { UTI: ".pdf", mimeType: "application/pdf" });
+  };
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       <View className="flex-1">
@@ -2058,7 +2343,8 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                     isSaving && styles.submitButtonDisabled, // isSaving debe ir al final para prevalecer
                   ]}
                   disabled={!isFormValid || isSaving}
-                  onPress={handleRegisterSale}
+                  // onPress={handleRegisterSale}
+                  onPress={printToFile}
                 >
                   {isSaving ? (
                     <ActivityIndicator color="#fff" />

@@ -566,7 +566,7 @@ export default function RegistroAsesor({
           <ScrollView
             id="formulario-asesores"
             className={`max-w-6xl self-center ${isLandscape ? "" : "mt-4"}`}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="never"
           >
             {/* Sección de la foto de perfil */}
             <TouchableOpacity activeOpacity={1} className="items-center mb-4">

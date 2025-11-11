@@ -1514,7 +1514,10 @@ const ScreenPagos = ({ navigation }) => {
 
 function LabeledInput({ label, error, children, containerClassName = "" }) {
   return (
-    <TouchableOpacity activeOpacity={1} className={`w-full ${containerClassName}`}>
+    <TouchableOpacity
+      activeOpacity={1}
+      className={`w-full ${containerClassName}`}
+    >
       <Text className="text-slate-700 text-xs font-semibold mb-1 uppercase tracking-wide">
         {label}
       </Text>
@@ -2082,15 +2085,14 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
             </Text>
           </View>
 
-          <ScrollView className="flex-1 max-w-6xl self-center mt-4"
-          keyboardShouldPersistTaps='handled'>
-            <View pointerEvents="box-only" className="flex-row flex-wrap gap-4">
+          <ScrollView className="flex-1 max-w-6xl self-center mt-4">
+            <View className="flex-row flex-wrap gap-4">
               <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
                 <LabeledInput label="Nombre" error={formErrors.alumno}>
                   <TextInput
                     value={form.alumno}
                     onChangeText={(text) => handleInputChange("alumno", text)}
-                    placeholder="Ej. Juan Pérez"
+                    placeholder="Ej. Juan Pére"
                     placeholderTextColor="#9ca3af"
                     className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white ${formErrors.alumno ? "border-red-500" : ""}`}
                   />
@@ -2116,281 +2118,20 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
               </View>
 
               <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-                <LabeledInput
-                  label="Fecha de Inicio"
-                  error={formErrors.fechaInicio}>
+                <LabeledInput className={`relative`} label="Fecha de Ingreso">
                   <TouchableOpacity
-                    onPress={() => setCalendarVisible(true)}
-                    className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white h-[50px] justify-center ${formErrors.fechaInicio ? "border-red-500" : ""}`}></TouchableOpacity>
-                  <View className="mb-4">
-                    <View className="flex-row items-center mb-1">
-                      <Text className="text-slate-700 text-xs font-semibold uppercase tracking-wide">
-                        Fecha del Evento
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => setIsDateEditable(!isDateEditable)}
-                        className="ml-2 p-1 rounded-full bg-slate-200"
-                      >
-                        <Svg
-                          height="14"
-                          viewBox="0 -960 960 960"
-                          width="14"
-                          fill="#475569"
-                        >
-                          <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                        </Svg>
-                      </TouchableOpacity>
-                    </View>
-                    <TouchableOpacity activeOpacity={1}
-                      className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isDateEditable ? "bg-white" : "bg-slate-100 opacity-70"} ${formErrors.fechaInicio ? "border-red-500" : ""}`}
-                    >
-                      <TextInput
-                        style={styles_registro_venta.dateInput}
-                        placeholder="DD"
-                        value={dateParts.day}
-                        editable={isDateEditable}
-                        onChangeText={(text) =>
-                          handleDatePartChange("day", text)
-                        }
-                        onBlur={() => handleDateBlur("day")}
-                        keyboardType="number-pad"
-                        maxLength={2}
-                      />
-                      <Text style={styles_registro_venta.dateSeparator}>
-                        /
-                      </Text>
-                      <TextInput
-                        ref={monthInputRef}
-                        style={styles_registro_venta.dateInput}
-                        placeholder="MM"
-                        value={dateParts.month}
-                        editable={isDateEditable}
-                        onChangeText={(text) =>
-                          handleDatePartChange("month", text)
-                        }
-                        onBlur={() => handleDateBlur("month")}
-                        keyboardType="number-pad"
-                        maxLength={2}
-                      />
-                      <Text style={styles_registro_venta.dateSeparator}>
-                        /
-                      </Text>
-                      <TextInput
-                        ref={yearInputRef}
-                        style={[styles_registro_venta.dateInput, { flex: 1.5 }]}
-                        placeholder="AAAA"
-                        value={dateParts.year}
-                        editable={isDateEditable}
-                        onChangeText={(text) =>
-                          handleDatePartChange("year", text)
-                        }
-                        keyboardType="number-pad"
-                        maxLength={4}
-                      />
-                    </TouchableOpacity>
-                    {!!formErrors.fechaInicio && (
-                      <Text className="text-red-600 text-xs mt-1">
-                        {formErrors.fechaInicio}
-                      </Text>
-                    )}
-                  </View>
-                </LabeledInput>
-              </View>
-
-              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-                <LabeledInput label="Método de Pago">
-                  <Dropdown
-                    style={styles_finanzas.dropdown}
-                    data={metodosPago}
-                    labelField="label"
-                    valueField="value"
-                    placeholder="Seleccionar método"
-                    value={form.metodoPago}
-                    onChange={(item) =>
-                      handleInputChange("metodoPago", item.value)
-                    }
-                    renderRightIcon={renderDropdownIcon}
-                  />
-                </LabeledInput>
-              </View>
-
-              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-                <LabeledInput label="Asesor">
-                  <Dropdown
-                    style={styles_finanzas.dropdown}
-                    data={asesores}
-                    labelField="label"
-                    valueField="value"
-                    placeholder="Seleccionar asesor"
-                    value={form.asesor}
-                    onChange={(item) => handleInputChange("asesor", item.value)}
-                    renderRightIcon={renderDropdownIcon}
-                  />
-                </LabeledInput>
-              </View>
-
-              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-                <LabeledInput label="Estatus">
-                  <Dropdown
-                    style={styles_finanzas.dropdown}
-                    data={estatusOptions}
-                    labelField="label"
-                    valueField="value"
-                    placeholder="Seleccionar estatus"
-                    value={form.estatus}
-                    onChange={(item) =>
-                      handleInputChange("estatus", item.value)
-                    }
-                    renderRightIcon={renderDropdownIcon}
-                  />
-                </LabeledInput>
-              </View>
-
-              <View style={{ width: "100%" }}>
-                <View className="mb-4">
-                  <View className="flex-row items-center mb-1">
-                    <Text className="text-slate-700 text-xs font-semibold uppercase tracking-wide">
-                      Fecha de Inicio
-                      Fecha de Registro
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => setIsDateEditable(!isDateEditable)}
-                      className="ml-2 p-1 rounded-full bg-slate-200"
-                    >
-                      <Svg
-                        height="14"
-                        viewBox="0 -960 960 960"
-                        width="14"
-                        fill="#475569"
-                      >
-                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                      </Svg>
-                    </TouchableOpacity>
-                  </View>
-                  <View
-                    className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isDateEditable ? "bg-white" : "bg-slate-100 opacity-70"} ${formErrors.fechaInicio ? "border-red-500" : ""}`}
+                    onPress={() => setIsDateEditable(!isDateEditable)}
+                    className="p-1 self-start left-[7.5rem] -top-1 absolute rounded-full bg-slate-200"
                   >
-                    <Text
-                      className={
-                        form.fechaInicio ? "text-slate-900" : "text-gray-400"}>{form.fechaInicio || "Seleccionar fecha"}
-                  </Text>
-
-                    <TextInput
-                      style={styles_registro_venta.dateInput}
-                      placeholder="DD"
-                      value={dateParts.day}
-                      onChangeText={(text) =>
-                        handleDatePartChange("day", text)
-                      }
-                      keyboardType="number-pad"
-                      maxLength={2}
-                      onBlur={() => handleDateBlur("day")}
-                    />
-                    <Text style={styles_registro_venta.dateSeparator}>/</Text>
-                    <TextInput
-                      ref={monthInputRef}
-                      style={styles_registro_venta.dateInput}
-                      placeholder="MM"
-                      value={dateParts.month}
-                      editable={isDateEditable}
-                      onChangeText={(text) =>
-                        handleDatePartChange("month", text)
-                      }
-                    
-                      
-                    />
-                    <Text style={styles_registro_venta.dateSeparator}>/</Text>
-                    <TextInput
-                      ref={yearInputRef}
-                      style={[styles_registro_venta.dateInput, { flex: 1.5 }]}
-                      placeholder="AAAA"
-                      value={dateParts.year}
-                      editable={isDateEditable}
-                      onChangeText={(text) =>
-                        handleDatePartChange("year", text)
-                      }
-                      keyboardType="number-pad"
-                      maxLength={4}
-                    />
-                  </View>
-                  {!!formErrors.fechaInicio && (
-                    <Text className="text-red-600 text-xs mt-1">
-                      {formErrors.fechaInicio}
-                    </Text>
-                  
-                  )}
-                </View>
-              </View>
-
-              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-                <LabeledInput label="Método de Pago">
-                  <Dropdown
-                    style={styles_finanzas.dropdown}
-                    data={metodosPago}
-                    labelField="label"
-                    valueField="value"
-                    placeholder="Seleccionar método"
-                    value={form.metodoPago}
-                    onChange={(item) =>
-                      handleInputChange("metodoPago", item.value)
-                    }
-                    renderRightIcon={renderDropdownIcon}
-                  />
-                </LabeledInput>
-              </View>
-
-              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-                <LabeledInput label="Asesor">
-                  <Dropdown
-                    style={styles_finanzas.dropdown}
-                    data={asesores}
-                    labelField="label"
-                    valueField="value"
-                    placeholder="Seleccionar asesor"
-                    value={form.asesor}
-                    onChange={(item) => handleInputChange("asesor", item.value)}
-                    renderRightIcon={renderDropdownIcon}
-                  />
-                </LabeledInput>
-              </View>
-
-              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-                <LabeledInput label="Estatus">
-                  <Dropdown
-                    style={styles_finanzas.dropdown}
-                    data={estatusOptions}
-                    labelField="label"
-                    valueField="value"
-                    placeholder="Seleccionar estatus"
-                    value={form.estatus}
-                    onChange={(item) =>
-                      handleInputChange("estatus", item.value)
-                    }
-                    renderRightIcon={renderDropdownIcon}
-                  />
-                </LabeledInput>
-              </View>
-
-              <View style={{ width: "100%" }}>
-                <View className="mb-4">
-                  <View className="flex-row items-center mb-1">
-                    <Text className="text-slate-700 text-xs font-semibold uppercase tracking-wide">
-                      Fecha de Registro
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => setIsDateEditable(!isDateEditable)}
-                      className="ml-2 p-1 rounded-full bg-slate-200"
+                    <Svg
+                      height="14"
+                      viewBox="0 -960 960 960"
+                      width="14"
+                      fill="#475569"
                     >
-                      <Svg
-                        height="14"
-                        viewBox="0 -960 960 960"
-                        width="14"
-                        fill="#475569"
-                      >
-                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                      </Svg>
-                    </TouchableOpacity>
-                  </View>
+                      <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                    </Svg>
+                  </TouchableOpacity>
                   <View
                     className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isDateEditable ? "bg-white" : "bg-slate-100 opacity-70"}`}
                   >
@@ -2398,11 +2139,10 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                       style={styles_registro_venta.dateInput}
                       placeholder="DD"
                       value={dateParts.day}
-                      editable={isDateEditable}
                       onChangeText={(text) => handleDatePartChange("day", text)}
-                      onBlur={() => handleDateBlur("day")}
                       keyboardType="number-pad"
                       maxLength={2}
+                      onBlur={() => handleDateBlur("day")}
                     />
                     <Text style={styles_registro_venta.dateSeparator}>/</Text>
                     <TextInput
@@ -2414,9 +2154,6 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                       onChangeText={(text) =>
                         handleDatePartChange("month", text)
                       }
-                      onBlur={() => handleDateBlur("month")}
-                      keyboardType="number-pad"
-                      maxLength={2}
                     />
                     <Text style={styles_registro_venta.dateSeparator}>/</Text>
                     <TextInput
@@ -2432,7 +2169,56 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                       maxLength={4}
                     />
                   </View>
-                </View>
+                </LabeledInput>
+              </View>
+
+              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+                <LabeledInput label="Método de Pago">
+                  <Dropdown
+                    style={styles_finanzas.dropdown}
+                    data={metodosPago}
+                    labelField="label"
+                    valueField="value"
+                    placeholder="Seleccionar método"
+                    value={form.metodoPago}
+                    onChange={(item) =>
+                      handleInputChange("metodoPago", item.value)
+                    }
+                    renderRightIcon={renderDropdownIcon}
+                  />
+                </LabeledInput>
+              </View>
+
+              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+                <LabeledInput label="Asesor">
+                  <Dropdown
+                    style={styles_finanzas.dropdown}
+                    data={asesores}
+                    labelField="label"
+                    valueField="value"
+                    placeholder="Seleccionar asesor"
+                    value={form.asesor}
+                    onChange={(item) => handleInputChange("asesor", item.value)}
+                    renderRightIcon={renderDropdownIcon}
+                  />
+                </LabeledInput>
+              </View>
+
+              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+                <LabeledInput label="Estatus">
+                  <Dropdown
+                    style={styles_finanzas.dropdown}
+                    data={estatusOptions}
+                    labelField="label"
+                    valueField="value"
+                    placeholder="Seleccionar estatus"
+                    value={form.estatus}
+                    onChange={(item) =>
+                      handleInputChange("estatus", item.value)
+                    }
+                    renderRightIcon={renderDropdownIcon}
+                  />
+                </LabeledInput>
               </View>
 
               <View style={{ width: "100%" }}>
@@ -4932,7 +4718,6 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
                   <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
                 </Svg>
                 <TextInput
-
                   editable={!isFormVisible}
                   placeholder="Buscar por nombre, curso..."
                   value={searchTerm}
