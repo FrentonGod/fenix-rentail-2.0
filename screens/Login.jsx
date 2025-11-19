@@ -369,7 +369,7 @@ export default function LoginScreen({ navigation }) {
               <HeaderAdmin
                 logoSource={require("../assets/MQerK_logo.png")}
                 onLogoPress={() => {}}
-                title="Fenix Rentail"
+                title="Fenix Retail"
                 showActions={false}
               />
               <View className="items-center justify-center flex-1">
@@ -772,7 +772,7 @@ export default function LoginScreen({ navigation }) {
                         </Pressable>
 
                         {!!errorMsg && (
-                          <Text className="text-red-600 text-sm mt-1">
+                          <Text className="text-red-600 absolute ml-2 -bottom-[2rem] right-0 left-0 text-center text-sm mt-1">
                             {errorMsg}
                           </Text>
                         )}
@@ -802,7 +802,7 @@ export default function LoginScreen({ navigation }) {
                         )}
                       </View>
 
-                      <View className="mt-6 items-center">
+                      <View className="mt-10 items-center">
                         <Text className="text-slate-600">
                           ¿No tienes cuenta?{" "}
                           <Text

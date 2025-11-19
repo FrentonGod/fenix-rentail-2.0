@@ -127,11 +127,11 @@ export default function RegisterScreen({ navigation }) {
         end={{ x: 1, y: 0 }}
         style={{ flex: 1 }}
       >
-        <SafeAreaView className="flex-1 bg-slate-50">
+        <SafeAreaView className="flex-1">
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            behavior={Platform.OS === "ios" ? "padding" : "padding"}
             key={isLandscape ? "landscape" : "portrait"}
-            style={{ flex: 1 }}
+            style={{ flex: 1, backgroundColor: "#f8fafc" }}
           >
             <TouchableWithoutFeedback
               onPress={Platform.OS !== "web" && Keyboard.dismiss}
@@ -140,7 +140,7 @@ export default function RegisterScreen({ navigation }) {
                 <HeaderAdmin
                   logoSource={require("../assets/MQerK_logo.png")}
                   onLogoPress={() => {}}
-                  title="Fenix Rentail"
+                  title="Fenix Retail"
                   showActions={false}
                 />
                 {isLandscape ? (
@@ -219,12 +219,14 @@ export default function RegisterScreen({ navigation }) {
             </Text>
           </Pressable>
           {!!errorMsg && (
-            <Text className="text-red-600 text-sm">{errorMsg}</Text>
+            <Text className="text-red-600 text-sm absolute bottom-[3rem] right-0 left-0 text-center">
+              {errorMsg}
+            </Text>
           )}
           {!!infoMsg && (
             <Text className="text-green-700 text-sm">{infoMsg}</Text>
           )}
-          <View className="mt-2 items-center">
+          <View className="mt-[1.5rem] items-center">
             <Text className="text-slate-600 text-xs">
               ¿No te llegó el correo?
             </Text>

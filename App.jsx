@@ -5,7 +5,6 @@ import {
   Pressable,
   Image,
   useWindowDimensions,
-  Dimensions,
   ScrollView,
   TouchableOpacity,
   StyleSheet,
@@ -14,16 +13,14 @@ import {
   TextInput,
   LogBox,
   Modal,
-  Switch,
   TouchableWithoutFeedback,
   Keyboard,
   ActivityIndicator,
-  Alert,
   RefreshControl,
   KeyboardAvoidingView,
-  FlatList,
   LayoutAnimation,
   UIManager,
+  Alert,
 } from "react-native";
 
 import React, {
@@ -39,26 +36,16 @@ import equal from "fast-deep-equal";
 import * as Clipboard from "expo-clipboard";
 import "./global.css";
 
-import { FlashList } from "@shopify/flash-list";
-
 import Svg, { Path } from "react-native-svg";
-import { Table, Row, TableWrapper, Cell } from "react-native-table-component";
 import Ripple from "react-native-material-ripple";
 import { BarChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { Dropdown } from "react-native-element-dropdown";
 import { BlurView } from "expo-blur";
 import Slider from "@react-native-community/slider";
-import {
-  Calendar,
-  CalendarList,
-  CalendarProvider,
-  Agenda,
-  LocaleConfig,
-  ExpandableCalendar,
-} from "react-native-calendars";
+import { Calendar, LocaleConfig } from "react-native-calendars";
 
-import { NavigationContainer, useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   createDrawerNavigator,
   DrawerContentScrollView,
@@ -75,6 +62,7 @@ import { supabase } from "./lib/supabase";
 import { useAuthContext } from "./hooks/use-auth-context";
 import RegistroAsesor from "./components/asesores/RegistroAsesor";
 
+import RegistroEstudiantes from "./components/estudiantes/RegistroEstudiantes";
 import RegistroVenta from "./components/ventas/RegistroVenta";
 const Tab = createMaterialTopTabNavigator(); //Aqui se esta creando el componente
 const Drawer = createDrawerNavigator();
@@ -272,7 +260,7 @@ function AppHeader({ navigation, route }) {
       onLogoPress={() => navigation?.toggleDrawer?.()}
       showMenuButton={true}
       onMenuPress={() => navigation?.toggleDrawer?.()}
-      title="Fenix Rentail"
+      title="Fenix Retail"
       subtitle={currentSectionTitle}
       adminProfile={{
         name: profile?.full_name || "Usuario",
@@ -543,11 +531,13 @@ const TablaVentasPendientes = ({
   );
 };
 
-const ScreenEstudiantes = () => {
+const ScreenEstudiantes = ({ navigation }) => {
   const [estudiantes, setEstudiantes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefetching, setIsRefetching] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isFormVisible, setIsFormVisible] = useState(false);
+  const formAnimation = useRef(new Animated.Value(0)).current;
 
   const handleRefresh = async () => {
     if (isRefetching || loading) return;
@@ -608,8 +598,34 @@ const ScreenEstudiantes = () => {
   };
 
   const handleAdd = () => {
-    console.log("Agregando nuevo estudiante");
-    // Aquí iría la lógica para mostrar el formulario de registro
+    setIsFormVisible(true);
+    Animated.timing(formAnimation, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleCloseForm = () => {
+    Animated.timing(formAnimation, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setIsFormVisible(false);
+      handleRefresh(); // Actualizar la lista después de cerrar
+    });
+  };
+
+  const formContainerStyle = {
+    transform: [
+      {
+        translateY: formAnimation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [useWindowDimensions().height, 0],
+        }),
+      },
+    ],
   };
 
   return (
@@ -664,6 +680,17 @@ const ScreenEstudiantes = () => {
             onDelete={handleDelete}
           />
         </>
+      )}
+      {isFormVisible && (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, formContainerStyle]}
+          className="absolute inset-0 z-10 bg-slate-50"
+        >
+          <RegistroEstudiantes
+            navigation={navigation}
+            onFormClose={handleCloseForm}
+          />
+        </Animated.View>
       )}
     </View>
   );
@@ -840,9 +867,10 @@ const ScreenAsesores = () => {
   const [isRefetching, setIsRefetching] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Estado para controlar la vista: 'list' o 'form'
-  const [viewMode, setViewMode] = useState("list");
+  // Estados para el formulario y la animación
+  const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingAsesor, setEditingAsesor] = useState(null);
+  const formAnimation = useRef(new Animated.Value(0)).current;
 
   const handleRefresh = async () => {
     if (isRefetching || loading) return;
@@ -903,99 +931,73 @@ const ScreenAsesores = () => {
     );
   };
 
-  // Pasamos el asesor a editar y cambiamos de vista
-  const handleEdit = (asesor) => {
+  const handleOpenForm = (asesor = null) => {
     setEditingAsesor(asesor);
-    setViewMode("form");
+    setIsFormVisible(true);
+    Animated.timing(formAnimation, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
   };
 
-  // Pasamos el asesor a ver y cambiamos de vista
-  const handleView = (asesor) => {
-    setEditingAsesor(asesor); // Reutilizamos el estado
-    setViewMode("view");
+  const handleCloseForm = (formHasUnsavedChanges = false) => {
+    const closeAction = () => {
+      Animated.timing(formAnimation, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        setIsFormVisible(false);
+        setEditingAsesor(null);
+        handleRefresh();
+      });
+    };
+
+    if (formHasUnsavedChanges) {
+      Alert.alert(
+        "Cambios sin guardar",
+        "Tienes cambios sin guardar. ¿Deseas descartarlos?",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Descartar",
+            style: "destructive",
+            onPress: closeAction,
+          },
+        ]
+      );
+    } else {
+      closeAction();
+    }
   };
 
-  // Cambiamos a la vista de formulario para agregar uno nuevo
-  const handleAdd = () => {
-    setEditingAsesor(null); // Nos aseguramos de que no haya datos de edición
-    setViewMode("form");
+  const { height } = useWindowDimensions();
+  const formContainerStyle = {
+    transform: [
+      {
+        translateY: formAnimation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [useWindowDimensions().height, 0],
+        }),
+      },
+    ],
   };
-
-  // Si estamos en modo formulario, renderizamos RegistroAsesor
-  if (viewMode === "form") {
-    return (
-      <RegistroAsesor
-        key={editingAsesor ? `edit-${editingAsesor.id_asesor}` : "new"}
-        asesorToEdit={editingAsesor}
-        onFormClose={(currentForm) => {
-          const initialData = editingAsesor
-            ? {
-                nombre_asesor: editingAsesor.nombre_asesor || "",
-                correo_asesor: editingAsesor.correo_asesor || "",
-                telefono_asesor: editingAsesor.telefono_asesor || "",
-                direccion_asesor: editingAsesor.direccion_asesor || "",
-                municipio_asesor: editingAsesor.municipio_asesor || "",
-                rfc_asesor: editingAsesor.rfc_asesor || "",
-                nacionalidad_asesor: editingAsesor.nacionalidad_asesor || "",
-                genero_asesor: editingAsesor.genero_asesor || "",
-              }
-            : {
-                nombre_asesor: "",
-                correo_asesor: "",
-                telefono_asesor: "",
-                direccion_asesor: "",
-                municipio_asesor: "",
-                rfc_asesor: "",
-                nacionalidad_asesor: "",
-                genero_asesor: "",
-              };
-
-          const hasChanges = !equal(currentForm, initialData);
-
-          if (!hasChanges) {
-            setViewMode("list");
-            return;
-          }
-
-          Alert.alert(
-            "Cambios sin guardar",
-            "Tienes cambios sin guardar. ¿Deseas descartarlos?",
-            [
-              { text: "Cancelar", style: "cancel" },
-              {
-                text: "Descartar",
-                style: "destructive",
-                onPress: () => setViewMode("list"),
-              },
-            ]
-          );
-        }}
-      />
-    );
-  }
-  if (viewMode === "view") {
-    return (
-      <RegistroAsesor
-        asesorToEdit={editingAsesor}
-        onFormClose={() => {
-          setViewMode("list");
-          handleRefresh(); // Refresca la lista al salir de la vista
-        }}
-        viewOnly={true}
-      />
-    );
-  }
 
   // Vista de la tabla de asesores
   return (
-    <View className="flex-1 bg-slate-50">
+    <View className="flex-1 bg-slate-50 relative">
       {loading ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#6F09EA" />
         </View>
       ) : (
         <>
-          <View className="flex-row items-center justify-between p-4">
+          <View
+            className="flex-row items-center justify-between p-4"
+            style={{ opacity: isFormVisible ? 0.5 : 1 }}
+            pointerEvents={isFormVisible ? "none" : "auto"}
+          >
             <View className="flex-row items-center bg-white border border-slate-300 rounded-full px-3 py-1 shadow-sm">
               <Svg
                 height="20"
@@ -1013,7 +1015,7 @@ const ScreenAsesores = () => {
               />
             </View>
             <TouchableOpacity
-              onPress={handleAdd}
+              onPress={() => handleOpenForm()}
               className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
             >
               <Svg
@@ -1033,11 +1035,23 @@ const ScreenAsesores = () => {
             query={searchTerm}
             isRefetching={isRefetching}
             onRefresh={handleRefresh}
-            onEdit={handleEdit}
+            onEdit={handleOpenForm}
             onDelete={handleDelete}
-            onView={handleView}
+            onView={handleOpenForm}
           />
         </>
+      )}
+      {isFormVisible && (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, formContainerStyle]}
+          className="absolute inset-0 z-10 bg-slate-50"
+        >
+          <RegistroAsesor
+            key={editingAsesor ? `edit-${editingAsesor.id_asesor}` : "new"}
+            asesorToEdit={editingAsesor}
+            onFormClose={handleCloseForm}
+          />
+        </Animated.View>
       )}
     </View>
   );
@@ -1133,7 +1147,10 @@ const TablaAsesores = ({
               <Pressable
                 key={asesor.id_asesor}
                 className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
-                onPress={() => onView(asesor)}
+                onPress={() => {
+                  // Al presionar una fila, abrimos el formulario en modo "solo lectura"
+                  onView(asesor, true);
+                }}
                 android_ripple={{ color: "rgba(0,0,0,0.04)" }}
               >
                 <Text
@@ -2750,9 +2767,10 @@ const ScreenFinanzas = () => {
   ]);
   const [loading, setLoading] = useState(false); // Desactivamos la carga por defecto
 
-  // --- Estados para controlar la vista del formulario ---
-  const [viewMode, setViewMode] = useState("list"); // 'list' o 'form'
+  // --- Estados para el formulario de Ingresos y su animación ---
+  const [isIngresoFormVisible, setIsIngresoFormVisible] = useState(false);
   const [editingIngreso, setEditingIngreso] = useState(null);
+  const ingresoFormAnimation = useRef(new Animated.Value(0)).current;
 
   // --- Estados para los filtros de fecha ---
   const [selectedIngresoDateFilter, setSelectedIngresoDateFilter] =
@@ -2760,9 +2778,10 @@ const ScreenFinanzas = () => {
   const [selectedEgresoDateFilter, setSelectedEgresoDateFilter] =
     useState("last_month");
   const [syncDateFilters, setSyncDateFilters] = useState(false);
-  // --- Estados para controlar la vista de Egresos ---
-  const [egresoViewMode, setEgresoViewMode] = useState("list"); // 'list' o 'form'
+  // --- Estados para el formulario de Egresos y su animación ---
+  const [isEgresoFormVisible, setIsEgresoFormVisible] = useState(false);
   const [editingEgreso, setEditingEgreso] = useState(null);
+  const egresoFormAnimation = useRef(new Animated.Value(0)).current;
 
   const initialFormState = {
     id: null,
@@ -2857,72 +2876,112 @@ const ScreenFinanzas = () => {
     },
   ];
 
-  const handleOpenForm = (mode, ingreso = null) => {
+  const handleOpenIngresoForm = (ingreso = null) => {
     setEditingIngreso(ingreso);
-    setViewMode("form");
+    setIsIngresoFormVisible(true);
+    Animated.timing(ingresoFormAnimation, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
   };
 
-  const handleCloseForm = (savedData, wasSaved) => {
-    if (wasSaved && savedData) {
-      if (savedData.id) {
-        // Es una edición
-        const updatedData = ingresosData.map((row) =>
-          row.id === savedData.id
-            ? { ...savedData, importe: parseFloat(savedData.importe) || 0 }
-            : row
-        );
-        setIngresosData(updatedData);
-      } else {
-        // Es un nuevo ingreso
-        const newEntry = {
-          ...savedData,
-          id:
-            ingresosData.length > 0
-              ? Math.max(...ingresosData.map((i) => i.id)) + 1
-              : 1,
-          importe: parseFloat(savedData.importe) || 0,
-        };
-        setIngresosData([...ingresosData, newEntry]);
-      }
-    } else {
-      // Si no se guardó (canceló), no hacemos nada con los datos
-    }
-    // En cualquier caso, volvemos a la lista
-    setViewMode("list");
-    setEditingIngreso(null);
+  const handleCloseIngresoForm = (savedData, wasSaved) => {
+    const closeAction = () => {
+      Animated.timing(ingresoFormAnimation, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        setIsIngresoFormVisible(false);
+        setEditingIngreso(null);
+        // Aquí actualizamos los datos si se guardó algo
+        if (wasSaved && savedData) {
+          if (savedData.id) {
+            const updatedData = ingresosData.map((row) =>
+              row.id === savedData.id
+                ? { ...savedData, importe: parseFloat(savedData.importe) || 0 }
+                : row
+            );
+            setIngresosData(updatedData);
+          } else {
+            const newEntry = {
+              ...savedData,
+              id:
+                ingresosData.length > 0
+                  ? Math.max(...ingresosData.map((i) => i.id)) + 1
+                  : 1,
+              importe: parseFloat(savedData.importe) || 0,
+            };
+            setIngresosData([...ingresosData, newEntry]);
+          }
+        }
+      });
+    };
+
+    // El componente RegistroIngreso ya maneja la alerta de cambios,
+    // así que simplemente cerramos.
+    closeAction();
   };
 
-  const handleOpenEgresoForm = (mode, egreso = null) => {
+  const handleOpenEgresoForm = (egreso = null) => {
     setEditingEgreso(egreso);
-    setEgresoViewMode("form");
+    setIsEgresoFormVisible(true);
+    Animated.timing(egresoFormAnimation, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handleCloseEgresoForm = (savedData, wasSaved) => {
-    if (wasSaved && savedData) {
-      if (savedData.id) {
-        // Edición
-        const updatedData = egresosData.map((row) =>
-          row.id === savedData.id
-            ? { ...savedData, monto: parseFloat(savedData.monto) || 0 }
-            : row
-        );
-        setEgresosData(updatedData);
-      } else {
-        // Nuevo
-        const newEntry = {
-          ...savedData,
-          id:
-            egresosData.length > 0
-              ? Math.max(...egresosData.map((e) => e.id)) + 1
-              : 1,
-          monto: parseFloat(savedData.monto) || 0,
-        };
-        setEgresosData([...egresosData, newEntry]);
-      }
-    }
-    setEgresoViewMode("list");
-    setEditingEgreso(null);
+    const closeAction = () => {
+      Animated.timing(egresoFormAnimation, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => {
+        setIsEgresoFormVisible(false);
+        setEditingEgreso(null);
+        // Actualizamos datos si se guardó
+        if (wasSaved && savedData) {
+          if (savedData.id) {
+            const updatedData = egresosData.map((row) =>
+              row.id === savedData.id
+                ? { ...savedData, monto: parseFloat(savedData.monto) || 0 }
+                : row
+            );
+            setEgresosData(updatedData);
+          } else {
+            const newEntry = {
+              ...savedData,
+              id:
+                egresosData.length > 0
+                  ? Math.max(...egresosData.map((e) => e.id)) + 1
+                  : 1,
+              monto: parseFloat(savedData.monto) || 0,
+            };
+            setEgresosData([...egresosData, newEntry]);
+          }
+        }
+      });
+    };
+    closeAction();
   };
+
+  const { height } = useWindowDimensions();
+  const formContainerStyle = (animation) => ({
+    transform: [
+      {
+        translateY: animation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [height, 0],
+        }),
+      },
+    ],
+  });
+
+  const isAnyFormVisible = isIngresoFormVisible || isEgresoFormVisible;
 
   const filteredIngresos = useMemo(() => {
     const now = new Date();
@@ -3096,27 +3155,6 @@ const ScreenFinanzas = () => {
     { title: "Acciones", field: "actions", width: 100 },
   ];
 
-  if (viewMode === "form") {
-    return (
-      <RegistroIngreso
-        // Usamos una key para forzar el reseteo del componente al cambiar entre 'nuevo' y 'editar'
-        key={editingIngreso ? `edit-${editingIngreso.id}` : "new"}
-        ingresoToEdit={editingIngreso}
-        onFormClose={handleCloseForm}
-      />
-    );
-  }
-
-  if (egresoViewMode === "form") {
-    return (
-      <RegistroEgreso
-        key={editingEgreso ? `edit-${editingEgreso.id}` : "new"}
-        egresoToEdit={editingEgreso}
-        onFormClose={handleCloseEgresoForm}
-      />
-    );
-  }
-
   return (
     // Contenedor principal para la pantalla de Finanzas
     <Tab.Navigator
@@ -3133,11 +3171,17 @@ const ScreenFinanzas = () => {
           }}
         />
       )}
+      screenOptions={{
+        swipeEnabled: !isAnyFormVisible, // Deshabilita swipe si hay un formulario abierto
+      }}
     >
       <Tab.Screen name="Ingresos" key="ingresos-tab">
         {/* Añadido key para claridad */}
         {() => (
-          <View id="tablas-ingresos" className={`flex-1 bg-slate-50 p-4`}>
+          <View
+            id="tablas-ingresos"
+            className={`flex-1 bg-slate-50 p-4 relative`}
+          >
             {loading && (
               <View className="absolute inset-0 bg-white/70 justify-center items-center z-10">
                 <ActivityIndicator size="large" color="#6F09EA" />
@@ -3147,7 +3191,11 @@ const ScreenFinanzas = () => {
               </View>
             )}
 
-            <View className="flex-row justify-between items-center mb-4">
+            <View
+              className="flex-row justify-between items-center mb-4"
+              style={{ opacity: isAnyFormVisible ? 0.5 : 1 }}
+              pointerEvents={isAnyFormVisible ? "none" : "auto"}
+            >
               <View className="w-60">
                 {/* Contenedor para el Dropdown de Ingresos */}
                 <Dropdown
@@ -3161,7 +3209,7 @@ const ScreenFinanzas = () => {
               </View>
 
               <TouchableOpacity
-                onPress={() => handleOpenForm("add")}
+                onPress={() => handleOpenIngresoForm()}
                 className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
               >
                 <Svg
@@ -3180,15 +3228,33 @@ const ScreenFinanzas = () => {
 
             <TablaIngresos
               data={filteredIngresos}
-              onEdit={(ingreso) => handleOpenForm("edit", ingreso)}
+              onEdit={(ingreso) => handleOpenIngresoForm(ingreso)}
             />
+            {isIngresoFormVisible && (
+              <Animated.View
+                style={[
+                  StyleSheet.absoluteFill,
+                  formContainerStyle(ingresoFormAnimation),
+                ]}
+                className="absolute inset-0 z-10 bg-slate-50"
+              >
+                <RegistroIngreso
+                  key={editingIngreso ? `edit-${editingIngreso.id}` : "new"}
+                  ingresoToEdit={editingIngreso}
+                  onFormClose={handleCloseIngresoForm}
+                />
+              </Animated.View>
+            )}
           </View>
         )}
       </Tab.Screen>
       <Tab.Screen name="Egresos" key="egresos-tab">
         {/* Añadido key para claridad */}
         {() => (
-          <View id="tablas-egresos" className={`flex-1 bg-slate-50 p-4`}>
+          <View
+            id="tablas-egresos"
+            className={`flex-1 bg-slate-50 p-4 relative`}
+          >
             {loading && (
               <View className="absolute inset-0 bg-white/70 justify-center items-center z-10">
                 <ActivityIndicator size="large" color="#6F09EA" />
@@ -3196,7 +3262,11 @@ const ScreenFinanzas = () => {
               </View>
             )}
 
-            <View className="flex-row justify-between items-center mb-4">
+            <View
+              className="flex-row justify-between items-center mb-4"
+              style={{ opacity: isAnyFormVisible ? 0.5 : 1 }}
+              pointerEvents={isAnyFormVisible ? "none" : "auto"}
+            >
               <View className="w-60">
                 {/* Contenedor para el Dropdown de Egresos */}
                 <Dropdown
@@ -3210,7 +3280,7 @@ const ScreenFinanzas = () => {
               </View>
 
               <TouchableOpacity
-                onPress={() => handleOpenEgresoForm("add")}
+                onPress={() => handleOpenEgresoForm()}
                 className="bg-red-600 p-2 rounded-full shadow-md shadow-red-600/30 flex-row items-center px-4"
               >
                 <Svg
@@ -3229,8 +3299,23 @@ const ScreenFinanzas = () => {
 
             <TablaEgresos
               data={filteredEgresos}
-              onEdit={handleOpenEgresoForm}
+              onEdit={(egreso) => handleOpenEgresoForm(egreso)}
             />
+            {isEgresoFormVisible && (
+              <Animated.View
+                style={[
+                  StyleSheet.absoluteFill,
+                  formContainerStyle(egresoFormAnimation),
+                ]}
+                className="absolute inset-0 z-10 bg-slate-50"
+              >
+                <RegistroEgreso
+                  key={editingEgreso ? `edit-${editingEgreso.id}` : "new"}
+                  egresoToEdit={editingEgreso}
+                  onFormClose={handleCloseEgresoForm}
+                />
+              </Animated.View>
+            )}
           </View>
         )}
       </Tab.Screen>
@@ -3322,10 +3407,12 @@ const PressableInput = ({ label, value, onPress, icon }) => (
     </Text>
   </Pressable>
 );
+
 const ScreenCalendario = () => {
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
+  const [allEvents, setAllEvents] = useState([]);
 
   // --- Constante para el ancho del calendario ---
   const CALENDAR_WIDTH = 400;
@@ -3341,6 +3428,8 @@ const ScreenCalendario = () => {
 
   // --- Estados para el modal de eventos ---
   const [isAddingEvent, setIsAddingEvent] = useState(false); // Controla la vista del formulario
+  const [refreshing, setRefreshing] = useState(false); // Estado para el pull-to-refresh
+  const [editingEventId, setEditingEventId] = useState(null); // ID del evento en edición
   const [newEvent, setNewEvent] = useState({
     nombre: "",
     descripcion: "",
@@ -3440,23 +3529,47 @@ const ScreenCalendario = () => {
       hora: currentHour,
       minutos: closestMinute,
     });
+    setEditingEventId(null);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
     setIsAddingEvent(true); // Muestra el formulario en línea
   };
 
   const handleSaveEvent = () => {
-    // Aquí iría la lógica para guardar el evento
-    console.log("Guardando evento:", {
-      ...newEvent,
-      fecha: `${dateParts.year}-${dateParts.month}-${dateParts.day}`,
-    });
-    setIsAddingEvent(false); // Oculta el formulario
+    submitEvento();
   };
 
   const handleCancelEvent = () => {
     // Simplemente oculta el formulario sin guardar
     LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
     setIsAddingEvent(false);
+    setEditingEventId(null);
+    setNewEvent({
+      nombre: "",
+      descripcion: "",
+      hora: "09",
+      minutos: "00",
+    });
+  };
+
+  const handleEditEvent = (evento) => {
+    const d = new Date(evento.fechayhora_evento);
+    const year = d.getFullYear().toString();
+    const month = (d.getMonth() + 1).toString().padStart(2, "0");
+    const day = d.getDate().toString().padStart(2, "0");
+    const hours = d.getHours().toString().padStart(2, "0");
+    const minutes = d.getMinutes().toString().padStart(2, "0");
+
+    setNewEvent({
+      nombre: evento.nombre_evento,
+      descripcion: evento.detalles_evento,
+      hora: hours,
+      minutos: minutes,
+    });
+
+    setDateParts({ year, month, day });
+    setSelectedDate(`${year}-${month}-${day}`);
+    setEditingEventId(evento.id_evento);
+    setIsAddingEvent(true);
   };
 
   const calendarRef = useRef(null);
@@ -3534,6 +3647,105 @@ const ScreenCalendario = () => {
     },
     // Aquí se podrían añadir más fechas con eventos (puntos, etc.)
   };
+
+  async function submitEvento() {
+    const fechaCompleta = `${selectedDate} ${newEvent.hora}:${newEvent.minutos}:00`;
+
+    let error;
+
+    if (editingEventId) {
+      // Actualizar
+      const { error: updateError } = await supabase
+        .from("eventos_calendario")
+        .update({
+          nombre_evento: newEvent.nombre,
+          detalles_evento: newEvent.descripcion,
+          fechayhora_evento: fechaCompleta,
+        })
+        .eq("id_evento", editingEventId);
+      error = updateError;
+    } else {
+      // Insertar
+      const { error: insertError } = await supabase
+        .from("eventos_calendario")
+        .insert([
+          {
+            nombre_evento: newEvent.nombre,
+            detalles_evento: newEvent.descripcion,
+            fechayhora_evento: fechaCompleta,
+          },
+        ]);
+      error = insertError;
+    }
+
+    if (error) {
+      Alert.alert(
+        "Error",
+        `No pudo ${editingEventId ? "actualizarse" : "crearse"} el evento`
+      );
+    } else {
+      fetchEvento();
+      setIsAddingEvent(false);
+      setEditingEventId(null);
+      setNewEvent({ nombre: "", descripcion: "", hora: "09", minutos: "00" });
+
+      Alert.alert(
+        "Éxito",
+        `Evento ${editingEventId ? "actualizado" : "creado"} correctamente`
+      );
+    }
+  }
+
+  async function fetchEvento() {
+    const { data, error } = await supabase
+      .from("eventos_calendario")
+      .select("*")
+      .order("fechayhora_evento", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching events:", error);
+      Alert.alert("Error", "No se pudieron cargar los eventos");
+    } else {
+      setAllEvents(data || []);
+    }
+    setRefreshing(false);
+  }
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchEvento();
+  }, []);
+
+  const handleDeleteEvent = (id) => {
+    Alert.alert(
+      "Eliminar Evento",
+      "¿Estás seguro de que quieres eliminar este evento?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            const { error } = await supabase
+              .from("eventos_calendario")
+              .delete()
+              .eq("id_evento", id);
+
+            if (error) {
+              Alert.alert("Error", "No se pudo eliminar el evento");
+              console.error(error);
+            } else {
+              fetchEvento(); // Recargar la lista
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  useEffect(() => {
+    fetchEvento();
+  }, []);
 
   return (
     <TouchableWithoutFeedback
@@ -3629,22 +3841,7 @@ const ScreenCalendario = () => {
               className={`flex-row justify-between items-center border-b border-slate-200 pb-3 mb-4`}
             >
               <Text className="text-lg font-bold text-slate-800">
-                Eventos para el{" "}
-                <Text className="text-indigo-600">
-                  {(() => {
-                    // Solución robusta para el problema de la zona horaria.
-                    const parts = selectedDate.split("-");
-                    const utcDate = new Date(
-                      Date.UTC(parts[0], parts[1] - 1, parts[2])
-                    );
-                    return utcDate.toLocaleDateString("es-ES", {
-                      weekday: "long",
-                      day: "numeric",
-                      month: "long",
-                      timeZone: "UTC",
-                    });
-                  })()}
-                </Text>
+                Próximos eventos
               </Text>
               <TouchableOpacity
                 onPress={isAddingEvent ? handleCancelEvent : openAddEventForm}
@@ -3681,7 +3878,7 @@ const ScreenCalendario = () => {
               // --- FORMULARIO PARA AGREGAR EVENTO ---
               <ScrollView className="p-2">
                 <Text className="text-xl font-bold mb-4 text-slate-800">
-                  Agregar Evento
+                  {editingEventId ? "Editar Evento" : "Agregar Evento"}
                 </Text>
 
                 {/* Campo Nombre del Evento */}
@@ -3841,28 +4038,137 @@ const ScreenCalendario = () => {
                     onPress={handleSaveEvent}
                     className="bg-indigo-600 px-5 py-3 rounded-lg shadow-md shadow-indigo-600/30"
                   >
-                    <Text className="text-white font-bold">Guardar Evento</Text>
+                    <Text className="text-white font-bold">
+                      {editingEventId ? "Actualizar" : "Guardar Evento"}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </ScrollView>
             ) : (
               // --- VISTA POR DEFECTO (LISTA DE EVENTOS O MENSAJE) ---
 
-              <View className="flex-1 justify-center items-center">
-                <Svg
-                  height="60"
-                  viewBox="0 -960 960 960"
-                  width="60"
-                  fill="#cbd5e1"
-                >
-                  <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z" />
-                </Svg>
-                <Text className="text-slate-500 font-semibold mt-4 text-center">
-                  No hay eventos para este día.
-                </Text>
-                <Text className="text-slate-400 text-sm mt-1 text-center">
-                  Selecciona otro día o agrega un nuevo evento.
-                </Text>
+              <View className="flex-1">
+                {allEvents.length > 0 ? (
+                  <ScrollView
+                    className="flex-1"
+                    contentContainerStyle={{
+                      paddingBottom: 20,
+                      opacity: refreshing ? 0.5 : 1,
+                    }}
+                    refreshControl={
+                      <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor="#6F09EA"
+                        colors={["#6F09EA"]}
+                      />
+                    }
+                  >
+                    {allEvents.map((evento, index) => (
+                      <TouchableOpacity
+                        key={evento.id_evento || index}
+                        className="p-4 mb-3 bg-slate-50 rounded-xl border-l-4 border-indigo-500 shadow-sm"
+                      >
+                        <TouchableOpacity
+                          activeOpacity={1}
+                          className="flex-row justify-between items-start"
+                        >
+                          <View className="flex-1">
+                            <Text className="font-bold text-base text-slate-800 mb-1">
+                              {evento.nombre_evento}
+                            </Text>
+                            <Text className="text-slate-600 text-sm mb-2 leading-relaxed">
+                              {evento.detalles_evento}
+                            </Text>
+                            <View className="flex-row items-center">
+                              <Svg
+                                height="14"
+                                width="14"
+                                viewBox="0 -960 960 960"
+                                fill="#94a3b8"
+                                className="mr-1"
+                              >
+                                <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z" />
+                              </Svg>
+                              <Text className="text-xs text-slate-500 font-medium">
+                                {(() => {
+                                  if (!evento.fechayhora_evento) return "";
+                                  const d = new Date(evento.fechayhora_evento);
+                                  if (isNaN(d.getTime()))
+                                    return evento.fechayhora_evento;
+                                  const day = d
+                                    .getDate()
+                                    .toString()
+                                    .padStart(2, "0");
+                                  const month = (d.getMonth() + 1)
+                                    .toString()
+                                    .padStart(2, "0");
+                                  const year = d.getFullYear();
+                                  const hours = d
+                                    .getHours()
+                                    .toString()
+                                    .padStart(2, "0");
+                                  const minutes = d
+                                    .getMinutes()
+                                    .toString()
+                                    .padStart(2, "0");
+                                  return `${day}/${month}/${year} ${hours}:${minutes}`;
+                                })()}
+                              </Text>
+                            </View>
+                          </View>
+                          <View className="flex-row items-center ml-2">
+                            <TouchableOpacity
+                              onPress={() => handleEditEvent(evento)}
+                              className="p-2 opacity-60"
+                            >
+                              <Svg
+                                height="20"
+                                viewBox="0 -960 960 960"
+                                width="20"
+                                fill="#64748b"
+                              >
+                                <Path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z" />
+                              </Svg>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() =>
+                                handleDeleteEvent(evento.id_evento)
+                              }
+                              className="p-2 ml-1 opacity-60"
+                            >
+                              <Svg
+                                height="20"
+                                viewBox="0 -960 960 960"
+                                width="20"
+                                fill="#64748b"
+                              >
+                                <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                              </Svg>
+                            </TouchableOpacity>
+                          </View>
+                        </TouchableOpacity>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                ) : (
+                  <View className="flex-1 justify-center items-center">
+                    <Svg
+                      height="60"
+                      viewBox="0 -960 960 960"
+                      width="60"
+                      fill="#cbd5e1"
+                    >
+                      <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z" />
+                    </Svg>
+                    <Text className="text-slate-500 font-semibold mt-4 text-center">
+                      No hay eventos registrados.
+                    </Text>
+                    <Text className="text-slate-400 text-sm mt-1 text-center">
+                      Agrega un nuevo evento para comenzar.
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -4344,8 +4650,6 @@ const ScreenCursos = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   // --- Estados para el modal de edición ---
-  const [isModalVisible, setModalVisible] = useState(false);
-  const [currentCurso, setCurrentCurso] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // --- Estados para el modal de AGREGAR ---

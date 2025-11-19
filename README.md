@@ -1,4 +1,4 @@
-# Fenix Rentail 2.0
+# Fenix Retail 2.0
 
 Proyecto Expo/React Native + Supabase + Stripe.
 

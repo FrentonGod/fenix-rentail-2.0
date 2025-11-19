@@ -1339,7 +1339,8 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       <p style="font-weight: 700; text-align:center; margin: -0.05rem 0;">*CONSERVE ESTE COMPROBANTE*</p>
       <p style="margin: -0.05rem 0;">PAGO REALIZADO CON EXITO</p>
       <p style="margin: -0.05rem 0;">NO HAY DEVOLUCION DEL PAGO POR CUALQUIER SERVICIO PRESTADO EN NUESTRA INSTITUCIÓN</p>
-      <p style="margin: -0.05rem 0;">Dudas o quejas al: 287-181-1231</p>
+      <p style="margin: -0.05rem 0;">Dudas o quejas al:</p>
+      <p style="margin: -0.05rem 0;">287-181-1231</p>
       <p style="margin: -0.05rem 0;">¡GRACIAS POR LA CONFIANZA!</p>
       <p style="margin: -0.05rem 0;">Direccion: Lic. Kelvin Valentin Gómez Ramírez</p>
     </div>

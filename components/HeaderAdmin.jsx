@@ -22,7 +22,7 @@ import Svg, { Path } from 'react-native-svg';
  * - onLogout?: () => void
  */
 function HeaderAdmin({
-  title = 'Fenix Rentail',
+  title = 'Fenix Retail',
   subtitle = '',
   logoSource,
   onLogoPress,
