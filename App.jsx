@@ -440,12 +440,12 @@ const TablaVentasPendientes = ({
             <SortHeader label="Nombre" k="nombre_estudiante" flex={3} />
             <SortHeader label="Pendiente" k="monto_pendiente" flex={2} center />
             <SortHeader label="Grupo" k="grupo" flex={1.5} center />
-            <SortHeader label="Acciones" k={null} flex={1.5} center />
+            <SortHeader label="" k={null} flex={1.5} center />
           </View>
           {filtered.length > 0 ? (
-            filtered.map((estudiante, index) => (
+            filtered.map((alumno, index) => (
               <View
-                key={estudiante.id_estudiante}
+                key={alumno.id_alumno || index}
                 className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
               >
                 <Text
@@ -453,32 +453,32 @@ const TablaVentasPendientes = ({
                   className="p-3 text-slate-700"
                   numberOfLines={1}
                 >
-                  {estudiante.curso_asignado}
+                  {alumno.nombre_curso}
                 </Text>
                 <Text
                   style={{ flex: 3 }}
                   className="p-3 text-slate-800"
                   numberOfLines={1}
                 >
-                  {estudiante.nombre_estudiante}
+                  {alumno.nombre_alumno}
                 </Text>
                 <Text
                   style={{ flex: 2, textAlign: "center" }}
                   className="p-3 text-slate-700 font-medium"
                 >
-                  {currencyFormatter.format(estudiante.monto_pendiente || 0)}
+                  {currencyFormatter.format(alumno.monto_pendiente || 0)}
                 </Text>
                 <Text
                   style={{ flex: 1.5, textAlign: "center" }}
                   className="p-3 text-slate-700"
                 >
-                  {estudiante.grupo}
+                  {alumno.grupo}
                 </Text>
                 <View
                   style={{ flex: 1.5 }}
                   className="p-3 flex-row justify-center items-center gap-x-4"
                 >
-                  <TouchableOpacity onPress={() => onEdit(estudiante)}>
+                  <TouchableOpacity onPress={() => onEdit(alumno)}>
                     <Svg
                       height="22"
                       viewBox="0 -960 960 960"
@@ -488,9 +488,7 @@ const TablaVentasPendientes = ({
                       <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
                     </Svg>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => onReprint(estudiante.id_estudiante)}
-                  >
+                  <TouchableOpacity onPress={() => onReprint(alumno.id_alumno)}>
                     <Svg
                       height="22"
                       viewBox="0 -960 960 960"
@@ -543,10 +541,27 @@ const ScreenEstudiantes = ({ navigation }) => {
     if (isRefetching || loading) return;
     setIsRefetching(true);
     const { data, error } = await supabase
-      .from("estudiantes")
-      .select("*")
-      .order("id_estudiante", { ascending: false });
-    if (!error && data) setEstudiantes(data);
+      .from("alumnos")
+      .select(
+        `
+        id_alumno,
+        nombre_alumno,
+        grupo,
+        cursos (nombre_curso)
+      `
+      )
+      .order("id_alumno", { ascending: false });
+
+    if (!error && data) {
+      // Flatten the data structure for easier display
+      const formattedData = data.map((item) => ({
+        id_estudiante: item.id_alumno,
+        nombre_estudiante: item.nombre_alumno,
+        grupo: item.grupo,
+        curso_asignado: item.cursos?.nombre_curso || "Sin curso",
+      }));
+      setEstudiantes(formattedData);
+    }
     setTimeout(() => setIsRefetching(false), 300);
   };
 
@@ -557,11 +572,26 @@ const ScreenEstudiantes = ({ navigation }) => {
         else setLoading(true);
 
         const { data, error } = await supabase
-          .from("estudiantes")
-          .select("*")
-          .order("id_estudiante", { ascending: false });
+          .from("alumnos")
+          .select(
+            `
+            id_alumno,
+            nombre_alumno,
+            grupo,
+            cursos (nombre_curso)
+          `
+          )
+          .order("id_alumno", { ascending: false });
 
-        if (!error && data) setEstudiantes(data);
+        if (!error && data) {
+          const formattedData = data.map((item) => ({
+            id_estudiante: item.id_alumno,
+            nombre_estudiante: item.nombre_alumno,
+            grupo: item.grupo,
+            curso_asignado: item.cursos?.nombre_curso || "Sin curso",
+          }));
+          setEstudiantes(formattedData);
+        }
         setLoading(false);
         setIsRefetching(false);
       };
@@ -580,9 +610,9 @@ const ScreenEstudiantes = ({ navigation }) => {
           style: "destructive",
           onPress: async () => {
             const { error } = await supabase
-              .from("estudiantes")
+              .from("alumnos")
               .delete()
-              .eq("id_estudiante", id);
+              .eq("id_alumno", id);
             if (error)
               Alert.alert("Error", "No se pudo eliminar el estudiante.");
             else handleRefresh();
@@ -781,7 +811,7 @@ const TablaEstudiantes = ({
           {filtered.length > 0 ? (
             filtered.map((estudiante, index) => (
               <View
-                key={estudiante.id_estudiante}
+                key={estudiante.id_alumno || index}
                 className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
               >
                 <Text
@@ -3323,91 +3353,6 @@ const ScreenFinanzas = () => {
   );
 };
 
-const InputModal = ({
-  visible,
-  onClose,
-  label,
-  value,
-  onChangeText,
-  ...textInputProps
-}) => {
-  return (
-    <Modal
-      transparent={true}
-      visible={visible}
-      animationType={Platform.OS === "ios" ? "slide" : "fade"}
-      onRequestClose={onClose}
-    >
-      <BlurView
-        intensity={Platform.OS === "ios" ? 90 : 60}
-        tint="dark"
-        className="flex-1 justify-center items-center"
-      >
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View
-            className="flex-1 justify-center items-center w-full p-4"
-            style={Platform.OS === "ios" ? { paddingBottom: 100 } : {}}
-          >
-            <TouchableWithoutFeedback onPress={() => {}}>
-              <View className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-                {/* Header con gradiente */}
-                <LinearGradient
-                  colors={["#6F09EA", "#7009E8"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  className="p-5 flex-row justify-between items-center"
-                >
-                  <Text className="text-xl font-bold text-white">{label}</Text>
-                  <Pressable
-                    onPress={onClose}
-                    hitSlop={15}
-                    className="p-1 rounded-full bg-black/20"
-                  >
-                    <Svg
-                      height="20"
-                      viewBox="0 -960 960 960"
-                      width="20"
-                      fill="#ffffff"
-                    >
-                      <Path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
-                    </Svg>
-                  </Pressable>
-                </LinearGradient>
-
-                {/* Cuerpo del modal */}
-                <View className="p-6">
-                  <TextInput
-                    className="bg-slate-100 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-base focus:border-violet-500 focus:ring-2 focus:ring-violet-200"
-                    value={value}
-                    onChangeText={onChangeText}
-                    autoFocus={true}
-                    {...textInputProps}
-                  />
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </BlurView>
-    </Modal>
-  );
-};
-
-const PressableInput = ({ label, value, onPress, icon }) => (
-  <Pressable
-    onPress={onPress}
-    className="bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-3 flex-row items-center"
-    style={{ height: 48 }}
-  >
-    <View className="absolute left-3" pointerEvents="none">
-      {icon}
-    </View>
-    <Text className={value ? "text-slate-900" : "text-slate-400"}>
-      {value || label}
-    </Text>
-  </Pressable>
-);
-
 const ScreenCalendario = () => {
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
@@ -4955,12 +4900,32 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
 
   const fetchEstudiantesConAdeudo = async () => {
     const { data, error } = await supabase
-      .from("estudiantes")
-      .select("*")
-      .gt("monto_pendiente", 0) // gt = greater than
-      .order("monto_pendiente", { ascending: false });
+      .from("alumnos")
+      .select(
+        `
+        *,
+        cursos (nombre_curso, costo_curso)
+      `
+      )
+      .order("nombre_alumno", { ascending: true });
 
-    if (!error && data) setEstudiantesConAdeudo(data);
+    if (!error && data) {
+      const formattedData = data
+        .map((item) => {
+          const costo = item.cursos?.costo_curso || 0;
+          const pagado = (item.anticipo_alumno || 0) + (item.pago_alumno || 0);
+          const pendiente = costo - pagado;
+
+          return {
+            ...item,
+            nombre_curso: item.cursos?.nombre_curso || "Sin curso",
+            monto_pendiente: pendiente,
+          };
+        })
+        .filter((item) => item.monto_pendiente > 0);
+
+      setEstudiantesConAdeudo(formattedData);
+    }
     setLoading(false);
     setIsRefetching(false);
   };
@@ -5099,24 +5064,19 @@ const SeccionReportes = () => {
     const endDate = `${selectedYear}-12-31`;
 
     // 1. Fetch Sales
-    // const { data: sales, error: salesError } = await supabase
-    //   .from("ventas")
-    //   .select("fecha_venta, monto_final")
-    //   .gte("fecha_venta", startDate)
-    //   .lte("fecha_venta", endDate);
+    const { data: sales, error: salesError } = await supabase
+      .from("transacciones")
+      .select("fecha_transaction, monto")
+      .gte("fecha_transaction", startDate)
+      .lte("fecha_transaction", endDate);
 
-    // if (salesError) console.error("Error fetching sales:", salesError);
+    if (salesError) {
+      console.error("Error fetching sales:", salesError);
+    }
+    if (sales == []) {
+      console.log("No sales found for the selected year");
+    }
 
-    // 2. Fetch Students
-    // const { data: students, error: studentsError } = await supabase
-    //   .from("estudiantes")
-    //   .select("created_at")
-    //   .gte("created_at", startDate)
-    //   .lte("created_at", endDate);
-
-    // if (studentsError) console.error("Error fetching students:", studentsError);
-
-    // 3. Process data
     const monthsTemplate = Array.from({ length: 12 }, (_, i) => ({
       value: 0,
       label: new Date(0, i).toLocaleString("es-MX", { month: "short" }),
@@ -5124,8 +5084,12 @@ const SeccionReportes = () => {
 
     const monthlySales = JSON.parse(JSON.stringify(monthsTemplate));
     sales?.forEach((sale) => {
-      const month = new Date(sale.fecha_venta).getMonth();
-      monthlySales[month].value += sale.monto_final;
+      // Assuming fecha_transaccion is a date string or timestamp
+      const date = new Date(sale.fecha_transaction);
+      if (!isNaN(date.getTime())) {
+        const month = date.getMonth();
+        monthlySales[month].value += sale.monto;
+      }
     });
 
     const monthlyStudents = JSON.parse(JSON.stringify(monthsTemplate));

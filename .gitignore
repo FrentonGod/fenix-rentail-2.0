@@ -68,4 +68,7 @@ info-proyecto.txt
 .vscode
 .idea
 
+*.sql
+
 # End
+

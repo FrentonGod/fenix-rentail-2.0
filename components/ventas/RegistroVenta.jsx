@@ -438,6 +438,7 @@ const TicketPreview = ({ form, curso, totalFinal, totalConIncentivo }) => {
 const SLIDER_HEIGHT = 40; // Altura para todos los sliders
 
 const initialFormState = {
+  id_alumno: null,
   nombre_cliente: "",
   direccion: "",
   curso_id: null,
@@ -470,7 +471,9 @@ export default function RegistroVenta({ navigation, onFormClose }) {
   // Declaraciones de estado movidas al principio del componente
   const [form, setForm] = useState(initialFormState);
   const [cursos, setCursos] = useState([]);
+  const [estudiantes, setEstudiantes] = useState([]);
   const [loadingCursos, setLoadingCursos] = useState(true);
+  const [loadingEstudiantes, setLoadingEstudiantes] = useState(true);
   const [incentivoEnPorcentaje, setIncentivoEnPorcentaje] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [is_incentivo_active, set_incentivo_active] = useState(false);
@@ -480,6 +483,9 @@ export default function RegistroVenta({ navigation, onFormClose }) {
 
   // Estado para controlar si se muestra el input de dirección personalizada
   const [showCustomDireccion, setShowCustomDireccion] = useState(false);
+
+  // Estado para controlar si se está registrando un nuevo alumno
+  const [isNewStudent, setIsNewStudent] = useState(false);
 
   // Estado para controlar si el usuario quiere definir una fecha límite
   const [defineFechaLimite, setDefineFechaLimite] = useState(false);
@@ -605,7 +611,26 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       }
       setLoadingCursos(false);
     };
+
+    const fetchEstudiantes = async () => {
+      const { data, error } = await supabase
+        .from("alumnos")
+        .select("id_alumno, nombre_alumno")
+        .order("nombre_alumno", { ascending: true });
+
+      if (!error && data) {
+        setEstudiantes(
+          data.map((e) => ({
+            label: e.nombre_alumno,
+            value: e.id_alumno,
+          }))
+        );
+      }
+      setLoadingEstudiantes(false);
+    };
+
     fetchCursos();
+    fetchEstudiantes();
   }, []);
 
   const handleCursoChange = (item) => {
@@ -1114,10 +1139,13 @@ export default function RegistroVenta({ navigation, onFormClose }) {
   // --- Fin de la lógica de fecha ---
 
   const isFormValid = useMemo(() => {
+    // Si es nuevo estudiante, validamos nombre. Si es existente, validamos id_alumno.
+    const studentValid = isNewStudent
+      ? form.nombre_cliente.trim() !== ""
+      : form.id_alumno !== null;
+
     const baseValid =
-      form.nombre_cliente.trim() !== "" &&
-      form.curso_id !== null &&
-      form.anticipo !== null;
+      studentValid && form.curso_id !== null && form.anticipo !== null;
 
     if (!baseValid) return false;
 
@@ -1170,34 +1198,94 @@ export default function RegistroVenta({ navigation, onFormClose }) {
           : form.incentivo_premium;
       }
 
+      let finalIdAlumno = form.id_alumno;
+
+      // 1.5. Si es nuevo estudiante, verificamos si ya existe o lo creamos
+      if (isNewStudent) {
+        const nombreLimpio = form.nombre_cliente.trim();
+        console.log("Verificando alumno:", nombreLimpio);
+
+        // 1. Buscar si ya existe
+        const { data: existingStudents, error: searchError } = await supabase
+          .from("alumnos")
+          .select("id_alumno")
+          .eq("nombre_alumno", nombreLimpio);
+
+        if (searchError) {
+          console.error("Error buscando alumno:", searchError);
+          throw new Error(
+            "Error al verificar el alumno: " + searchError.message
+          );
+        }
+
+        if (existingStudents && existingStudents.length > 0) {
+          // Si existe, usamos su ID
+          finalIdAlumno = existingStudents[0].id_alumno;
+          console.log("Alumno existente encontrado, ID:", finalIdAlumno);
+        } else {
+          // Si no existe, lo creamos
+          console.log("Registrando nuevo alumno:", nombreLimpio);
+          const { data: newStudentData, error: newStudentError } =
+            await supabase
+              .from("alumnos")
+              .insert({
+                nombre_alumno: nombreLimpio,
+                direccion_alumno: form.direccion ? form.direccion.trim() : null,
+                fecha_inscripcion: new Date().toISOString(),
+                estatus_alumno: true,
+              })
+              .select("id_alumno")
+              .single();
+
+          if (newStudentError) {
+            console.error("Error creando alumno:", newStudentError);
+            throw new Error(
+              "Error al registrar el nuevo alumno: " + newStudentError.message
+            );
+          }
+
+          if (!newStudentData || !newStudentData.id_alumno) {
+            throw new Error("No se pudo obtener el ID del nuevo alumno.");
+          }
+
+          finalIdAlumno = newStudentData.id_alumno;
+          console.log("Nuevo alumno registrado con ID:", finalIdAlumno);
+        }
+      }
+
+      if (!finalIdAlumno) {
+        console.error(
+          "Error: ID de alumno es null antes de insertar transacción."
+        );
+        throw new Error("No se ha podido determinar el ID del alumno.");
+      }
+
       // 2. Preparar el objeto para la base de datos
       const payload = {
-        nombre_cliente: form.nombre_cliente.trim(),
-        fecha_limite_pago: form.fecha_limite_pago
-          ? form.fecha_limite_pago.split("/").reverse().join("-")
-          : null, // Convierte DD/MM/AAAA a AAAA-MM-DD para la BD
-        direccion: form.direccion.trim() || null,
-        curso_id: form.curso_id,
-        cantidad: form.curso_quantity,
-        grupo: form.grupo,
-        frecuencia_sesiones: form.frecuencia_sesiones,
-        horas_sesion: form.horas_sesion,
-        importe_total: form.importe,
+        monto: form.importe,
+        incentivo_premium: montoIncentivo,
         anticipo: form.anticipo,
-        monto_incentivo: montoIncentivo,
-        monto_final: totalFinal,
-        descripcion: form.descripcion.trim() || null,
-        // Asumimos que la tabla tiene un campo `fecha_venta` que se llena automáticamente
+        pendiente: totalFinal,
+        total: totalConIncentivo,
+        fecha_transaction: today.toISOString(),
+        alumno_id: finalIdAlumno, // Usamos el ID final (existente o nuevo)
+        // Otros campos que puedas necesitar, mapeados desde el formulario
+        // nombre_cliente: form.nombre_cliente.trim(),
+        // fecha_limite_pago: form.fecha_limite_pago ? form.fecha_limite_pago.split("/").reverse().join("-") : null,
+        // curso_id: form.curso_id,
+        // ...
       };
 
-      // 3. Insertar en Supabase
-      // const { error } = await supabase.from("ventas").insert(payload);
+      // 3. Insertar en Supabase (tabla transacciones)
+      const { error } = await supabase.from("transacciones").insert(payload);
 
-      // if (error) {
-      //   throw error;
-      // }
+      if (error) {
+        throw error;
+      }
 
-      // 4. Éxito
+      // 4. Generar PDF
+      await printToFile();
+
       Keyboard.dismiss();
       Alert.alert("Venta Registrada", "La venta se ha guardado con éxito.", [
         { text: "OK", onPress: onFormClose }, // Cierra el formulario al confirmar
@@ -1206,14 +1294,20 @@ export default function RegistroVenta({ navigation, onFormClose }) {
     } catch (error) {
       console.error("Error al registrar la venta:", error);
       Alert.alert(
-        Keyboard.dismiss(),
         "Error",
         "No se pudo registrar la venta. Inténtalo de nuevo."
       );
     } finally {
       setIsSaving(false);
     }
-  }, [form, isFormValid, incentivoEnPorcentaje, totalFinal, onFormClose]);
+  }, [
+    form,
+    isFormValid,
+    incentivoEnPorcentaje,
+    totalFinal,
+    totalConIncentivo,
+    onFormClose,
+  ]);
 
   const [selectedPrinter, setSelectedPrinter] = useState();
 
@@ -1359,8 +1453,8 @@ export default function RegistroVenta({ navigation, onFormClose }) {
   const printToFile = async () => {
     // On iOS/android prints the given html. On web prints the HTML from the current page.
     const { uri } = await Print.printToFileAsync({
-      html:html,
-      width:200
+      html: html,
+      width: 200,
     });
     console.log("File has been saved to:", uri);
     await shareAsync(uri, { UTI: ".pdf", mimeType: "application/pdf" });
@@ -1408,7 +1502,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
         </View>
 
         <View style={{ flex: 1, flexDirection: "row" }}>
-          <View style={{ flex: 1.2 }}>
+          <View style={{ flex: 3 }}>
             <KeyboardAvoidingView
               key={isLandscape ? "landscape" : "portrait"} // Clave para forzar el reseteo
               style={{ flex: 1 }}
@@ -1420,27 +1514,85 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                 keyboardShouldPersistTaps="never"
                 contentContainerStyle={styles.scrollContent}
               >
-                <LabeledInput label="Nombre del Cliente/Estudiante">
-                  <TextInput
-                    style={styles.input}
-                    value={form.nombre_cliente}
-                    autoCapitalize="words" // Dejamos que esta propiedad maneje la capitalización
-                    autoCorrect={false}
-                    onChangeText={(newText) => {
-                      // Previene que se escriba un espacio si el campo está vacío.
-                      if (form.nombre_cliente === "" && newText === " ") {
-                        return;
+                {/* Toggle para nuevo estudiante */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "flex-end",
+                    marginTop: -10,
+                    marginBottom: 10,
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={() => setIsNewStudent(!isNewStudent)}
+                  >
+                    <Text style={{ color: "#6F09EA", fontWeight: "600" }}>
+                      {isNewStudent
+                        ? "Seleccionar existente"
+                        : "Registrar nuevo alumno"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {isNewStudent && (
+                  <LabeledInput label="Nombre del Nuevo Alumno">
+                    <TextInput
+                      style={styles.input}
+                      value={form.nombre_cliente}
+                      autoCapitalize="words"
+                      autoCorrect={false}
+                      onChangeText={(newText) => {
+                        if (form.nombre_cliente === "" && newText === " ")
+                          return;
+                        const cleanedText = newText
+                          .replace(/[^a-zA-Z\sÁÉÍÓÚÜÑáéíóúüñ]/g, "")
+                          .replace(/\s\s+/g, " ");
+                        setForm({ ...form, nombre_cliente: cleanedText });
+                      }}
+                      placeholder="Ej. Juan Perez"
+                    />
+                  </LabeledInput>
+                )}
+
+                {!isNewStudent && (
+                  <LabeledInput label="Buscar Estudiante">
+                    <Dropdown
+                      style={styles.dropdown}
+                      data={estudiantes}
+                      labelField="label"
+                      valueField="value"
+                      placeholder={
+                        loadingEstudiantes
+                          ? "Cargando estudiantes..."
+                          : "Selecciona o busca un estudiante"
                       }
-                      // Remueve caracteres especiales y reemplaza múltiples espacios con uno solo
-                      const cleanedText = newText
-                        .replace(/[^a-zA-Z\sÁÉÍÓÚÜÑáéíóúüñ]/g, "")
-                        .replace(/\s\s+/g, " ");
-                      // Se elimina la función de formato manual y se establece el texto limpiado
-                      setForm({ ...form, nombre_cliente: cleanedText });
-                    }}
-                    placeholder="Ej. Maria Rodriguez"
-                  />
-                </LabeledInput>
+                      value={form.id_alumno}
+                      onChange={(item) => {
+                        setForm((prev) => ({
+                          ...prev,
+                          id_alumno: item.value,
+                          nombre_cliente: item.label,
+                        }));
+                      }}
+                      search
+                      searchPlaceholder="Buscar por nombre..."
+                      dropdownPosition="auto"
+                      renderRightIcon={() => (
+                        <Svg
+                          height="20"
+                          viewBox="0 -960 960 960"
+                          width="20"
+                          fill="#64748b"
+                        >
+                          <Path d="M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z" />
+                        </Svg>
+                      )}
+                      placeholderStyle={styles.dropdownPlaceholder}
+                      selectedTextStyle={styles.dropdownSelectedText}
+                      itemTextStyle={styles.dropdownItemText}
+                    />
+                  </LabeledInput>
+                )}
 
                 <LabeledInput label="Dirección">
                   <Dropdown
@@ -2344,8 +2496,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                     isSaving && styles.submitButtonDisabled, // isSaving debe ir al final para prevalecer
                   ]}
                   disabled={!isFormValid || isSaving}
-                  // onPress={handleRegisterSale}
-                  onPress={printToFile}
+                  onPress={handleRegisterSale}
                 >
                   {isSaving ? (
                     <ActivityIndicator color="#fff" />
@@ -2359,7 +2510,11 @@ export default function RegistroVenta({ navigation, onFormClose }) {
           <View
             id="ticket"
             className={isLandscape ? "" : "hidden"}
-            style={styles.previewContainer}
+            style={{
+              ...styles.previewContainer,
+              flex: Platform.OS != "web" ? 1.35 : 1,
+              overflow: "hidden",
+            }}
           >
             <TicketPreview
               form={form}
@@ -2659,7 +2814,7 @@ const styles = StyleSheet.create({
   },
   // Estilos para la vista previa del ticket
   previewContainer: {
-    flex: 0.6,
+    flex: Platform.OS !== "web" ? 1.35 : 1,
     padding: 20,
     backgroundColor: "#f1f5f9",
     justifyContent: "center",

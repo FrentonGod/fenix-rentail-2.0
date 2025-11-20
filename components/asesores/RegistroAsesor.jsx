@@ -28,6 +28,7 @@ import { supabase } from "../../lib/supabase";
 import Svg, { Path } from "react-native-svg";
 import equal from "fast-deep-equal";
 import * as ImagePicker from "expo-image-picker";
+import { decode } from "base64-arraybuffer";
 
 // Input compacto con label y error inline
 function LabeledInput({
@@ -130,7 +131,6 @@ export default function RegistroAsesor({
     rfc_asesor: "",
     nacionalidad_asesor: "Mexicana",
     genero_asesor: "",
-    avatar_url: "",
   };
 
   const [form, setForm] = useState(initialFormState);
@@ -146,6 +146,17 @@ export default function RegistroAsesor({
     // Si recibimos un asesor para editar, llenamos el formulario
     if (asesorToEdit) {
       setForm({ ...initialFormState, ...asesorToEdit });
+
+      // Construct URL for avatar
+      const fileName = `${asesorToEdit.id_asesor}.png`;
+      const { data } = supabase.storage
+        .from("AvatarAsesor")
+        .getPublicUrl(`public/${fileName}`);
+
+      if (data) {
+        setForm((f) => ({ ...f, avatar_url: data.publicUrl }));
+      }
+
       // Inicializar todos los campos como no editables en modo edición
       const isCustomMunicipio =
         asesorToEdit.municipio_asesor &&
@@ -206,13 +217,15 @@ export default function RegistroAsesor({
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
+      base64: true,
     });
 
     if (!result.canceled) {
-      const { uri } = result.assets[0];
+      const { uri, base64 } = result.assets[0];
       setForm((prevForm) => ({
         ...prevForm,
         avatar_url: uri,
+        avatar_base64: base64,
       }));
     }
   };
@@ -229,8 +242,27 @@ export default function RegistroAsesor({
         {
           text: "Eliminar",
           style: "destructive",
-          onPress: () => {
-            setForm((prevForm) => ({ ...prevForm, avatar_url: "" }));
+          onPress: async () => {
+            if (asesorToEdit?.id_asesor) {
+              const fileName = `${asesorToEdit.id_asesor}.png`;
+              const { error } = await supabase.storage
+                .from("AvatarAsesor")
+                .remove([`public/${fileName}`]);
+
+              if (error) {
+                console.error("Error deleting image:", error);
+                Alert.alert(
+                  "Error",
+                  "No se pudo eliminar la imagen del servidor."
+                );
+                return;
+              }
+            }
+            setForm((prevForm) => ({
+              ...prevForm,
+              avatar_url: "",
+              avatar_base64: null,
+            }));
           },
         },
       ]
@@ -402,41 +434,6 @@ export default function RegistroAsesor({
     setToast({ type: "", msg: "" });
     if (!validateAll()) return;
     try {
-      let newAvatarUrl = form.avatar_url;
-
-      // Si se seleccionó una nueva imagen (es una URI local)
-      if (newAvatarUrl && newAvatarUrl.startsWith("file://")) {
-        setSaving(true);
-        const file = {
-          uri: newAvatarUrl,
-          type: "image/jpeg", // o el tipo que corresponda
-          name: newAvatarUrl.split("/").pop(),
-        };
-
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const fileExt = file.name.split(".").pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        const filePath = `public/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("avatars")
-          .upload(filePath, formData);
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        const { data: publicUrlData } = supabase.storage
-          .from("avatars")
-          .getPublicUrl(filePath);
-
-        if (!publicUrlData) {
-          throw new Error("No se pudo obtener la URL pública de la imagen.");
-        }
-        newAvatarUrl = publicUrlData.publicUrl;
-      }
       setSaving(true);
       const email = form.correo_asesor.trim().toLowerCase();
 
@@ -465,10 +462,11 @@ export default function RegistroAsesor({
         rfc_asesor: form.rfc_asesor.trim().toUpperCase() || null,
         nacionalidad_asesor: form.nacionalidad_asesor.trim() || null,
         genero_asesor: form.genero_asesor,
-        avatar_url: newAvatarUrl,
       };
 
       let result;
+      let advisorId = asesorToEdit?.id_asesor;
+
       if (asesorToEdit) {
         // Modo Edición
         result = await supabase
@@ -477,7 +475,10 @@ export default function RegistroAsesor({
           .eq("id_asesor", asesorToEdit.id_asesor);
       } else {
         // Modo Creación
-        result = await supabase.from("asesores").insert(payload);
+        result = await supabase.from("asesores").insert(payload).select();
+        if (result.data && result.data.length > 0) {
+          advisorId = result.data[0].id_asesor;
+        }
       }
 
       if (result.error) {
@@ -487,6 +488,33 @@ export default function RegistroAsesor({
           msg: "No se pudo guardar. Intenta de nuevo.",
         });
         return;
+      }
+
+      // Subida de imagen usando el ID del asesor como nombre de archivo
+      if (
+        form.avatar_url &&
+        form.avatar_url.startsWith("file://") &&
+        form.avatar_base64 &&
+        advisorId
+      ) {
+        const fileName = `${advisorId}.png`;
+        const filePath = `public/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("AvatarAsesor")
+          .upload(filePath, decode(form.avatar_base64), {
+            contentType: "image/png",
+            upsert: true,
+          });
+
+        if (uploadError) {
+          console.error("Error uploading avatar:", uploadError);
+          // No bloqueamos el éxito del guardado del asesor, pero podríamos notificar
+          setToast({
+            type: "ok",
+            msg: "Asesor guardado, pero hubo un error subiendo la imagen.",
+          });
+        }
       }
 
       setToast({
@@ -561,6 +589,9 @@ export default function RegistroAsesor({
                   : "Completa los siguientes campos."}
             </Text>
           </View>
+          <Text className="text-center uppercase text-wrap text-slate-700 text-xs font-semibold tracking-wide">
+            Foto de perfil
+          </Text>
 
           {/* Bloque del formulario centrado en tablets */}
           <ScrollView
@@ -570,9 +601,6 @@ export default function RegistroAsesor({
           >
             {/* Sección de la foto de perfil */}
             <TouchableOpacity activeOpacity={1} className="items-center mb-4">
-              <Text className="mb-2 uppercase text-wrap text-slate-700 text-xs font-semibold tracking-wide">
-                Foto de perfil
-              </Text>
               <View className="relative">
                 <TouchableOpacity
                   onPress={() => {
@@ -711,7 +739,9 @@ export default function RegistroAsesor({
                     onChangeText={(v) => {
                       // Ignora mayúsculas y caracteres no permitidos.
                       // Solo permite a-z, 0-9 y @ . _ -
-                      const currentValue = v.replace(/[^a-z0-9@._-]/g, "").slice(0, 80);
+                      const currentValue = v
+                        .replace(/[^a-z0-9@._-]/g, "")
+                        .slice(0, 80);
                       set("correo_asesor")(currentValue);
 
                       const atIndex = currentValue.indexOf("@");

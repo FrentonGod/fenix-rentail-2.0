@@ -125,11 +125,13 @@ export default function RegistroEstudiantes({ onFormClose }) {
     if (!validate()) return;
 
     setSaving(true);
-    const { error } = await supabase.from("estudiantes").insert([
+    const { error } = await supabase.from("alumnos").insert([
       {
-        nombre_estudiante: form.nombre_estudiante.trim(),
-        id_curso: form.id_curso,
-        grupo: form.grupo,
+        nombre_alumno: form.nombre_estudiante.trim(),
+        id_curso: form.id_curso, // Requiere agregar esta columna a la tabla alumnos
+        grupo: form.grupo, // Requiere agregar esta columna a la tabla alumnos
+        fecha_inscripcion: new Date(),
+        estatus_alumno: true,
       },
     ]);
 
@@ -336,7 +338,7 @@ export default function RegistroEstudiantes({ onFormClose }) {
               styles.menu,
               {
                 left: cursoMenuPos.x,
-                top: cursoMenuPos.y + cursoMenuPos.h -23 ,
+                top: cursoMenuPos.y + cursoMenuPos.h - 23,
                 width: cursoMenuPos.w,
               },
             ]}
@@ -384,7 +386,7 @@ export default function RegistroEstudiantes({ onFormClose }) {
               styles.menu,
               {
                 left: grupoMenuPos.x,
-                top: grupoMenuPos.y + grupoMenuPos.h -24,
+                top: grupoMenuPos.y + grupoMenuPos.h - 24,
                 width: grupoMenuPos.w,
               },
             ]}
