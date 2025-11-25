@@ -472,8 +472,10 @@ export default function RegistroVenta({ navigation, onFormClose }) {
   const [form, setForm] = useState(initialFormState);
   const [cursos, setCursos] = useState([]);
   const [estudiantes, setEstudiantes] = useState([]);
+  const [gruposDB, setGruposDB] = useState([]); // Estado para los grupos de la BD
   const [loadingCursos, setLoadingCursos] = useState(true);
   const [loadingEstudiantes, setLoadingEstudiantes] = useState(true);
+  const [loadingGrupos, setLoadingGrupos] = useState(true); // Estado de carga para grupos
   const [incentivoEnPorcentaje, setIncentivoEnPorcentaje] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [is_incentivo_active, set_incentivo_active] = useState(false);
@@ -615,7 +617,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
     const fetchEstudiantes = async () => {
       const { data, error } = await supabase
         .from("alumnos")
-        .select("id_alumno, nombre_alumno")
+        .select("id_alumno, nombre_alumno, grupo, direccion_alumno")
         .order("nombre_alumno", { ascending: true });
 
       if (!error && data) {
@@ -623,14 +625,35 @@ export default function RegistroVenta({ navigation, onFormClose }) {
           data.map((e) => ({
             label: e.nombre_alumno,
             value: e.id_alumno,
+            grupo: e.grupo,
+            direccion: e.direccion_alumno,
           }))
         );
       }
       setLoadingEstudiantes(false);
     };
 
+    const fetchGrupos = async () => {
+      const { data, error } = await supabase
+        .from("grupos")
+        .select("id_grupo, grupo")
+        .order("id_grupo", { ascending: true });
+
+      if (!error && data) {
+        setGruposDB(
+          data.map((g) => ({
+            label: g.grupo,
+            value: g.grupo,
+            id_grupo: g.id_grupo, // Guardamos el ID del grupo
+          }))
+        );
+      }
+      setLoadingGrupos(false);
+    };
+
     fetchCursos();
     fetchEstudiantes();
+    fetchGrupos();
   }, []);
 
   const handleCursoChange = (item) => {
@@ -1037,15 +1060,6 @@ export default function RegistroVenta({ navigation, onFormClose }) {
     { label: "San Lucas Ojitlán", value: "San Lucas Ojitlán" },
     { label: "Otra", value: "Otra" },
   ];
-  const grupos = [
-    { label: "Vespertino 1", value: "Vespertino 1" },
-    { label: "Vespertino 2", value: "Vespertino 2" },
-    { label: "Vespertino 3", value: "Vespertino 3" },
-    { label: "Sabatino", value: "Sabatino" },
-    { label: "Matutino 1", value: "Matutino 1" },
-    { label: "Matutino 2", value: "Matutino 2" },
-    { label: "Matutino 3", value: "Matutino 3" },
-  ];
 
   const frecuencias = [
     { label: "Diaria", value: "diaria" },
@@ -1260,27 +1274,75 @@ export default function RegistroVenta({ navigation, onFormClose }) {
         throw new Error("No se ha podido determinar el ID del alumno.");
       }
 
+      // 1.8 Actualizar el grupo del alumno si se seleccionó uno
+      if (form.grupo) {
+        const { error: updateGroupError } = await supabase
+          .from("alumnos")
+          .update({ grupo: form.grupo })
+          .eq("id_alumno", finalIdAlumno);
+
+        if (updateGroupError) {
+          console.error(
+            "Error actualizando grupo del alumno:",
+            updateGroupError
+          );
+          // No lanzamos error fatal aquí para intentar guardar la venta de todos modos,
+          // pero si la FK es estricta, fallará en el siguiente paso.
+        }
+      }
+
       // 2. Preparar el objeto para la base de datos
       const payload = {
         monto: form.importe,
+        curso_id: form.curso_id,
+        referencia: form.descripcion,
+        grupo_id: form.grupo_id,
+        grupo_alumno: form.grupo,
         incentivo_premium: montoIncentivo,
         anticipo: form.anticipo,
         pendiente: totalFinal,
         total: totalConIncentivo,
         fecha_transaction: today.toISOString(),
-        alumno_id: finalIdAlumno, // Usamos el ID final (existente o nuevo)
-        // Otros campos que puedas necesitar, mapeados desde el formulario
-        // nombre_cliente: form.nombre_cliente.trim(),
-        // fecha_limite_pago: form.fecha_limite_pago ? form.fecha_limite_pago.split("/").reverse().join("-") : null,
-        // curso_id: form.curso_id,
-        // ...
+        alumno_id: finalIdAlumno,
       };
 
       // 3. Insertar en Supabase (tabla transacciones)
-      const { error } = await supabase.from("transacciones").insert(payload);
+      const { data: transactionData, error } = await supabase
+        .from("transacciones")
+        .insert(payload)
+        .select("id_transaccion") // Solicitamos que nos devuelva el ID generado
+        .single();
 
       if (error) {
         throw error;
+      }
+
+      // 3.5 Actualizar alumno con id_transaccion y id_curso
+      console.log("Datos de transacción retornados:", transactionData);
+
+      if (transactionData && transactionData.id_transaccion) {
+        console.log(
+          `Actualizando alumno ${finalIdAlumno} con id_transaccion: ${transactionData.id_transaccion}`
+        );
+        const { error: updateStudentError } = await supabase
+          .from("alumnos")
+          .update({
+            id_transaccion: transactionData.id_transaccion,
+            id_curso: form.curso_id,
+          })
+          .eq("id_alumno", finalIdAlumno);
+
+        if (updateStudentError) {
+          console.error(
+            "Error actualizando alumno con transacción/curso:",
+            updateStudentError
+          );
+          // No bloqueamos el flujo, pero logueamos el error
+        } else {
+          console.log("Alumno actualizado correctamente con la transacción.");
+        }
+      } else {
+        console.error("No se recibió id_transaccion después de la inserción.");
       }
 
       // 4. Generar PDF
@@ -1572,6 +1634,8 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                           ...prev,
                           id_alumno: item.value,
                           nombre_cliente: item.label,
+                          grupo: item.grupo || prev.grupo, // Pre-llenar grupo si existe
+                          direccion: item.direccion || prev.direccion, // Pre-llenar dirección si existe
                         }));
                       }}
                       search
@@ -1651,13 +1715,19 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                     <LabeledInput label="Grupo Asignado">
                       <Dropdown
                         style={styles.dropdown}
-                        data={grupos}
+                        data={gruposDB} // Usamos los grupos de la BD
                         labelField="label"
                         valueField="value"
-                        placeholder="Selecciona un grupo"
+                        placeholder={
+                          loadingGrupos ? "Cargando..." : "Selecciona un grupo"
+                        }
                         value={form.grupo}
                         onChange={(item) =>
-                          setForm({ ...form, grupo: item.value })
+                          setForm({
+                            ...form,
+                            grupo: item.value,
+                            grupo_id: item.id_grupo, // Guardamos el ID del grupo en el estado
+                          })
                         }
                         dropdownPosition="auto"
                         renderRightIcon={() => (

@@ -21,6 +21,7 @@ import {
   LayoutAnimation,
   UIManager,
   Alert,
+  Switch,
 } from "react-native";
 
 import React, {
@@ -38,7 +39,7 @@ import "./global.css";
 
 import Svg, { Path } from "react-native-svg";
 import Ripple from "react-native-material-ripple";
-import { BarChart } from "react-native-gifted-charts";
+import { LineChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { Dropdown } from "react-native-element-dropdown";
 import { BlurView } from "expo-blur";
@@ -361,6 +362,7 @@ const TablaVentasPendientes = ({
   onRefresh,
   onEdit,
   onReprint,
+  onRowClick, // Nueva prop
 }) => {
   const [sortKey, setSortKey] = useState("monto_pendiente");
   const [sortDir, setSortDir] = useState("desc");
@@ -445,35 +447,40 @@ const TablaVentasPendientes = ({
           {filtered.length > 0 ? (
             filtered.map((alumno, index) => (
               <View
-                key={alumno.id_alumno || index}
+                key={alumno.id_transaccion || index}
                 className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
               >
-                <Text
-                  style={{ flex: 3 }}
-                  className="p-3 text-slate-700"
-                  numberOfLines={1}
+                <TouchableOpacity
+                  style={{ flex: 9.5, flexDirection: "row" }}
+                  onPress={() => onRowClick && onRowClick(alumno)}
                 >
-                  {alumno.nombre_curso}
-                </Text>
-                <Text
-                  style={{ flex: 3 }}
-                  className="p-3 text-slate-800"
-                  numberOfLines={1}
-                >
-                  {alumno.nombre_alumno}
-                </Text>
-                <Text
-                  style={{ flex: 2, textAlign: "center" }}
-                  className="p-3 text-slate-700 font-medium"
-                >
-                  {currencyFormatter.format(alumno.monto_pendiente || 0)}
-                </Text>
-                <Text
-                  style={{ flex: 1.5, textAlign: "center" }}
-                  className="p-3 text-slate-700"
-                >
-                  {alumno.grupo}
-                </Text>
+                  <Text
+                    style={{ flex: 3 }}
+                    className="p-3 text-slate-700"
+                    numberOfLines={1}
+                  >
+                    {alumno.nombre_curso}
+                  </Text>
+                  <Text
+                    style={{ flex: 3 }}
+                    className="p-3 text-slate-800"
+                    numberOfLines={1}
+                  >
+                    {alumno.nombre_alumno}
+                  </Text>
+                  <Text
+                    style={{ flex: 2, textAlign: "center" }}
+                    className="p-3 text-slate-700 font-medium"
+                  >
+                    {currencyFormatter.format(alumno.monto_pendiente || 0)}
+                  </Text>
+                  <Text
+                    style={{ flex: 1.5, textAlign: "center" }}
+                    className="p-3 text-slate-700"
+                  >
+                    {alumno.grupo}
+                  </Text>
+                </TouchableOpacity>
                 <View
                   style={{ flex: 1.5 }}
                   className="p-3 flex-row justify-center items-center gap-x-4"
@@ -529,6 +536,142 @@ const TablaVentasPendientes = ({
   );
 };
 
+const StudentDetailsModal = ({
+  visible,
+  onClose,
+  student,
+  details,
+  loading,
+  onMakePayment, // Nueva prop para manejar el pago
+}) => {
+  return (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View className="flex-1 justify-end bg-black/50">
+        <View className="bg-white rounded-t-3xl p-6 h-[60%] shadow-2xl">
+          <View className="flex-row justify-between items-center mb-6">
+            <Text className="text-2xl font-bold text-slate-800">
+              Detalles del Estudiante
+            </Text>
+            <TouchableOpacity
+              onPress={onClose}
+              className="bg-slate-100 p-2 rounded-full"
+            >
+              <Svg
+                height="24"
+                viewBox="0 -960 960 960"
+                width="24"
+                fill="#64748b"
+              >
+                <Path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
+              </Svg>
+            </TouchableOpacity>
+          </View>
+
+          {loading ? (
+            <View className="flex-1 justify-center items-center">
+              <ActivityIndicator size="large" color="#6F09EA" />
+              <Text className="text-slate-500 mt-4">
+                Cargando información...
+              </Text>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View className="bg-indigo-50 p-4 rounded-xl mb-6 border border-indigo-100">
+                <Text className="text-sm text-indigo-600 font-semibold uppercase tracking-wider mb-1">
+                  Estudiante
+                </Text>
+                <Text className="text-2xl font-bold text-indigo-900">
+                  {student?.nombre_estudiante}
+                </Text>
+                <View className="flex-row items-center mt-2">
+                  <View className="bg-white px-3 py-1 rounded-full border border-indigo-200 mr-2">
+                    <Text className="text-indigo-700 font-medium text-xs">
+                      {student?.grupo || "Sin grupo"}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View className="mb-6">
+                <Text className="text-lg font-bold text-slate-800 mb-3">
+                  Resumen Financiero
+                </Text>
+                <View className="flex-row gap-4">
+                  <View className="flex-1 bg-red-50 p-4 rounded-xl border border-red-100">
+                    <Text className="text-red-600 font-medium text-xs uppercase">
+                      Deuda Total
+                    </Text>
+                    <Text className="text-2xl font-bold text-red-700 mt-1">
+                      ${details?.deudaTotal?.toLocaleString("es-MX") || "0"}
+                    </Text>
+                  </View>
+                  <View className="flex-1 bg-green-50 p-4 rounded-xl border border-green-100">
+                    <Text className="text-green-600 font-medium text-xs uppercase">
+                      Pagado
+                    </Text>
+                    <Text className="text-2xl font-bold text-green-700 mt-1">
+                      ${details?.pagadoTotal?.toLocaleString("es-MX") || "0"}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View className="mb-8">
+                <Text className="text-lg font-bold text-slate-800 mb-3">
+                  Cursos Inscritos
+                </Text>
+                {details?.cursos?.length > 0 ? (
+                  details.cursos.map((curso, index) => (
+                    <View
+                      key={index}
+                      className="bg-white border border-slate-200 p-4 rounded-xl mb-3 flex-row items-center justify-between shadow-sm"
+                    >
+                      <View className="flex-1">
+                        <Text className="font-semibold text-slate-800 text-base">
+                          {curso.nombre}
+                        </Text>
+                        {curso.pendiente > 0 ? (
+                          <Text className="text-red-500 text-sm mt-1 font-medium">
+                            Pendiente: $
+                            {curso.pendiente.toLocaleString("es-MX")}
+                          </Text>
+                        ) : (
+                          <Text className="text-green-600 text-sm mt-1 font-medium">
+                            Pagado
+                          </Text>
+                        )}
+                      </View>
+                      {curso.pendiente > 0 && (
+                        <TouchableOpacity
+                          onPress={() => onMakePayment(curso)}
+                          className="bg-indigo-100 px-4 py-2 rounded-full"
+                        >
+                          <Text className="text-indigo-700 font-bold text-sm">
+                            Abonar
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))
+                ) : (
+                  <Text className="text-slate-500 italic">
+                    No hay cursos registrados.
+                  </Text>
+                )}
+              </View>
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const ScreenEstudiantes = ({ navigation }) => {
   const [estudiantes, setEstudiantes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -536,6 +679,19 @@ const ScreenEstudiantes = ({ navigation }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(false);
   const formAnimation = useRef(new Animated.Value(0)).current;
+
+  // Estados para el modal de detalles
+  const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [studentDetails, setStudentDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+
+  // Estados para el modal de abono
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [selectedCourseForPayment, setSelectedCourseForPayment] =
+    useState(null);
+  const [processingPayment, setProcessingPayment] = useState(false);
 
   const handleRefresh = async () => {
     if (isRefetching || loading) return;
@@ -647,6 +803,135 @@ const ScreenEstudiantes = ({ navigation }) => {
     });
   };
 
+  const handleOpenPaymentModal = (curso) => {
+    setSelectedCourseForPayment(curso);
+    setPaymentAmount(0); // Inicializamos en 0
+    setPaymentModalVisible(true);
+  };
+
+  const handleProcessPayment = async () => {
+    const amount = Number(paymentAmount);
+    if (amount <= 0) {
+      Alert.alert("Error", "Por favor selecciona un monto válido.");
+      return;
+    }
+    if (amount > selectedCourseForPayment.pendiente) {
+      Alert.alert(
+        "Error",
+        "El monto del abono no puede ser mayor al saldo pendiente."
+      );
+      return;
+    }
+
+    setProcessingPayment(true);
+
+    try {
+      // 1. Buscar las transacciones pendientes para este estudiante y curso
+      const { data: transactions, error: fetchError } = await supabase
+        .from("transacciones")
+        .select("*")
+        .eq("alumno_id", selectedStudent.id_estudiante)
+        .eq("curso_id", selectedCourseForPayment.id)
+        .gt("pendiente", 0)
+        .order("fecha_transaction", { ascending: true }); // Pagamos las más antiguas primero
+
+      if (fetchError) throw fetchError;
+
+      let remainingPayment = amount;
+
+      // 2. Iterar y actualizar transacciones
+      for (const transaction of transactions) {
+        if (remainingPayment <= 0) break;
+
+        const paymentForThisTransaction = Math.min(
+          remainingPayment,
+          transaction.pendiente
+        );
+        const newPendiente = transaction.pendiente - paymentForThisTransaction;
+
+        const { error: updateError } = await supabase
+          .from("transacciones")
+          .update({ pendiente: newPendiente })
+          .eq("id_transaccion", transaction.id_transaccion);
+
+        if (updateError) throw updateError;
+
+        remainingPayment -= paymentForThisTransaction;
+      }
+
+      Alert.alert("Éxito", "Abono registrado correctamente.");
+      setPaymentModalVisible(false);
+      // Recargar detalles
+      handleViewDetails(selectedStudent);
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      Alert.alert("Error", "Hubo un problema al procesar el abono.");
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
+
+  const handleViewDetails = async (estudiante) => {
+    setSelectedStudent(estudiante);
+    setDetailsModalVisible(true);
+    setLoadingDetails(true);
+
+    try {
+      const { data, error } = await supabase
+        .from("transacciones")
+        .select(
+          `
+          pendiente,
+          total,
+          anticipo,
+          curso_id,
+          cursos (nombre_curso)
+        `
+        )
+        .eq("alumno_id", estudiante.id_estudiante);
+
+      if (error) throw error;
+
+      let deudaTotal = 0;
+      let pagadoTotal = 0;
+      const cursosMap = new Map();
+
+      data.forEach((t) => {
+        deudaTotal += t.pendiente || 0;
+        pagadoTotal +=
+          (t.anticipo || 0) +
+          ((t.total || 0) - (t.pendiente || 0) - (t.anticipo || 0));
+
+        if (t.curso_id && t.cursos) {
+          if (!cursosMap.has(t.curso_id)) {
+            cursosMap.set(t.curso_id, {
+              id: t.curso_id,
+              nombre: t.cursos.nombre_curso,
+              pendiente: 0,
+            });
+          }
+          // Sumamos pendiente por curso si hay múltiples transacciones para el mismo curso
+          const curso = cursosMap.get(t.curso_id);
+          curso.pendiente += t.pendiente || 0;
+        }
+      });
+
+      setStudentDetails({
+        deudaTotal,
+        pagadoTotal,
+        cursos: Array.from(cursosMap.values()),
+      });
+    } catch (err) {
+      console.error("Error fetching student details:", err);
+      Alert.alert(
+        "Error",
+        "No se pudieron cargar los detalles del estudiante."
+      );
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
   const formContainerStyle = {
     transform: [
       {
@@ -708,6 +993,7 @@ const ScreenEstudiantes = ({ navigation }) => {
             onRefresh={handleRefresh}
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onViewDetails={handleViewDetails}
           />
         </>
       )}
@@ -722,6 +1008,124 @@ const ScreenEstudiantes = ({ navigation }) => {
           />
         </Animated.View>
       )}
+
+      <StudentDetailsModal
+        visible={detailsModalVisible}
+        onClose={() => setDetailsModalVisible(false)}
+        student={selectedStudent}
+        details={studentDetails}
+        loading={loadingDetails}
+        onMakePayment={handleOpenPaymentModal}
+      />
+
+      {/* Modal simple para ingresar abono */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={paymentModalVisible}
+        onRequestClose={() => setPaymentModalVisible(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-black/50 px-4">
+          <View className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <Text className="text-xl font-bold text-slate-800 mb-2">
+              Registrar Abono
+            </Text>
+            <Text className="text-slate-600 mb-4">
+              Curso: {selectedCourseForPayment?.nombre}
+            </Text>
+            <Text className="text-slate-500 text-sm mb-2">
+              Pendiente actual: $
+              {selectedCourseForPayment?.pendiente.toLocaleString("es-MX")}
+            </Text>
+
+            <View className="items-center mb-6">
+              <Text className="text-4xl font-bold text-indigo-600 mb-4">
+                ${Math.round(paymentAmount).toLocaleString("es-MX")}
+              </Text>
+
+              <Slider
+                style={{ width: "100%", height: 40 }}
+                minimumValue={0}
+                maximumValue={selectedCourseForPayment?.pendiente || 0}
+                step={10} // Pasos de $10
+                value={Number(paymentAmount)}
+                onSlidingComplete={(val) => setPaymentAmount(val)}
+                minimumTrackTintColor="#4f46e5"
+                maximumTrackTintColor="#cbd5e1"
+                thumbTintColor="#4f46e5"
+              />
+
+              <View className="flex-row flex-wrap justify-center gap-2 mt-4">
+                {(() => {
+                  const total = selectedCourseForPayment?.pendiente || 0;
+
+                  // Función para redondear al múltiplo de 5 o 10 más cercano
+                  const roundToNice = (num) => {
+                    if (num <= 10) return Math.round(num / 5) * 5;
+                    if (num <= 50) return Math.round(num / 10) * 10;
+                    if (num <= 100) return Math.round(num / 20) * 20;
+                    return Math.round(num / 50) * 50;
+                  };
+
+                  const amounts = [
+                    roundToNice(total * 0.33),
+                    roundToNice(total * 0.66),
+                    total,
+                  ].filter((val, idx, arr) => arr.indexOf(val) === idx); // Eliminar duplicados
+
+                  return amounts.map((amount, idx) => {
+                    const isTotal = amount === total;
+                    return (
+                      <TouchableOpacity
+                        key={idx}
+                        onPress={() => setPaymentAmount(amount)}
+                        className={`px-3 py-1 rounded-full border ${
+                          paymentAmount === amount
+                            ? "bg-indigo-100 border-indigo-500"
+                            : "bg-white border-slate-300"
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs font-medium ${
+                            paymentAmount === amount
+                              ? "text-indigo-700"
+                              : "text-slate-600"
+                          }`}
+                        >
+                          {isTotal
+                            ? "Total"
+                            : `$${amount.toLocaleString("es-MX")}`}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  });
+                })()}
+              </View>
+            </View>
+
+            <View className="flex-row justify-end gap-3">
+              <TouchableOpacity
+                onPress={() => setPaymentModalVisible(false)}
+                className="px-4 py-2 rounded-lg bg-slate-100"
+                disabled={processingPayment}
+              >
+                <Text className="text-slate-600 font-semibold">Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleProcessPayment}
+                className="px-4 py-2 rounded-lg bg-indigo-600"
+                disabled={processingPayment}
+              >
+                {processingPayment ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text className="text-white font-semibold">Confirmar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -733,6 +1137,7 @@ const TablaEstudiantes = ({
   onRefresh,
   onEdit,
   onDelete,
+  onViewDetails, // Nueva prop
 }) => {
   const [sortKey, setSortKey] = useState("nombre_estudiante");
   const [sortDir, setSortDir] = useState("asc");
@@ -804,7 +1209,7 @@ const TablaEstudiantes = ({
         <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
           <View className="bg-slate-100 border-b border-slate-200 flex-row">
             <SortHeader label="Nombre" k="nombre_estudiante" flex={4} />
-            <SortHeader label="Curso" k="curso_asignado" flex={3} />
+            <SortHeader label="Último Curso" k="curso_asignado" flex={3} />
             <SortHeader label="Grupo" k="grupo" flex={2} center />
             <SortHeader label="Acciones" k={null} flex={1.5} center />
           </View>
@@ -814,26 +1219,31 @@ const TablaEstudiantes = ({
                 key={estudiante.id_alumno || index}
                 className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
               >
-                <Text
-                  style={{ flex: 4 }}
-                  className="p-3 text-slate-800"
-                  numberOfLines={1}
+                <TouchableOpacity
+                  style={{ flex: 9, flexDirection: "row" }}
+                  onPress={() => onViewDetails(estudiante)}
                 >
-                  {estudiante.nombre_estudiante}
-                </Text>
-                <Text
-                  style={{ flex: 3 }}
-                  className="p-3 text-slate-700"
-                  numberOfLines={1}
-                >
-                  {estudiante.curso_asignado}
-                </Text>
-                <Text
-                  style={{ flex: 2, textAlign: "center" }}
-                  className="p-3 text-slate-700"
-                >
-                  {estudiante.grupo}
-                </Text>
+                  <Text
+                    style={{ flex: 4 }}
+                    className="p-3 text-slate-800"
+                    numberOfLines={1}
+                  >
+                    {estudiante.nombre_estudiante}
+                  </Text>
+                  <Text
+                    style={{ flex: 3 }}
+                    className="p-3 text-slate-700"
+                    numberOfLines={1}
+                  >
+                    {estudiante.curso_asignado}
+                  </Text>
+                  <Text
+                    style={{ flex: 2, textAlign: "center" }}
+                    className="p-3 text-slate-700"
+                  >
+                    {estudiante.grupo}
+                  </Text>
+                </TouchableOpacity>
                 <View
                   style={{ flex: 1.5 }}
                   className="p-3 flex-row justify-center items-center gap-x-4"
@@ -1587,8 +1997,8 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
   // --- Lógica para los inputs de fecha segmentados ---
   const [isDateEditable, setIsDateEditable] = useState(false);
   const [dateParts, setDateParts] = useState(() => {
-    const initialDate = egresoToEdit?.fecha
-      ? new Date(egresoToEdit.fecha + "T00:00:00") // Asegurar que se interprete como local
+    const initialDate = egresoToEdit?.fecha_egreso
+      ? new Date(egresoToEdit.fecha_egreso + "T00:00:00") // Asegurar que se interprete como local
       : new Date();
     return {
       day: String(initialDate.getDate()).padStart(2, "0"),
@@ -1611,14 +2021,24 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
     nombre: "",
     descripcion: "",
     monto: "",
-    fecha: new Date().toISOString().split("T")[0], // Fecha para el filtro
+    fecha: new Date().toISOString().split("T")[0],
+    es_recurrente: false,
   };
 
-  const [form, setForm] = useState(
-    egresoToEdit
-      ? { ...egresoToEdit, monto: String(egresoToEdit.monto) }
-      : initialFormState
-  );
+  const [form, setForm] = useState(() => {
+    if (egresoToEdit) {
+      // Mapear los nombres de la BD a los nombres del formulario
+      return {
+        id: egresoToEdit.id,
+        nombre: egresoToEdit.nombre_egreso,
+        descripcion: egresoToEdit.desc_egreso || "",
+        monto: String(egresoToEdit.monto_egreso),
+        fecha: egresoToEdit.fecha_egreso,
+        es_recurrente: egresoToEdit.es_recurrente || false,
+      };
+    }
+    return initialFormState;
+  });
   const [formErrors, setFormErrors] = useState({ nombre: "" });
 
   const handleDatePartChange = (part, value) => {
@@ -1654,9 +2074,11 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
   }, [dateParts]);
 
   // --- Lógica para el slider de Monto ---
-  const [liveMonto, setLiveMonto] = useState(Number(egresoToEdit?.monto) || 0);
+  const [liveMonto, setLiveMonto] = useState(
+    Number(egresoToEdit?.monto_egreso) || 0
+  );
   const [maxSliderValue, setMaxSliderValue] = useState(
-    Math.max(3000, Number(egresoToEdit?.monto) || 0)
+    Math.max(3000, Number(egresoToEdit?.monto_egreso) || 0)
   );
 
   const handleInputChange = (field, value) => {
@@ -1676,12 +2098,77 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.nombre.trim()) {
       setFormErrors({ nombre: "El nombre es requerido" });
       return;
     }
-    onFormClose(form, true);
+
+    try {
+      const egresoPayload = {
+        nombre_egreso: form.nombre,
+        desc_egreso: form.descripcion || null,
+        monto_egreso: Number(form.monto),
+        fecha_egreso: form.fecha,
+        es_recurrente: form.es_recurrente,
+        estado: "pagado", // El primer registro siempre es pagado
+      };
+
+      if (form.id) {
+        // Actualizar egreso existente
+        const { error } = await supabase
+          .from("egresos")
+          .update(egresoPayload)
+          .eq("id", form.id);
+
+        if (error) throw error;
+        Alert.alert("Éxito", "Egreso actualizado correctamente");
+      } else {
+        // Crear nuevo egreso
+        const { data: nuevoEgreso, error } = await supabase
+          .from("egresos")
+          .insert([egresoPayload])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Si es recurrente, crear el siguiente mes como pendiente
+        if (form.es_recurrente) {
+          const siguienteFecha = new Date(form.fecha);
+          siguienteFecha.setMonth(siguienteFecha.getMonth() + 1);
+
+          const egresoSiguiente = {
+            nombre_egreso: form.nombre,
+            desc_egreso: form.descripcion || null,
+            monto_egreso: Number(form.monto),
+            fecha_egreso: siguienteFecha.toISOString().split("T")[0],
+            es_recurrente: true,
+            estado: "pendiente",
+          };
+
+          const { error: errorSiguiente } = await supabase
+            .from("egresos")
+            .insert([egresoSiguiente]);
+
+          if (errorSiguiente) {
+            console.error("Error creando egreso siguiente:", errorSiguiente);
+            // No lanzamos error aquí para no bloquear el guardado principal
+          }
+        }
+
+        Alert.alert("Éxito", "Egreso registrado correctamente");
+      }
+
+      // Llamar a onFormClose para cerrar el formulario y recargar datos
+      onFormClose(form, true);
+    } catch (error) {
+      console.error("Error guardando egreso:", error);
+      Alert.alert(
+        "Error",
+        `Hubo un problema al guardar el egreso: ${error.message}`
+      );
+    }
   };
 
   const handleCancel = () => {
@@ -1747,7 +2234,7 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
             className="flex-1 max-w-6xl self-center mt-4"
           >
             <View className="flex-row flex-wrap gap-4">
-              <View style={{ width: "100%" }}>
+              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
                 <LabeledInput
                   label="Nombre del Egreso"
                   error={formErrors.nombre}
@@ -1760,6 +2247,31 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
                     className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white ${formErrors.nombre ? "border-red-500" : ""}`}
                   />
                 </LabeledInput>
+              </View>
+
+              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
+                <View className="flex-row items-center justify-between mb-2 bg-white p-3 rounded-xl border border-slate-200">
+                  <Text className="text-slate-700 font-semibold">
+                    ¿Es un egreso recurrente?
+                  </Text>
+                  <Switch
+                    trackColor={{ false: "#e2e8f0", true: "#c7d2fe" }}
+                    thumbColor={form.es_recurrente ? "#6366f1" : "#f1f5f9"}
+                    ios_backgroundColor="#e2e8f0"
+                    onValueChange={(value) =>
+                      handleInputChange("es_recurrente", value)
+                    }
+                    value={form.es_recurrente}
+                  />
+                </View>
+                {form.es_recurrente && (
+                  <Text
+                    className={`text-xs absolute ${isLandscape ? "-bottom-5" : "-bottom-8"} text-indigo-600 mb-2 px-1`}
+                  >
+                    Se creará automáticamente un egreso pendiente para el
+                    próximo mes.
+                  </Text>
+                )}
               </View>
 
               <View style={{ width: "100%" }}>
@@ -1930,39 +2442,14 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
 };
 
 const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
-  const handleDateBlur = (part) => {
-    const value = dateParts[part];
-    if (value && value.length === 1) {
-      setDateParts((prev) => ({ ...prev, [part]: value.padStart(2, "0") }));
-    }
-  };
-  const initialFormState = {
-    id: null,
-    alumno: "",
-    curso: "",
-    fechaInicio: "",
-    fechaInicio: new Date().toISOString().split("T")[0],
-    asesor: null,
-    metodoPago: null,
-    importe: "",
-    estatus: null,
-  };
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
 
-  const [form, setForm] = useState(
-    ingresoToEdit
-      ? { ...ingresoToEdit, importe: String(ingresoToEdit.importe) }
-      : initialFormState
-  );
-  const [formErrors, setFormErrors] = useState({
-    alumno: "",
-    curso: "",
-    fechaInicio: "",
-  });
   // --- Lógica para los inputs de fecha segmentados ---
   const [isDateEditable, setIsDateEditable] = useState(false);
   const [dateParts, setDateParts] = useState(() => {
-    const initialDate = ingresoToEdit?.fechaInicio
-      ? new Date(ingresoToEdit.fechaInicio + "T00:00:00") // Asegurar que se interprete como local
+    const initialDate = ingresoToEdit?.fecha_ingreso
+      ? new Date(ingresoToEdit.fecha_ingreso + "T00:00:00") // Asegurar que se interprete como local
       : new Date();
     return {
       day: String(initialDate.getDate()).padStart(2, "0"),
@@ -1974,13 +2461,36 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
   const monthInputRef = useRef(null);
   const yearInputRef = useRef(null);
 
-  const [isCalendarVisible, setCalendarVisible] = useState(false);
-  const [liveImporte, setLiveImporte] = useState(
-    Number(ingresoToEdit?.importe) || 0
-  );
-  const [maxSliderValue, setMaxSliderValue] = useState(
-    Math.max(3000, Number(ingresoToEdit?.importe) || 0)
-  );
+  const handleDateBlur = (part) => {
+    const value = dateParts[part];
+    if (value && value.length === 1) {
+      setDateParts((prev) => ({ ...prev, [part]: value.padStart(2, "0") }));
+    }
+  };
+
+  const initialFormState = {
+    id: null,
+    nombre: "",
+    descripcion: "",
+    monto: "",
+    fecha: new Date().toISOString().split("T")[0],
+    es_recurrente: false,
+  };
+
+  const [form, setForm] = useState(() => {
+    if (ingresoToEdit) {
+      // Mapear los nombres de la BD a los nombres del formulario
+      return {
+        id: ingresoToEdit.id_ingreso,
+        nombre: ingresoToEdit.nombre_ingreso,
+        descripcion: ingresoToEdit.desc_ingreso || "",
+        monto: String(ingresoToEdit.monto_ingreso),
+        fecha: ingresoToEdit.fecha_ingreso,
+      };
+    }
+    return initialFormState;
+  });
+  const [formErrors, setFormErrors] = useState({ nombre: "" });
 
   const handleDatePartChange = (part, value) => {
     const numericValue = value.replace(/[^\d]/g, "");
@@ -2007,23 +2517,31 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
       const newDateString = `${year}-${month}-${day}`;
       const d = new Date(newDateString + "T00:00:00");
       if (d && d.toISOString().slice(0, 10) === newDateString) {
-        if (newDateString !== form.fechaInicio) {
-          handleInputChange("fechaInicio", newDateString);
+        if (newDateString !== form.fecha) {
+          setForm((prev) => ({ ...prev, fecha: newDateString }));
         }
       }
     }
   }, [dateParts]);
 
+  // --- Lógica para el slider de Monto ---
+  const [liveMonto, setLiveMonto] = useState(
+    Number(ingresoToEdit?.monto_ingreso) || 0
+  );
+  const [maxSliderValue, setMaxSliderValue] = useState(
+    Math.max(3000, Number(ingresoToEdit?.monto_ingreso) || 0)
+  );
+
   const handleInputChange = (field, value) => {
     setForm({ ...form, [field]: value });
     if (formErrors[field]) {
-      setFormErrors((prev) => ({ ...prev, [field]: false }));
+      setFormErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
 
-  const handleImporteChange = (value) => {
-    setLiveImporte(value);
-    handleInputChange("importe", String(value));
+  const handleMontoChange = (value) => {
+    setLiveMonto(value);
+    handleInputChange("monto", String(value));
     if (value > maxSliderValue) {
       setMaxSliderValue(value);
     } else if (value === 0 && maxSliderValue !== 3000) {
@@ -2031,69 +2549,53 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
     }
   };
 
-  const handleSave = () => {
-    const { alumno, curso, fechaInicio } = form;
-    if (!alumno || !curso || !fechaInicio) {
-      setFormErrors({
-        alumno: !alumno ? "El nombre es requerido" : "",
-        curso: !curso ? "Selecciona un curso" : "",
-        fechaInicio: !fechaInicio ? "La fecha es requerida" : "",
-      });
+  const handleSave = async () => {
+    if (!form.nombre.trim()) {
+      setFormErrors({ nombre: "El nombre es requerido" });
       return;
     }
-    // Llama a onFormClose pasando el formulario guardado
-    onFormClose(form, true);
+
+    try {
+      const ingresoPayload = {
+        nombre_ingreso: form.nombre,
+        desc_ingreso: form.descripcion || null,
+        monto_ingreso: Number(form.monto),
+        fecha_ingreso: form.fecha,
+      };
+
+      if (form.id) {
+        // Actualizar ingreso existente
+        const { error } = await supabase
+          .from("ingresos")
+          .update(ingresoPayload)
+          .eq("id_ingreso", form.id);
+
+        if (error) throw error;
+        Alert.alert("Éxito", "Ingreso actualizado correctamente");
+      } else {
+        // Crear nuevo ingreso
+        const { data: nuevoIngreso, error } = await supabase
+          .from("ingresos")
+          .insert([ingresoPayload])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Si es recurrente, crear el siguiente mes como pendiente
+
+        Alert.alert("Éxito", "Ingreso registrado correctamente");
+      }
+      onFormClose(form, true);
+    } catch (error) {
+      console.error("Error saving income:", error);
+      Alert.alert("Error", "No se pudo guardar el ingreso");
+    }
   };
 
   const handleCancel = () => {
-    const originalData = ingresoToEdit
-      ? { ...ingresoToEdit, importe: String(ingresoToEdit.importe) }
-      : initialFormState;
-    const hasChanges = !equal(form, originalData);
-
-    if (hasChanges) {
-      Alert.alert(
-        "Cambios sin guardar",
-        "Tienes cambios sin guardar. ¿Deseas descartarlos?",
-        [
-          { text: "Cancelar", style: "cancel" },
-          {
-            text: "Descartar",
-            style: "destructive",
-            onPress: () => onFormClose(null, false),
-          },
-        ]
-      );
-    } else {
-      onFormClose(null, false);
-    }
+    onFormClose(null, false);
   };
-
-  // Datos para los dropdowns (pueden venir de props o definirse aquí)
-  const asesores = [
-    { label: "Darian Reyes Romero", value: "Darian Reyes Romero" },
-    { label: "María López", value: "María López" },
-    { label: "Asesor de Prueba", value: "Asesor de Prueba" },
-  ];
-  const metodosPago = [
-    { label: "Efectivo", value: "Efectivo" },
-    { label: "Transferencia", value: "Transferencia" },
-    { label: "Depósito", value: "Depósito" },
-  ];
-  const estatusOptions = [
-    { label: "Pendiente", value: "Pendiente" },
-    { label: "Pagado", value: "Pagado" },
-  ];
-  const cursos = [
-    {
-      label: "Entrenamiento para el examen de admision a la universidad",
-      value: "Entrenamiento para el examen de admision a la universidad",
-    },
-    {
-      label: "Entrenamiento para el examen de admision a la preparatoria",
-      value: "Entrenamiento para el examen de admision a la preparatoria",
-    },
-  ];
 
   return (
     <TouchableWithoutFeedback
@@ -2134,51 +2636,58 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
 
           <ScrollView className="flex-1 max-w-6xl self-center mt-4">
             <View className="flex-row flex-wrap gap-4">
-              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-                <LabeledInput label="Nombre" error={formErrors.alumno}>
+              <View style={{ width: "100%" }}>
+                <LabeledInput
+                  label="Nombre del Ingreso"
+                  error={formErrors.nombre}
+                >
                   <TextInput
-                    value={form.alumno}
-                    onChangeText={(text) => handleInputChange("alumno", text)}
-                    placeholder="Ej. Juan Pére"
+                    value={form.nombre}
+                    onChangeText={(text) => handleInputChange("nombre", text)}
+                    placeholder="Ej. Venta de producto"
                     placeholderTextColor="#9ca3af"
-                    className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white ${formErrors.alumno ? "border-red-500" : ""}`}
+                    className={`border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white ${formErrors.nombre ? "border-red-500" : ""}`}
                   />
                 </LabeledInput>
               </View>
 
-              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-                <LabeledInput label="Curso/Asesoría" error={formErrors.curso}>
-                  <Dropdown
-                    style={[
-                      styles_finanzas.dropdown,
-                      formErrors.curso ? { borderColor: "#ef4444" } : {},
-                    ]}
-                    data={cursos}
-                    labelField="label"
-                    valueField="value"
-                    placeholder="Seleccionar curso"
-                    value={form.curso}
-                    onChange={(item) => handleInputChange("curso", item.value)}
-                    renderRightIcon={renderDropdownIcon}
+              <View style={{ width: "100%" }}>
+                <LabeledInput label="Descripción (Opcional)">
+                  <TextInput
+                    value={form.descripcion}
+                    onChangeText={(text) =>
+                      handleInputChange("descripcion", text)
+                    }
+                    placeholder="Detalles adicionales..."
+                    placeholderTextColor="#9ca3af"
+                    multiline
+                    numberOfLines={3}
+                    className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white h-24"
+                    style={{ textAlignVertical: "top" }}
                   />
                 </LabeledInput>
               </View>
 
-              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-                <LabeledInput className={`relative`} label="Fecha de Ingreso">
-                  <TouchableOpacity
-                    onPress={() => setIsDateEditable(!isDateEditable)}
-                    className="p-1 self-start left-[7.5rem] -top-1 absolute rounded-full bg-slate-200"
-                  >
-                    <Svg
-                      height="14"
-                      viewBox="0 -960 960 960"
-                      width="14"
-                      fill="#475569"
+              <View style={{ width: "100%" }}>
+                <View className="mb-4">
+                  <View className="flex-row items-center mb-1">
+                    <Text className="text-slate-700 text-xs font-semibold uppercase tracking-wide">
+                      Fecha de Registro
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setIsDateEditable(!isDateEditable)}
+                      className="ml-2 p-1 rounded-full bg-slate-200"
                     >
-                      <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                    </Svg>
-                  </TouchableOpacity>
+                      <Svg
+                        height="14"
+                        viewBox="0 -960 960 960"
+                        width="14"
+                        fill="#475569"
+                      >
+                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                      </Svg>
+                    </TouchableOpacity>
+                  </View>
                   <View
                     className={`flex-row items-center border border-slate-300 rounded-xl p-1 ${isDateEditable ? "bg-white" : "bg-slate-100 opacity-70"}`}
                   >
@@ -2186,10 +2695,11 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                       style={styles_registro_venta.dateInput}
                       placeholder="DD"
                       value={dateParts.day}
+                      editable={isDateEditable}
                       onChangeText={(text) => handleDatePartChange("day", text)}
+                      onBlur={() => handleDateBlur("day")}
                       keyboardType="number-pad"
                       maxLength={2}
-                      onBlur={() => handleDateBlur("day")}
                     />
                     <Text style={styles_registro_venta.dateSeparator}>/</Text>
                     <TextInput
@@ -2201,6 +2711,9 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                       onChangeText={(text) =>
                         handleDatePartChange("month", text)
                       }
+                      onBlur={() => handleDateBlur("month")}
+                      keyboardType="number-pad"
+                      maxLength={2}
                     />
                     <Text style={styles_registro_venta.dateSeparator}>/</Text>
                     <TextInput
@@ -2216,66 +2729,17 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                       maxLength={4}
                     />
                   </View>
-                </LabeledInput>
-              </View>
-
-              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-                <LabeledInput label="Método de Pago">
-                  <Dropdown
-                    style={styles_finanzas.dropdown}
-                    data={metodosPago}
-                    labelField="label"
-                    valueField="value"
-                    placeholder="Seleccionar método"
-                    value={form.metodoPago}
-                    onChange={(item) =>
-                      handleInputChange("metodoPago", item.value)
-                    }
-                    renderRightIcon={renderDropdownIcon}
-                  />
-                </LabeledInput>
-              </View>
-
-              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-                <LabeledInput label="Asesor">
-                  <Dropdown
-                    style={styles_finanzas.dropdown}
-                    data={asesores}
-                    labelField="label"
-                    valueField="value"
-                    placeholder="Seleccionar asesor"
-                    value={form.asesor}
-                    onChange={(item) => handleInputChange("asesor", item.value)}
-                    renderRightIcon={renderDropdownIcon}
-                  />
-                </LabeledInput>
-              </View>
-
-              <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
-                <LabeledInput label="Estatus">
-                  <Dropdown
-                    style={styles_finanzas.dropdown}
-                    data={estatusOptions}
-                    labelField="label"
-                    valueField="value"
-                    placeholder="Seleccionar estatus"
-                    value={form.estatus}
-                    onChange={(item) =>
-                      handleInputChange("estatus", item.value)
-                    }
-                    renderRightIcon={renderDropdownIcon}
-                  />
-                </LabeledInput>
+                </View>
               </View>
 
               <View style={{ width: "100%" }}>
-                <LabeledInput label="Importe">
+                <LabeledInput label="Monto">
                   <View className="flex-row items-center">
                     <StepButton
                       type="decrement"
-                      disabled={(Number(form.importe) || 0) <= 0}
+                      disabled={(Number(form.monto) || 0) <= 0}
                       onPress={() =>
-                        handleImporteChange(Math.max(0, liveImporte - 50))
+                        handleMontoChange(Math.max(0, liveMonto - 50))
                       }
                     />
                     <Slider
@@ -2283,26 +2747,26 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                       minimumValue={0}
                       maximumValue={maxSliderValue}
                       step={50}
-                      value={liveImporte}
-                      onSlidingComplete={handleImporteChange}
+                      value={liveMonto}
+                      onSlidingComplete={handleMontoChange}
                       minimumTrackTintColor={"#6F09EA"}
                       maximumTrackTintColor="#d1d5db"
                       thumbTintColor={"#6F09EA"}
                     />
                     <CurrencyInput
-                      value={form.importe}
+                      value={form.monto}
                       onChangeText={(text) => {
                         const numericText = text.replace(/[^0-9]/g, "");
                         if (numericText.length > 4) {
-                          handleImporteChange(maxSliderValue);
+                          handleMontoChange(maxSliderValue);
                         } else {
-                          handleImporteChange(Number(numericText) || 0);
+                          handleMontoChange(Number(numericText) || 0);
                         }
                       }}
                     />
                     <StepButton
                       type="increment"
-                      onPress={() => handleImporteChange(liveImporte + 50)}
+                      onPress={() => handleMontoChange(liveMonto + 50)}
                     />
                   </View>
                   <ChipButtonGroup
@@ -2310,7 +2774,6 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                       const standardChips = new Set([
                         500, 1000, 1500, 2000, 2500, 3000,
                       ]);
-                      // Agrega chips adicionales en incrementos de 500 si el rango se expande
                       if (maxSliderValue > 3000) {
                         for (let i = 3500; i <= maxSliderValue; i += 500) {
                           standardChips.add(i);
@@ -2318,16 +2781,11 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                       }
                       return Array.from(standardChips)
                         .sort((a, b) => a - b)
-                        .map((v) => ({
-                          label: `$${v}`,
-                          value: v,
-                        }));
+                        .map((v) => ({ label: `$${v}`, value: v }));
                     }, [maxSliderValue])}
-                    selectedValue={Number(form.importe)}
+                    selectedValue={Number(form.monto)}
                     onSelect={(value) => {
-                      // Primero, actualiza el valor del formulario y el estado visual del slider.
-                      handleImporteChange(value);
-                      // Luego, asegura que el rango máximo del slider se expanda si es necesario.
+                      handleMontoChange(value);
                       setMaxSliderValue((currentMax) =>
                         Math.max(currentMax, value, 3000)
                       );
@@ -2355,131 +2813,319 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
             </View>
           </ScrollView>
         </View>
-
-        <Modal
-          transparent={true}
-          animationType="fade"
-          visible={isCalendarVisible}
-          onRequestClose={() => setCalendarVisible(false)}
-        >
-          <TouchableWithoutFeedback onPress={() => setCalendarVisible(false)}>
-            <View className="flex-1 justify-center items-center bg-black/50">
-              <TouchableWithoutFeedback>
-                <View className="bg-white rounded-lg p-5">
-                  <Calendar
-                    onDayPress={(day) => {
-                      handleInputChange("fechaInicio", day.dateString);
-                      setCalendarVisible(false);
-                    }}
-                    markedDates={{
-                      [form.fechaInicio]: {
-                        selected: true,
-                        selectedColor: "#6F09EA",
-                      },
-                    }}
-                  />
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
   );
 };
 
-const TablaEgresos = ({ data, onEdit }) => {
+const TablaEgresos = ({ onEdit, refreshTrigger }) => {
   const currencyFormatter = new Intl.NumberFormat("es-MX", {
     style: "currency",
     currency: "MXN",
   });
 
-  const [sortKey, setSortKey] = useState("id");
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showPending, setShowPending] = useState(false); // Estado para mostrar/ocultar pendientes
+  const [sortKey, setSortKey] = useState(null); // Default to null to respect fetch order
   const [sortDir, setSortDir] = useState("desc");
 
   const sortedData = useMemo(() => {
-    const sorted = [...data].sort((a, b) => {
+    // Filtrar pendientes si es necesario
+    let filteredData = data;
+    if (!showPending) {
+      filteredData = data.filter((item) => item.estado !== "pendiente");
+    }
+
+    // If no sort key, return data as is (already sorted by fetch)
+    if (!sortKey) return filteredData;
+
+    const sorted = [...filteredData].sort((a, b) => {
+      // Always put 'pendiente' at the bottom
+      if (a.estado !== b.estado) {
+        if (a.estado === "pendiente") return 1;
+        if (b.estado === "pendiente") return -1;
+      }
+
+      // If no sort key, maintain default order (which is by date desc from fetch)
+      if (!sortKey) return 0;
+
       let va = a[sortKey] ?? "";
       let vb = b[sortKey] ?? "";
       if (typeof va === "string") va = va.toLowerCase();
       if (typeof vb === "string") vb = vb.toLowerCase();
+
       if (va < vb) return sortDir === "asc" ? -1 : 1;
       if (va > vb) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
     return sorted;
-  }, [data, sortKey, sortDir]);
+  }, [data, sortKey, sortDir, showPending]);
 
   const headers = [
-    { title: "ID", flex: 0.8, center: true, key: "id" },
-    { title: "Nombre", flex: 4, key: "nombre" },
-    { title: "Descripción", flex: 5, key: "descripcion" },
-    { title: "Fecha", flex: 2, center: true, key: "fecha" },
-    { title: "Monto", flex: 2, center: true, key: "monto" },
-    { title: "Acciones", flex: 1, center: true },
+    { title: "Nombre", flex: 4, key: "nombre_egreso" },
+    { title: "Descripción", flex: 5, key: "desc_egreso" },
+    { title: "Fecha", flex: 2.3, center: true, key: "fecha_egreso" },
+    { title: "Monto", flex: 2.5, center: true, key: "monto_egreso" }, // Increased flex slightly
+    { title: "", flex: 1, center: true },
   ];
+
+  const handleFetch = async () => {
+    try {
+      setLoading(true);
+      const { data: egresos, error } = await supabase
+        .from("egresos")
+        .select("*")
+        .order("estado", { ascending: true }) // 'pagado' comes before 'pendiente'
+        .order("fecha_egreso", { ascending: false });
+
+      if (error) throw error;
+
+      // Procesar egresos recurrentes automáticamente
+      await processRecurringEgresos(egresos || []);
+
+      // Volver a cargar después de procesar
+      const { data: updatedEgresos } = await supabase
+        .from("egresos")
+        .select("*")
+        .order("estado", { ascending: true }) // 'pagado' comes before 'pendiente'
+        .order("fecha_egreso", { ascending: false });
+
+      setData(updatedEgresos || []);
+    } catch (error) {
+      console.error("Error fetching egresos:", error);
+      Alert.alert("Error", "No se pudieron cargar los egresos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para procesar egresos recurrentes automáticamente
+  const processRecurringEgresos = async (egresos) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (const egreso of egresos) {
+      // Solo procesar egresos recurrentes pendientes
+      if (egreso.es_recurrente && egreso.estado === "pendiente") {
+        const egresoDate = new Date(egreso.fecha_egreso);
+        egresoDate.setHours(0, 0, 0, 0);
+
+        // Si la fecha del egreso ya pasó o es hoy
+        if (egresoDate <= today) {
+          try {
+            // 1. Marcar el egreso actual como pagado
+            const { error: updateError } = await supabase
+              .from("egresos")
+              .update({ estado: "pagado" })
+              .eq("id", egreso.id);
+
+            if (updateError) {
+              console.error("Error updating egreso:", updateError);
+              continue;
+            }
+
+            // 2. Crear el siguiente egreso pendiente para el próximo mes
+            const nextMonthDate = new Date(egresoDate);
+            nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
+
+            const newEgreso = {
+              nombre_egreso: egreso.nombre_egreso,
+              desc_egreso: egreso.desc_egreso,
+              monto_egreso: egreso.monto_egreso,
+              fecha_egreso: nextMonthDate.toISOString().split("T")[0],
+              es_recurrente: true,
+              estado: "pendiente",
+            };
+
+            const { error: insertError } = await supabase
+              .from("egresos")
+              .insert([newEgreso]);
+
+            if (insertError) {
+              console.error("Error creating next egreso:", insertError);
+            } else {
+              console.log(
+                `✅ Egreso recurrente procesado: ${egreso.nombre_egreso} - Siguiente fecha: ${newEgreso.fecha_egreso}`
+              );
+            }
+          } catch (err) {
+            console.error("Error processing recurring egreso:", err);
+          }
+        }
+      }
+    }
+  };
+
+  // Función para refrescar con pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await handleFetch();
+    setRefreshing(false);
+  };
+
+  // Recargar datos cuando refreshTrigger cambia
+  useEffect(() => {
+    handleFetch();
+  }, [refreshTrigger]);
+
+  // Recargar datos cuando se entra a la sección
+  useFocusEffect(
+    useCallback(() => {
+      handleFetch();
+    }, [])
+  );
 
   return (
     <View className="flex-1">
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#6366f1"]}
+            tintColor="#6366f1"
+          />
+        }
+      >
         <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+          {/* Toolbar con Checkbox para Pendientes */}
+          <View className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex-row justify-end items-center">
+            <TouchableOpacity
+              onPress={() => setShowPending(!showPending)}
+              className="flex-row items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm"
+              activeOpacity={0.7}
+            >
+              <View
+                className={`w-5 h-5 rounded border ${showPending ? "bg-indigo-600 border-indigo-600" : "border-slate-300 bg-white"} items-center justify-center`}
+              >
+                {showPending && (
+                  <Svg
+                    height="14"
+                    viewBox="0 -960 960 960"
+                    width="14"
+                    fill="white"
+                  >
+                    <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+                  </Svg>
+                )}
+              </View>
+              <Text className="text-slate-600 text-sm font-medium">
+                Mostrar pendientes
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Header */}
           <View className="bg-slate-100 border-b border-slate-200 flex-row">
             {headers.map((header, index) => (
-              <View
+              <TouchableOpacity
                 key={index}
                 style={{
                   flex: header.flex,
                   alignItems: header.center ? "center" : "flex-start",
                 }}
-                className="py-3 px-3"
+                className="py-3 px-3 flex-row gap-1"
+                onPress={() => {
+                  if (!header.key) return;
+                  if (sortKey === header.key) {
+                    setSortDir(sortDir === "asc" ? "desc" : "asc");
+                  } else {
+                    setSortKey(header.key);
+                    setSortDir("asc");
+                  }
+                }}
+                disabled={!header.key}
               >
                 <Text className="text-slate-800 font-semibold text-xs uppercase tracking-wide">
                   {header.title}
                 </Text>
-              </View>
+                {sortKey === header.key && (
+                  <Text className="text-slate-600 text-xs">
+                    {sortDir === "asc" ? "↑" : "↓"}
+                  </Text>
+                )}
+              </TouchableOpacity>
             ))}
           </View>
 
           {/* Body */}
-          {sortedData.length > 0 ? (
+          {loading ? (
+            <View className="p-8 items-center justify-center bg-white">
+              <ActivityIndicator size="large" color="#6366f1" />
+              <Text className="text-slate-500 text-center font-medium mt-4">
+                Cargando egresos...
+              </Text>
+            </View>
+          ) : sortedData.length > 0 ? (
             sortedData.map((egreso, index) => (
               <View
                 key={egreso.id}
-                className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
+                className={`flex-row items-center border-t border-slate-200 ${
+                  index % 2 ? "bg-white" : "bg-slate-50"
+                } ${egreso.estado === "pendiente" ? "opacity-50" : ""}`}
               >
-                <Text
-                  style={{ flex: 0.8, textAlign: "center" }}
-                  className="p-3 text-slate-600"
-                >
-                  {egreso.id}
-                </Text>
                 <Text
                   style={{ flex: 4 }}
                   className="p-3 text-slate-800"
                   numberOfLines={1}
                 >
-                  {egreso.nombre}
+                  {egreso.nombre_egreso || egreso.nombre || "Sin nombre"}
                 </Text>
                 <Text
                   style={{ flex: 5 }}
                   className="p-3 text-slate-700"
                   numberOfLines={1}
                 >
-                  {egreso.descripcion}
+                  {egreso.desc_egreso || egreso.descripcion || "-"}
                 </Text>
                 <Text
-                  style={{ flex: 2, textAlign: "center" }}
+                  style={{ flex: 2.3}}
                   className="p-3 text-slate-600"
                 >
-                  {new Date(egreso.fecha).toLocaleDateString("es-MX")}
+                  {new Date(
+                    egreso.fecha_egreso || egreso.fecha
+                  ).toLocaleDateString("es-MX")}
                 </Text>
-                <Text
-                  style={{ flex: 2, textAlign: "center" }}
-                  className="p-3 text-slate-800 font-medium"
+
+                {/* Columna de Monto con Icono de Estado */}
+                <View
+                  style={{
+                    flex: 2.5,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                  className="p-3"
                 >
-                  {currencyFormatter.format(egreso.monto)}
-                </Text>
+                  <Text className="text-slate-800 font-medium">
+                    {currencyFormatter.format(
+                      egreso.monto_egreso || egreso.monto || 0
+                    )}
+                  </Text>
+                  {egreso.estado === "pagado" ? (
+                    <Svg
+                      height="16"
+                      viewBox="0 -960 960 960"
+                      width="16"
+                      fill="#22c55e"
+                    >
+                      <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+                    </Svg>
+                  ) : (
+                    <Svg
+                      height="16"
+                      viewBox="0 -960 960 960"
+                      width="16"
+                      fill="#f59e0b"
+                    >
+                      <Path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm-40-200h120v-80H480v-160h-80v200h40Z" />
+                    </Svg>
+                  )}
+                </View>
+
                 <View
                   style={{ flex: 1 }}
                   className="p-3 flex-row justify-center items-center"
@@ -2595,206 +3241,197 @@ const CustomFinanzasTabBar = (props) => {
   );
 };
 
-const ScreenFinanzas = () => {
-  const TablaIngresos = ({ data, onEdit }) => {
-    const currencyFormatter = new Intl.NumberFormat("es-MX", {
-      style: "currency",
-      currency: "MXN",
-    });
+const TablaIngresos = ({ onEdit, refreshTrigger }) => {
+  const currencyFormatter = new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+  });
 
-    const [sortKey, setSortKey] = useState("id");
-    const [sortDir, setSortDir] = useState("desc");
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState("desc");
 
-    const sortedData = useMemo(() => {
-      const sorted = [...data].sort((a, b) => {
-        let va = a[sortKey] ?? "";
-        let vb = b[sortKey] ?? "";
-        if (typeof va === "string") va = va.toLowerCase();
-        if (typeof vb === "string") vb = vb.toLowerCase();
-        if (va < vb) return sortDir === "asc" ? -1 : 1;
-        if (va > vb) return sortDir === "asc" ? 1 : -1;
-        return 0;
-      });
-      return sorted;
-    }, [data, sortKey, sortDir]);
+  const handleFetch = async () => {
+    try {
+      setLoading(true);
+      const { data: ingresos, error } = await supabase
+        .from("ingresos")
+        .select("*")
+        .order("fecha_ingreso", { ascending: false });
 
-    const SortHeader = ({ label, k, flex = 1, center }) => (
-      <Pressable
-        onPress={() => {
-          if (!k) return;
-          setSortKey(k);
-          setSortDir((d) =>
-            sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"
-          );
-        }}
-        className="py-3 px-3"
-        style={{ flex, alignItems: center ? "center" : "flex-start" }}
-        android_ripple={{ color: "rgba(0,0,0,0.05)" }}
-      >
-        <View className="flex-row items-center gap-1">
-          <Text className="text-slate-800 font-semibold text-xs uppercase tracking-wide">
-            {label}
-          </Text>
-          {sortKey === k && (
-            <Svg width={12} height={12} viewBox="0 -960 960 960" fill="#334155">
-              {sortDir === "asc" ? (
-                <Path d="M480-680 240-440h480L480-680Z" />
-              ) : (
-                <Path d="M240-520h480L480-280 240-520Z" />
-              )}
-            </Svg>
-          )}
-        </View>
-      </Pressable>
-    );
-
-    const headers = [
-      { title: "ID", flex: 0.5, center: true, key: "id" },
-      { title: "Alumno", flex: 2.5, key: "alumno" },
-      { title: "Curso", flex: 1.5, key: "curso" },
-      { title: "Fecha", flex: 1, center: true, key: "fechaInicio" },
-      { title: "Importe", flex: 1, center: true, key: "importe" },
-      { title: "Estatus", flex: 1, center: true, key: "estatus" },
-      { title: "Acciones", flex: 1, center: true },
-    ];
-
-    return (
-      <View className="flex-1">
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-          <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
-            {/* Header */}
-            <View className="bg-slate-100 border-b border-slate-200 flex-row">
-              {headers.map((header, index) => (
-                <View
-                  key={index}
-                  style={{
-                    flex: header.flex,
-                    alignItems: header.center ? "center" : "flex-start",
-                  }}
-                  className="py-3 px-3"
-                >
-                  <Text className="text-slate-800 font-semibold text-xs uppercase tracking-wide">
-                    {header.title}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Body */}
-            {data.length > 0 ? (
-              data.map((ingreso, index) => (
-                <View
-                  key={ingreso.id}
-                  className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
-                >
-                  <Text
-                    style={{ flex: 0.5, textAlign: "center" }}
-                    className="p-3 text-slate-600"
-                  >
-                    {ingreso.id}
-                  </Text>
-                  <Text
-                    style={{ flex: 2 }}
-                    className="p-3 text-slate-800"
-                    numberOfLines={1}
-                  >
-                    {ingreso.alumno}
-                  </Text>
-                  <Text
-                    style={{ flex: 2.5 }}
-                    className="p-3 text-slate-700"
-                    numberOfLines={1}
-                  >
-                    {ingreso.curso}
-                  </Text>
-                  <Text
-                    style={{ flex: 1, textAlign: "center" }}
-                    className="p-3 text-slate-600"
-                  >
-                    {new Date(ingreso.fechaInicio).toLocaleDateString("es-MX")}
-                  </Text>
-                  <Text
-                    style={{ flex: 1, textAlign: "center" }}
-                    className="p-3 text-slate-800 font-medium"
-                  >
-                    {currencyFormatter.format(ingreso.importe)}
-                  </Text>
-                  <View
-                    style={{ flex: 1, alignItems: "center" }}
-                    className="p-3"
-                  >
-                    <Text
-                      className={`text-xs font-bold rounded-full px-2 py-1 ${
-                        ingreso.estatus === "Pagado"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-amber-100 text-amber-800"
-                      }`}
-                    >
-                      {ingreso.estatus}
-                    </Text>
-                  </View>
-                  <View
-                    style={{ flex: 0.8 }}
-                    className="p-3 flex-row justify-center items-center"
-                  >
-                    <TouchableOpacity onPress={() => onEdit(ingreso)}>
-                      <Svg
-                        height="22"
-                        viewBox="0 -960 960 960"
-                        width="22"
-                        fill="#3b82f6"
-                      >
-                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                      </Svg>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))
-            ) : (
-              <View className="p-8 items-center justify-center bg-white">
-                <Text className="text-slate-500 text-center font-medium">
-                  No hay ingresos para mostrar en este período.
-                </Text>
-                <Text className="text-slate-400 text-center text-sm mt-1">
-                  Intenta con otro mes/año o agrega un nuevo ingreso.
-                </Text>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-      </View>
-    );
+      if (error) throw error;
+      setData(ingresos || []);
+    } catch (error) {
+      console.error("Error fetching ingresos:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const [ingresosData, setIngresosData] = useState([
-    {
-      id: 1,
-      alumno: "Kelvin Valentin",
-      curso: "Curso de React Native",
-      fechaInicio: "2024-07-20",
-      asesor: "Darian Reyes",
-      metodoPago: "Transferencia",
-      importe: 1500,
-      estatus: "Pagado",
-    },
-    // Agrega más datos de ejemplo si es necesario
-  ]);
-  const [egresosData, setEgresosData] = useState([
-    {
-      id: 1,
-      nombre: "Pago de servicio de luz",
-      descripcion: "Recibo CFE del mes de Junio",
-      monto: 850,
-      fecha: "2024-07-15",
-    },
-    {
-      id: 2,
-      nombre: "Compra de papelería",
-      descripcion: "",
-      monto: 1200,
-      fecha: "2024-06-25",
-    },
-  ]);
+  useEffect(() => {
+    handleFetch();
+  }, [refreshTrigger]);
+
+  useFocusEffect(
+    useCallback(() => {
+      handleFetch();
+    }, [])
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await handleFetch();
+    setRefreshing(false);
+  };
+
+  const sortedData = useMemo(() => {
+    if (!sortKey) return data;
+    const sorted = [...data].sort((a, b) => {
+      let va = a[sortKey] ?? "";
+      let vb = b[sortKey] ?? "";
+      if (typeof va === "string") va = va.toLowerCase();
+      if (typeof vb === "string") vb = vb.toLowerCase();
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [data, sortKey, sortDir]);
+
+  const headers = [
+    { title: "Nombre", flex: 4, key: "nombre_ingreso" },
+    { title: "Descripción", flex: 5, key: "desc_ingreso" },
+    { title: "Fecha", flex: 2.3, center: true, key: "fecha_ingreso" },
+    { title: "Monto", flex: 2.5, center: true, key: "monto_ingreso" },
+    { title: "", flex: 1, center: true },
+  ];
+
+  return (
+    <View className="flex-1">
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#6366f1"]}
+            tintColor="#6366f1"
+          />
+        }
+      >
+        <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+          {/* Header */}
+          <View className="bg-slate-100 border-b border-slate-200 flex-row">
+            {headers.map((header, index) => (
+              <TouchableOpacity
+                key={index}
+                style={{
+                  flex: header.flex,
+                  alignItems: header.center ? "center" : "flex-start",
+                }}
+                className="py-3 px-3 flex-row gap-1"
+                onPress={() => {
+                  if (!header.key) return;
+                  if (sortKey === header.key) {
+                    setSortDir(sortDir === "asc" ? "desc" : "asc");
+                  } else {
+                    setSortKey(header.key);
+                    setSortDir("asc");
+                  }
+                }}
+                disabled={!header.key}
+              >
+                <Text className="text-slate-800 font-semibold text-xs uppercase tracking-wide">
+                  {header.title}
+                </Text>
+                {sortKey === header.key && (
+                  <Text className="text-slate-600 text-xs">
+                    {sortDir === "asc" ? "↑" : "↓"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Body */}
+          {loading ? (
+            <View className="p-8 items-center justify-center bg-white">
+              <ActivityIndicator size="large" color="#6366f1" />
+              <Text className="text-slate-500 text-center font-medium mt-4">
+                Cargando ingresos...
+              </Text>
+            </View>
+          ) : sortedData.length > 0 ? (
+            sortedData.map((ingreso, index) => (
+              <View
+                key={ingreso.id_ingreso}
+                className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
+              >
+                <Text
+                  style={{ flex: 4 }}
+                  className="p-3 text-slate-800"
+                  numberOfLines={1}
+                >
+                  {ingreso.nombre_ingreso}
+                </Text>
+                <Text
+                  style={{ flex: 5 }}
+                  className="p-3 text-slate-700"
+                  numberOfLines={1}
+                >
+                  {ingreso.desc_ingreso || "-"}
+                </Text>
+                <Text
+                  style={{ flex: 2.3 }}
+                  className="p-3 text-slate-600"
+                >
+                  {ingreso.fecha_ingreso
+                    ? new Date(ingreso.fecha_ingreso).toLocaleDateString(
+                        "es-MX"
+                      )
+                    : "-"}
+                </Text>
+                <Text
+                  style={{ flex: 2.5 }}
+                  className="p-3 text-slate-800 font-medium"
+                >
+                  {currencyFormatter.format(ingreso.monto_ingreso)}
+                </Text>
+                <View style={{ flex: 1, alignItems: "center" }} className="p-3">
+                  <TouchableOpacity onPress={() => onEdit(ingreso)}>
+                    <Svg
+                      height="20"
+                      viewBox="0 -960 960 960"
+                      width="20"
+                      fill="#6366f1"
+                    >
+                      <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                    </Svg>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          ) : (
+            <View className="p-8 items-center justify-center bg-white">
+              <Text className="text-slate-500 text-center font-medium">
+                No hay ingresos registrados.
+              </Text>
+              <Text className="text-slate-400 text-center text-sm mt-1">
+                Agrega un nuevo ingreso para comenzar.
+              </Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </View>
+  );
+};
+
+const ScreenFinanzas = () => {
+  const [ingresoRefreshTrigger, setIngresoRefreshTrigger] = useState(0);
+
   const [loading, setLoading] = useState(false); // Desactivamos la carga por defecto
 
   // --- Estados para el formulario de Ingresos y su animación ---
@@ -2812,6 +3449,7 @@ const ScreenFinanzas = () => {
   const [isEgresoFormVisible, setIsEgresoFormVisible] = useState(false);
   const [editingEgreso, setEditingEgreso] = useState(null);
   const egresoFormAnimation = useRef(new Animated.Value(0)).current;
+  const [egresoRefreshTrigger, setEgresoRefreshTrigger] = useState(0);
 
   const initialFormState = {
     id: null,
@@ -2925,32 +3563,12 @@ const ScreenFinanzas = () => {
       }).start(() => {
         setIsIngresoFormVisible(false);
         setEditingIngreso(null);
-        // Aquí actualizamos los datos si se guardó algo
-        if (wasSaved && savedData) {
-          if (savedData.id) {
-            const updatedData = ingresosData.map((row) =>
-              row.id === savedData.id
-                ? { ...savedData, importe: parseFloat(savedData.importe) || 0 }
-                : row
-            );
-            setIngresosData(updatedData);
-          } else {
-            const newEntry = {
-              ...savedData,
-              id:
-                ingresosData.length > 0
-                  ? Math.max(...ingresosData.map((i) => i.id)) + 1
-                  : 1,
-              importe: parseFloat(savedData.importe) || 0,
-            };
-            setIngresosData([...ingresosData, newEntry]);
-          }
-        }
+        // Actualizamos datos si se guardó
+        // Always refresh when closing the form
+        setIngresoRefreshTrigger((prev) => prev + 1);
       });
     };
 
-    // El componente RegistroIngreso ya maneja la alerta de cambios,
-    // así que simplemente cerramos.
     closeAction();
   };
 
@@ -2974,26 +3592,8 @@ const ScreenFinanzas = () => {
         setIsEgresoFormVisible(false);
         setEditingEgreso(null);
         // Actualizamos datos si se guardó
-        if (wasSaved && savedData) {
-          if (savedData.id) {
-            const updatedData = egresosData.map((row) =>
-              row.id === savedData.id
-                ? { ...savedData, monto: parseFloat(savedData.monto) || 0 }
-                : row
-            );
-            setEgresosData(updatedData);
-          } else {
-            const newEntry = {
-              ...savedData,
-              id:
-                egresosData.length > 0
-                  ? Math.max(...egresosData.map((e) => e.id)) + 1
-                  : 1,
-              monto: parseFloat(savedData.monto) || 0,
-            };
-            setEgresosData([...egresosData, newEntry]);
-          }
-        }
+        // Always refresh when closing the form
+        setEgresoRefreshTrigger((prev) => prev + 1);
       });
     };
     closeAction();
@@ -3012,100 +3612,6 @@ const ScreenFinanzas = () => {
   });
 
   const isAnyFormVisible = isIngresoFormVisible || isEgresoFormVisible;
-
-  const filteredIngresos = useMemo(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-
-    return ingresosData.filter((ingreso) => {
-      if (!ingreso.fechaInicio) return false;
-      const ingresoDate = new Date(ingreso.fechaInicio);
-
-      switch (selectedIngresoDateFilter) {
-        case "last_month": {
-          const oneMonthAgo = new Date(now);
-          oneMonthAgo.setMonth(now.getMonth() - 1);
-          return ingresoDate >= oneMonthAgo && ingresoDate <= now;
-        }
-        case "previous_month": {
-          const startOfPreviousMonth = new Date(
-            now.getFullYear(),
-            now.getMonth() - 1,
-            1
-          );
-          const endOfPreviousMonth = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            0
-          );
-          return (
-            ingresoDate >= startOfPreviousMonth &&
-            ingresoDate <= endOfPreviousMonth
-          );
-        }
-        case "3_months_ago": {
-          const threeMonthsAgo = new Date(now);
-          threeMonthsAgo.setMonth(now.getMonth() - 3);
-          return ingresoDate >= threeMonthsAgo && ingresoDate <= now;
-        }
-        case "this_year":
-          return ingresoDate.getFullYear() === now.getFullYear();
-        default:
-          if (selectedIngresoDateFilter.startsWith("year-")) {
-            const year = parseInt(selectedIngresoDateFilter.split("-")[1], 10);
-            return ingresoDate.getFullYear() === year;
-          }
-          return false;
-      }
-    });
-  }, [ingresosData, selectedIngresoDateFilter]);
-
-  const filteredEgresos = useMemo(() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-
-    return egresosData.filter((egreso) => {
-      if (!egreso.fecha) return false;
-      const egresoDate = new Date(egreso.fecha);
-
-      switch (selectedEgresoDateFilter) {
-        case "last_month": {
-          const oneMonthAgo = new Date(now);
-          oneMonthAgo.setMonth(now.getMonth() - 1);
-          return egresoDate >= oneMonthAgo && egresoDate <= now;
-        }
-        case "previous_month": {
-          const startOfPreviousMonth = new Date(
-            now.getFullYear(),
-            now.getMonth() - 1,
-            1
-          );
-          const endOfPreviousMonth = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            0
-          );
-          return (
-            egresoDate >= startOfPreviousMonth &&
-            egresoDate <= endOfPreviousMonth
-          );
-        }
-        case "3_months_ago": {
-          const threeMonthsAgo = new Date(now);
-          threeMonthsAgo.setMonth(now.getMonth() - 3);
-          return egresoDate >= threeMonthsAgo && egresoDate <= now;
-        }
-        case "this_year":
-          return egresoDate.getFullYear() === now.getFullYear();
-        default:
-          if (selectedEgresoDateFilter.startsWith("year-")) {
-            const year = parseInt(selectedEgresoDateFilter.split("-")[1], 10);
-            return egresoDate.getFullYear() === year;
-          }
-          return false;
-      }
-    });
-  }, [egresosData, selectedEgresoDateFilter]);
 
   const renderCell = (data, cellInfo, index) => {
     const field = cellInfo.field;
@@ -3257,8 +3763,8 @@ const ScreenFinanzas = () => {
             </View>
 
             <TablaIngresos
-              data={filteredIngresos}
               onEdit={(ingreso) => handleOpenIngresoForm(ingreso)}
+              refreshTrigger={ingresoRefreshTrigger}
             />
             {isIngresoFormVisible && (
               <Animated.View
@@ -3328,8 +3834,8 @@ const ScreenFinanzas = () => {
             </View>
 
             <TablaEgresos
-              data={filteredEgresos}
               onEdit={(egreso) => handleOpenEgresoForm(egreso)}
+              refreshTrigger={egresoRefreshTrigger}
             />
             {isEgresoFormVisible && (
               <Animated.View
@@ -3384,6 +3890,21 @@ const ScreenCalendario = () => {
   const [dateParts, setDateParts] = useState({ day: "", month: "", year: "" });
   const [isDateEditable, setIsDateEditable] = useState(false);
   const [isTimeEditable, setIsTimeEditable] = useState(false);
+  const [showPastEvents, setShowPastEvents] = useState(false);
+
+  // Filtrar eventos según el toggle de eventos pasados
+  const visibleEvents = useMemo(() => {
+    if (showPastEvents) return allEvents;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Resetear hora para comparar solo fechas
+
+    return allEvents.filter((evento) => {
+      if (!evento.fechayhora_evento) return true; // Si no tiene fecha, mostrarlo por si acaso
+      const eventDate = new Date(evento.fechayhora_evento);
+      return eventDate >= today;
+    });
+  }, [allEvents, showPastEvents]);
 
   const monthInputRef = useRef(null);
   const yearInputRef = useRef(null);
@@ -3584,14 +4105,31 @@ const ScreenCalendario = () => {
   LocaleConfig.defaultLocale = "es";
 
   // Objeto para marcar la fecha seleccionada
-  const markedDates = {
-    [selectedDate]: {
-      selected: true,
-      selectedColor: "#6F09EA",
-      disableTouchEvent: true,
-    },
-    // Aquí se podrían añadir más fechas con eventos (puntos, etc.)
-  };
+  // Objeto para marcar la fecha seleccionada y fechas con eventos
+  const markedDates = useMemo(() => {
+    const marks = {
+      [selectedDate]: {
+        selected: true,
+        selectedColor: "#6F09EA",
+        disableTouchEvent: true,
+      },
+    };
+
+    allEvents.forEach((event) => {
+      if (event.fechayhora_evento) {
+        const dateKey = event.fechayhora_evento.split("T")[0];
+        // Si la fecha ya está marcada como seleccionada, no la sobrescribimos, pero podríamos añadir dots
+        if (dateKey !== selectedDate) {
+          marks[dateKey] = {
+            marked: true,
+            dotColor: event.tipo === "egreso" ? "#f59e0b" : "#6F09EA", // Naranja para egresos, Morado para eventos
+          };
+        }
+      }
+    });
+
+    return marks;
+  }, [selectedDate, allEvents]);
 
   async function submitEvento() {
     const fechaCompleta = `${selectedDate} ${newEvent.hora}:${newEvent.minutos}:00`;
@@ -3642,18 +4180,52 @@ const ScreenCalendario = () => {
   }
 
   async function fetchEvento() {
-    const { data, error } = await supabase
-      .from("eventos_calendario")
-      .select("*")
-      .order("fechayhora_evento", { ascending: true });
+    try {
+      // 1. Fetch eventos normales del calendario
+      const { data: eventos, error: errorEventos } = await supabase
+        .from("eventos_calendario")
+        .select("*")
+        .order("fechayhora_evento", { ascending: true });
 
-    if (error) {
-      console.error("Error fetching events:", error);
-      Alert.alert("Error", "No se pudieron cargar los eventos");
-    } else {
-      setAllEvents(data || []);
+      if (errorEventos) {
+        console.error("Error fetching events:", errorEventos);
+        Alert.alert("Error", "No se pudieron cargar los eventos");
+        return;
+      }
+
+      // 2. Fetch egresos pendientes
+      const { data: egresos, error: errorEgresos } = await supabase
+        .from("egresos")
+        .select("*")
+        .eq("estado", "pendiente");
+
+      if (errorEgresos) {
+        console.error("Error fetching pending expenses:", errorEgresos);
+      }
+
+      // 3. Formatear egresos como eventos
+      const egresosComoEventos = (egresos || []).map((egreso) => ({
+        id_evento: `egreso-${egreso.id}`, // ID único con prefijo
+        nombre_evento: `Pago Recurrente: ${egreso.nombre_egreso}`,
+        detalles_evento: `Monto: $${egreso.monto_egreso} - ${egreso.desc_egreso}`,
+        fechayhora_evento: `${egreso.fecha_egreso}T09:00:00`, // Asumimos 9 AM por defecto para visualización
+        tipo: "egreso", // Identificador para lógica de UI
+        originalData: egreso, // Guardamos datos originales por si acaso
+      }));
+
+      // 4. Combinar y ordenar ambos tipos
+      const todos = [...(eventos || []), ...egresosComoEventos].sort((a, b) => {
+        const dateA = new Date(a.fechayhora_evento);
+        const dateB = new Date(b.fechayhora_evento);
+        return dateA - dateB;
+      });
+
+      setAllEvents(todos);
+    } catch (err) {
+      console.error("Unexpected error in fetchEvento:", err);
+    } finally {
+      setRefreshing(false);
     }
-    setRefreshing(false);
   }
 
   const onRefresh = useCallback(() => {
@@ -3818,6 +4390,23 @@ const ScreenCalendario = () => {
                 )}
               </TouchableOpacity>
             </View>
+
+            {/* Toggle para mostrar/ocultar eventos pasados */}
+            {!isAddingEvent && (
+              <View className="flex-row items-center justify-end mb-2">
+                <Text className="text-xs text-slate-500 mr-2">
+                  Ver eventos pasados
+                </Text>
+                <Switch
+                  trackColor={{ false: "#e2e8f0", true: "#c7d2fe" }}
+                  thumbColor={showPastEvents ? "#6366f1" : "#f1f5f9"}
+                  ios_backgroundColor="#e2e8f0"
+                  onValueChange={setShowPastEvents}
+                  value={showPastEvents}
+                  style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                />
+              </View>
+            )}
 
             {isAddingEvent ? (
               // --- FORMULARIO PARA AGREGAR EVENTO ---
@@ -3993,7 +4582,7 @@ const ScreenCalendario = () => {
               // --- VISTA POR DEFECTO (LISTA DE EVENTOS O MENSAJE) ---
 
               <View className="flex-1">
-                {allEvents.length > 0 ? (
+                {visibleEvents.length > 0 ? (
                   <ScrollView
                     className="flex-1"
                     contentContainerStyle={{
@@ -4009,15 +4598,28 @@ const ScreenCalendario = () => {
                       />
                     }
                   >
-                    {allEvents.map((evento, index) => (
+                    {visibleEvents.map((evento, index) => (
                       <TouchableOpacity
                         key={evento.id_evento || index}
-                        className="p-4 mb-3 bg-slate-50 rounded-xl border-l-4 border-indigo-500 shadow-sm"
+                        onPress={() => {
+                          if (evento.tipo !== "egreso") {
+                            handleEditEvent(evento);
+                          }
+                        }}
+                        className={`p-4 mb-3 bg-slate-50 rounded-xl border-l-4 shadow-sm border-l-indigo-500 ${
+                          evento.tipo === "egreso"
+                            ? "border-amber-200"
+                            : "border-indigo-500"
+                        }`}
+                        style={{
+                          borderWidth: 0,
+                          borderLeftWidth: 4,
+                          borderColor:
+                            evento.tipo === "egreso" ? "#fcd34d" : "#6366f1", // Amber-300 para egresos, Indigo-500 para normales
+                          borderLeftColor: "#6366f1", // Siempre Indigo-500
+                        }}
                       >
-                        <TouchableOpacity
-                          activeOpacity={1}
-                          className="flex-row justify-between items-start"
-                        >
+                        <View className="flex-row justify-between items-start">
                           <View className="flex-1">
                             <Text className="font-bold text-base text-slate-800 mb-1">
                               {evento.nombre_evento}
@@ -4026,16 +4628,32 @@ const ScreenCalendario = () => {
                               {evento.detalles_evento}
                             </Text>
                             <View className="flex-row items-center">
-                              <Svg
-                                height="14"
-                                width="14"
-                                viewBox="0 -960 960 960"
-                                fill="#94a3b8"
-                                className="mr-1"
+                              {/* Icono dinámico según tipo */}
+                              {evento.tipo === "egreso" ? (
+                                <Svg
+                                  height="14"
+                                  width="14"
+                                  viewBox="0 -960 960 960"
+                                  fill="#f59e0b"
+                                  className="mr-1"
+                                >
+                                  <Path d="M440-120v-80h80v80h-80Zm0-320v-80h80v80h-80Zm0-320v-80h80v80h-80ZM200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                                </Svg>
+                              ) : (
+                                <Svg
+                                  height="14"
+                                  width="14"
+                                  viewBox="0 -960 960 960"
+                                  fill="#94a3b8"
+                                  className="mr-1"
+                                >
+                                  <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z" />
+                                </Svg>
+                              )}
+
+                              <Text
+                                className={`text-xs font-medium ${evento.tipo === "egreso" ? "text-amber-600" : "text-slate-500"}`}
                               >
-                                <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z" />
-                              </Svg>
-                              <Text className="text-xs text-slate-500 font-medium">
                                 {(() => {
                                   if (!evento.fechayhora_evento) return "";
                                   const d = new Date(evento.fechayhora_evento);
@@ -4057,42 +4675,51 @@ const ScreenCalendario = () => {
                                     .getMinutes()
                                     .toString()
                                     .padStart(2, "0");
+
+                                  // Para egresos, solo mostramos fecha, no hora (ya que es ficticia)
+                                  if (evento.tipo === "egreso") {
+                                    return `${day}/${month}/${year} (Próximo pago)`;
+                                  }
                                   return `${day}/${month}/${year} ${hours}:${minutes}`;
                                 })()}
                               </Text>
                             </View>
                           </View>
-                          <View className="flex-row items-center ml-2">
-                            <TouchableOpacity
-                              onPress={() => handleEditEvent(evento)}
-                              className="p-2 opacity-60"
-                            >
-                              <Svg
-                                height="20"
-                                viewBox="0 -960 960 960"
-                                width="20"
-                                fill="#64748b"
+
+                          {/* Botones de acción solo para eventos normales */}
+                          {evento.tipo !== "egreso" && (
+                            <View className="flex-row items-center ml-2">
+                              <TouchableOpacity
+                                onPress={() => handleEditEvent(evento)}
+                                className="p-2 opacity-60"
                               >
-                                <Path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z" />
-                              </Svg>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              onPress={() =>
-                                handleDeleteEvent(evento.id_evento)
-                              }
-                              className="p-2 ml-1 opacity-60"
-                            >
-                              <Svg
-                                height="20"
-                                viewBox="0 -960 960 960"
-                                width="20"
-                                fill="#64748b"
+                                <Svg
+                                  height="20"
+                                  viewBox="0 -960 960 960"
+                                  width="20"
+                                  fill="#64748b"
+                                >
+                                  <Path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z" />
+                                </Svg>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={() =>
+                                  handleDeleteEvent(evento.id_evento)
+                                }
+                                className="p-2 ml-1 opacity-60"
                               >
-                                <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
-                              </Svg>
-                            </TouchableOpacity>
-                          </View>
-                        </TouchableOpacity>
+                                <Svg
+                                  height="20"
+                                  viewBox="0 -960 960 960"
+                                  width="20"
+                                  fill="#64748b"
+                                >
+                                  <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                                </Svg>
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                        </View>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
@@ -4859,6 +5486,17 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const anim = useRef(new Animated.Value(0)).current;
 
+  // Estados para el modal de pago
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [coursePaymentModalVisible, setCoursePaymentModalVisible] =
+    useState(false);
+  const [paymentAmount, setPaymentAmount] = useState(0);
+  const [selectedDebtForPayment, setSelectedDebtForPayment] = useState(null);
+  const [selectedCourseForPayment, setSelectedCourseForPayment] =
+    useState(null);
+  const [studentDetails, setStudentDetails] = useState(null);
+  const [processingPayment, setProcessingPayment] = useState(false);
+
   const handleGenerateSale = () => {
     setIsFormVisible(true);
     Animated.spring(anim, {
@@ -4899,32 +5537,51 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
   };
 
   const fetchEstudiantesConAdeudo = async () => {
+    // Consultamos la tabla 'transacciones' en lugar de 'alumnos'
+    // Filtramos por pendiente > 0 para obtener solo las deudas
     const { data, error } = await supabase
-      .from("alumnos")
+      .from("transacciones")
       .select(
         `
         *,
+        alumnos!fk_transacciones_alumno (id_alumno, nombre_alumno, grupo, direccion_alumno, estatus_alumno),
         cursos (nombre_curso, costo_curso)
       `
       )
-      .order("nombre_alumno", { ascending: true });
+      .gt("pendiente", 0) // Solo transacciones con deuda
+      .order("fecha_transaction", { ascending: false }); // Ordenar por fecha más reciente
 
     if (!error && data) {
-      const formattedData = data
-        .map((item) => {
-          const costo = item.cursos?.costo_curso || 0;
-          const pagado = (item.anticipo_alumno || 0) + (item.pago_alumno || 0);
-          const pendiente = costo - pagado;
+      const formattedData = data.map((t) => {
+        // Mapeamos los datos de la transacción al formato que espera la tabla
+        // Usamos los datos del alumno relacionado
+        const alumno = t.alumnos || {};
+        const curso = t.cursos || {};
 
-          return {
-            ...item,
-            nombre_curso: item.cursos?.nombre_curso || "Sin curso",
-            monto_pendiente: pendiente,
-          };
-        })
-        .filter((item) => item.monto_pendiente > 0);
+        return {
+          // Datos de la transacción como base
+          id_transaccion: t.id_transaccion,
+          fecha_transaction: t.fecha_transaction,
+          monto_pendiente: t.pendiente,
+          total: t.total,
+          anticipo: t.anticipo,
+
+          // Datos del alumno (aplanados)
+          id_alumno: alumno.id_alumno, // Importante para las acciones (editar, etc.)
+          nombre_alumno: alumno.nombre_alumno || "Desconocido",
+          grupo: t.grupo_alumno || alumno.grupo || "Sin grupo", // Priorizamos el grupo de la transacción
+          direccion_alumno: alumno.direccion_alumno,
+          estatus_alumno: alumno.estatus_alumno,
+
+          // Datos del curso
+          nombre_curso: curso.nombre_curso || "Sin curso",
+          costo_curso: curso.costo_curso,
+        };
+      });
 
       setEstudiantesConAdeudo(formattedData);
+    } else if (error) {
+      console.error("Error fetching deudas:", error);
     }
     setLoading(false);
     setIsRefetching(false);
@@ -4943,6 +5600,134 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
       fetchEstudiantesConAdeudo();
     }, [])
   );
+
+  const handleOpenPaymentModal = async (deuda) => {
+    setSelectedDebtForPayment(deuda);
+    setPaymentModalVisible(true);
+    setProcessingPayment(true); // Usamos esto como loading
+
+    try {
+      // Obtener todas las transacciones del estudiante
+      const { data, error } = await supabase
+        .from("transacciones")
+        .select(
+          `
+          pendiente,
+          total,
+          anticipo,
+          curso_id,
+          id_transaccion,
+          cursos (nombre_curso)
+        `
+        )
+        .eq("alumno_id", deuda.id_alumno);
+
+      if (error) throw error;
+
+      let deudaTotal = 0;
+      let pagadoTotal = 0;
+      const cursosMap = new Map();
+
+      data.forEach((t) => {
+        deudaTotal += t.pendiente || 0;
+        pagadoTotal +=
+          (t.anticipo || 0) +
+          ((t.total || 0) - (t.pendiente || 0) - (t.anticipo || 0));
+
+        if (t.curso_id && t.cursos) {
+          if (!cursosMap.has(t.curso_id)) {
+            cursosMap.set(t.curso_id, {
+              id: t.curso_id,
+              nombre: t.cursos.nombre_curso,
+              pendiente: 0,
+              transacciones: [],
+            });
+          }
+          const curso = cursosMap.get(t.curso_id);
+          curso.pendiente += t.pendiente || 0;
+          curso.transacciones.push(t);
+        }
+      });
+
+      setStudentDetails({
+        deudaTotal,
+        pagadoTotal,
+        cursos: Array.from(cursosMap.values()),
+      });
+    } catch (err) {
+      console.error("Error fetching student details:", err);
+      Alert.alert(
+        "Error",
+        "No se pudieron cargar los detalles del estudiante."
+      );
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
+
+  const handleOpenCoursePaymentModal = (curso) => {
+    setSelectedCourseForPayment(curso);
+    setPaymentAmount(0);
+    setCoursePaymentModalVisible(true);
+  };
+
+  const handleProcessPayment = async () => {
+    const amount = Number(paymentAmount);
+    if (amount <= 0) {
+      Alert.alert("Error", "Por favor selecciona un monto válido.");
+      return;
+    }
+
+    if (amount > selectedCourseForPayment.pendiente) {
+      Alert.alert(
+        "Error",
+        "El monto del abono no puede ser mayor al saldo pendiente."
+      );
+      return;
+    }
+
+    setProcessingPayment(true);
+
+    try {
+      // Buscar las transacciones pendientes para este curso
+      const transactions = selectedCourseForPayment.transacciones
+        .filter((t) => t.pendiente > 0)
+        .sort((a, b) => a.id_transaccion - b.id_transaccion);
+
+      let remainingPayment = amount;
+
+      for (const transaction of transactions) {
+        if (remainingPayment <= 0) break;
+
+        const paymentForThisTransaction = Math.min(
+          remainingPayment,
+          transaction.pendiente
+        );
+        const newPendiente = transaction.pendiente - paymentForThisTransaction;
+
+        const { error: updateError } = await supabase
+          .from("transacciones")
+          .update({ pendiente: newPendiente })
+          .eq("id_transaccion", transaction.id_transaccion);
+
+        if (updateError) throw updateError;
+
+        remainingPayment -= paymentForThisTransaction;
+      }
+
+      Alert.alert("Éxito", "Abono registrado correctamente.");
+      setCoursePaymentModalVisible(false);
+      // Recargar detalles del estudiante
+      handleOpenPaymentModal(selectedDebtForPayment);
+      // Recargar lista
+      handleRefresh();
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      Alert.alert("Error", "Hubo un problema al procesar el abono.");
+    } finally {
+      setProcessingPayment(false);
+    }
+  };
 
   const SortHeader = ({ label, k, flex = 1, center }) => (
     <Pressable
@@ -5021,6 +5806,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
               onRefresh={handleRefresh}
               onEdit={(est) => console.log("Edit", est)}
               onReprint={(id) => console.log("Reprinting ticket for", id)}
+              onRowClick={handleOpenPaymentModal}
             />
           </>
         )}
@@ -5037,6 +5823,208 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
             />
           </Animated.View>
         )}
+
+        {/* Modal de detalles del estudiante */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={paymentModalVisible}
+          onRequestClose={() => setPaymentModalVisible(false)}
+        >
+          <View className="flex-1 justify-center items-center bg-black/50 px-4">
+            <View className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl max-h-5/6">
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-2xl font-bold text-slate-800">
+                  {selectedDebtForPayment?.nombre_alumno}
+                </Text>
+                <TouchableOpacity onPress={() => setPaymentModalVisible(false)}>
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#64748b"
+                  >
+                    <Path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
+                  </Svg>
+                </TouchableOpacity>
+              </View>
+
+              <Text className="text-slate-600 mb-6">
+                Grupo: {selectedDebtForPayment?.grupo}
+              </Text>
+
+              {processingPayment ? (
+                <View className="py-8">
+                  <ActivityIndicator size="large" color="#6366f1" />
+                </View>
+              ) : studentDetails ? (
+                <ScrollView className="max-h-96">
+                  {/* Resumen financiero */}
+                  <View className="bg-slate-50 rounded-xl p-4 mb-4">
+                    <Text className="text-sm font-semibold text-slate-600 mb-2">
+                      Resumen Financiero
+                    </Text>
+                    <View className="flex-row justify-between mb-1">
+                      <Text className="text-slate-700">Deuda Total:</Text>
+                      <Text className="font-bold text-red-600">
+                        ${studentDetails.deudaTotal.toLocaleString("es-MX")}
+                      </Text>
+                    </View>
+                    <View className="flex-row justify-between">
+                      <Text className="text-slate-700">Total Pagado:</Text>
+                      <Text className="font-bold text-green-600">
+                        ${studentDetails.pagadoTotal.toLocaleString("es-MX")}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Lista de cursos */}
+                  <Text className="text-sm font-semibold text-slate-600 mb-2">
+                    Cursos Inscritos
+                  </Text>
+                  {studentDetails.cursos.map((curso, idx) => (
+                    <View
+                      key={idx}
+                      className="bg-white border border-slate-200 rounded-lg p-3 mb-2"
+                    >
+                      <View className="flex-row justify-between items-center">
+                        <View className="flex-1">
+                          <Text className="font-semibold text-slate-800">
+                            {curso.nombre}
+                          </Text>
+                          <Text className="text-sm text-slate-600 mt-1">
+                            Saldo: ${curso.pendiente.toLocaleString("es-MX")}
+                          </Text>
+                        </View>
+                        {curso.pendiente > 0 && (
+                          <TouchableOpacity
+                            onPress={() => handleOpenCoursePaymentModal(curso)}
+                            className="bg-indigo-600 px-3 py-2 rounded-lg ml-2"
+                          >
+                            <Text className="text-white text-xs font-semibold">
+                              Abonar
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              ) : null}
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal de abono a curso específico */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={coursePaymentModalVisible}
+          onRequestClose={() => setCoursePaymentModalVisible(false)}
+        >
+          <View className="flex-1 justify-center items-center bg-black/50 px-4">
+            <View className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+              <Text className="text-xl font-bold text-slate-800 mb-2">
+                Registrar Abono
+              </Text>
+              <Text className="text-slate-600 mb-2">
+                Estudiante: {selectedDebtForPayment?.nombre_alumno}
+              </Text>
+              <Text className="text-slate-600 mb-4">
+                Curso: {selectedCourseForPayment?.nombre}
+              </Text>
+              <Text className="text-slate-500 text-sm mb-2">
+                Pendiente actual: $
+                {selectedCourseForPayment?.pendiente.toLocaleString("es-MX")}
+              </Text>
+
+              <View className="items-center mb-6">
+                <Text className="text-4xl font-bold text-indigo-600 mb-4">
+                  ${Math.round(paymentAmount).toLocaleString("es-MX")}
+                </Text>
+
+                <Slider
+                  style={{ width: "100%", height: 40 }}
+                  minimumValue={0}
+                  maximumValue={selectedCourseForPayment?.pendiente || 0}
+                  step={10}
+                  value={Number(paymentAmount)}
+                  onSlidingComplete={(val) => setPaymentAmount(val)}
+                  minimumTrackTintColor="#4f46e5"
+                  maximumTrackTintColor="#cbd5e1"
+                  thumbTintColor="#4f46e5"
+                />
+
+                <View className="flex-row flex-wrap justify-center gap-2 mt-4">
+                  {(() => {
+                    const total = selectedCourseForPayment?.pendiente || 0;
+
+                    const roundToNice = (num) => {
+                      if (num <= 10) return Math.round(num / 5) * 5;
+                      if (num <= 50) return Math.round(num / 10) * 10;
+                      if (num <= 100) return Math.round(num / 20) * 20;
+                      return Math.round(num / 50) * 50;
+                    };
+
+                    const amounts = [
+                      roundToNice(total * 0.33),
+                      roundToNice(total * 0.66),
+                      total,
+                    ].filter((val, idx, arr) => arr.indexOf(val) === idx);
+
+                    return amounts.map((amount, idx) => {
+                      const isTotal = amount === total;
+                      return (
+                        <TouchableOpacity
+                          key={idx}
+                          onPress={() => setPaymentAmount(amount)}
+                          className={`px-3 py-1 rounded-full border ${
+                            paymentAmount === amount
+                              ? "bg-indigo-100 border-indigo-500"
+                              : "bg-white border-slate-300"
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-medium ${
+                              paymentAmount === amount
+                                ? "text-indigo-700"
+                                : "text-slate-600"
+                            }`}
+                          >
+                            {isTotal
+                              ? "Total"
+                              : `$${amount.toLocaleString("es-MX")}`}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    });
+                  })()}
+                </View>
+              </View>
+
+              <View className="flex-row justify-end gap-3">
+                <TouchableOpacity
+                  onPress={() => setCoursePaymentModalVisible(false)}
+                  className="px-4 py-2 rounded-lg bg-slate-100"
+                  disabled={processingPayment}
+                >
+                  <Text className="text-slate-600 font-semibold">Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleProcessPayment}
+                  className="px-4 py-2 rounded-lg bg-indigo-600"
+                  disabled={processingPayment}
+                >
+                  {processingPayment ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Text className="text-white font-semibold">Confirmar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </TouchableWithoutFeedback>
   );
@@ -5066,7 +6054,7 @@ const SeccionReportes = () => {
     // 1. Fetch Sales
     const { data: sales, error: salesError } = await supabase
       .from("transacciones")
-      .select("fecha_transaction, monto")
+      .select("fecha_transaction, total")
       .gte("fecha_transaction", startDate)
       .lte("fecha_transaction", endDate);
 
@@ -5080,17 +6068,53 @@ const SeccionReportes = () => {
     const monthsTemplate = Array.from({ length: 12 }, (_, i) => ({
       value: 0,
       label: new Date(0, i).toLocaleString("es-MX", { month: "short" }),
+      dataPointText: "0",
     }));
 
     const monthlySales = JSON.parse(JSON.stringify(monthsTemplate));
     sales?.forEach((sale) => {
-      // Assuming fecha_transaccion is a date string or timestamp
-      const date = new Date(sale.fecha_transaction);
+      // Parse the date string correctly to avoid timezone issues
+      // If the date is in format YYYY-MM-DD, we need to parse it as local time
+      const dateStr = sale.fecha_transaction;
+      let date;
+
+      if (typeof dateStr === "string" && dateStr.includes("-")) {
+        // Parse as local date to avoid timezone offset issues
+        const [year, month, day] = dateStr.split("T")[0].split("-").map(Number);
+        date =
+          Platform.OS === "web"
+            ? new Date(year, month - 1, day)
+            : new Date(year, month, day);
+      } else {
+        date = new Date(dateStr);
+      }
+
       if (!isNaN(date.getTime())) {
         const month = date.getMonth();
-        monthlySales[month].value += sale.monto;
+        monthlySales[month].value += sale.total;
       }
     });
+
+    // Update dataPointText after calculating totals
+    monthlySales.forEach((item) => {
+      item.dataPointText =
+        item.value > 0 ? item.value.toLocaleString("es-MX") : "";
+    });
+
+    // Filter to show only from first month with data to last month with data
+    const filterDataByRange = (data) => {
+      const firstNonZeroIndex = data.findIndex((item) => item.value > 0);
+      const lastNonZeroIndex = data
+        .map((item, idx) => (item.value > 0 ? idx : -1))
+        .reduce((max, curr) => Math.max(max, curr), -1);
+
+      if (firstNonZeroIndex === -1) {
+        // No data at all, return empty array or first month only
+        return [data[0]];
+      }
+
+      return data.slice(firstNonZeroIndex, lastNonZeroIndex + 1);
+    };
 
     const monthlyStudents = JSON.parse(JSON.stringify(monthsTemplate));
     // students?.forEach((student) => {
@@ -5098,8 +6122,13 @@ const SeccionReportes = () => {
     //   monthlyStudents[month].value += 1;
     // });
 
-    setSalesData(monthlySales);
-    setStudentsData(monthlyStudents);
+    // Update dataPointText for students
+    monthlyStudents.forEach((item) => {
+      item.dataPointText = item.value > 0 ? item.value.toString() : "";
+    });
+
+    setSalesData(filterDataByRange(monthlySales));
+    setStudentsData(filterDataByRange(monthlyStudents));
     setLoading(false);
   };
 
@@ -5131,26 +6160,30 @@ const SeccionReportes = () => {
           <ActivityIndicator color="#6F09EA" />
         </View>
       ) : (
-        <BarChart
+        <LineChart
           data={data}
-          barWidth={20}
-          spacing={15}
-          roundedTop
+          spacing={30}
+          thickness={3}
           hideRules
+          hideYAxisText
           xAxisThickness={0}
           yAxisThickness={0}
-          yAxisTextStyle={{ color: "#9ca3af" }}
+          xAxisLabelTextStyle={{ color: "#9ca3af", fontSize: 10 }}
           noOfSections={4}
-          frontColor={"#6F09EA"}
-          showGradient
-          gradientColor={"#a78bfa"}
-          barStyle={{
-            shadowColor: "#6F09EA",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.5,
-            shadowRadius: 4,
-            elevation: 5,
-          }}
+          color="#6F09EA"
+          startFillColor="#a78bfa"
+          endFillColor="#ffffff"
+          startOpacity={0.4}
+          endOpacity={0.1}
+          areaChart
+          curved
+          dataPointsColor="#6F09EA"
+          dataPointsRadius={4}
+          textColor="#64748b"
+          textFontSize={11}
+          textShiftY={-10}
+          textShiftX={-15}
+          showValuesAsDataPointsText
         />
       )}
     </View>
