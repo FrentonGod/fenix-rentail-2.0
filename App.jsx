@@ -45,6 +45,8 @@ import { Dropdown } from "react-native-element-dropdown";
 import { BlurView } from "expo-blur";
 import Slider from "@react-native-community/slider";
 import { Calendar, LocaleConfig } from "react-native-calendars";
+import * as Print from "expo-print";
+import { shareAsync } from "expo-sharing";
 
 import { useFocusEffect } from "@react-navigation/native";
 import {
@@ -65,6 +67,7 @@ import RegistroAsesor from "./components/asesores/RegistroAsesor";
 
 import RegistroEstudiantes from "./components/estudiantes/RegistroEstudiantes";
 import RegistroVenta from "./components/ventas/RegistroVenta";
+import ScreenConfiguracion from "./components/configuracion/ScreenConfiguracion";
 const Tab = createMaterialTopTabNavigator(); //Aqui se esta creando el componente
 const Drawer = createDrawerNavigator();
 
@@ -235,6 +238,23 @@ function AppScreens() {
                 ),
               }}
             />
+            <Drawer.Screen
+              name="Configuración"
+              component={ScreenConfiguracion}
+              options={{
+                title: "Configuración",
+                drawerIcon: ({}) => (
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#ffffff"
+                  >
+                    <Path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-2 13.5l103 78-110 190-118-50q-11 8-23 15t-24 12L590-80H370Zm70-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z" />
+                  </Svg>
+                ),
+              }}
+            />
           </Drawer.Navigator>
         </SafeAreaView>
       </LinearGradient>
@@ -253,6 +273,7 @@ function AppHeader({ navigation, route }) {
     Finanzas: "Reportes de Pagos",
     Calendario: "Calendario",
     Cursos: "Cursos",
+    Configuración: "Configuración de Usuario",
   };
   const currentSectionTitle = routeTitles[route?.name] || route?.name || "";
   return (
@@ -360,7 +381,6 @@ const TablaVentasPendientes = ({
   query,
   isRefetching,
   onRefresh,
-  onEdit,
   onReprint,
   onRowClick, // Nueva prop
 }) => {
@@ -483,19 +503,9 @@ const TablaVentasPendientes = ({
                 </TouchableOpacity>
                 <View
                   style={{ flex: 1.5 }}
-                  className="p-3 flex-row justify-center items-center gap-x-4"
+                  className="p-3 flex-row justify-center items-center"
                 >
-                  <TouchableOpacity onPress={() => onEdit(alumno)}>
-                    <Svg
-                      height="22"
-                      viewBox="0 -960 960 960"
-                      width="22"
-                      fill="#3b82f6"
-                    >
-                      <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                    </Svg>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => onReprint(alumno.id_alumno)}>
+                  <TouchableOpacity onPress={() => onReprint(alumno)}>
                     <Svg
                       height="22"
                       viewBox="0 -960 960 960"
@@ -1427,60 +1437,39 @@ const ScreenAsesores = () => {
   // Vista de la tabla de asesores
   return (
     <View className="flex-1 bg-slate-50 relative">
-      {loading ? (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#6F09EA" />
-        </View>
-      ) : (
-        <>
-          <View
-            className="flex-row items-center justify-between p-4"
-            style={{ opacity: isFormVisible ? 0.5 : 1 }}
-            pointerEvents={isFormVisible ? "none" : "auto"}
-          >
-            <View className="flex-row items-center bg-white border border-slate-300 rounded-full px-3 py-1 shadow-sm">
-              <Svg
-                height="20"
-                viewBox="0 -960 960 960"
-                width="20"
-                fill="#9ca3af"
-              >
-                <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
-              </Svg>
-              <TextInput
-                placeholder="Buscar asesor..."
-                value={searchTerm}
-                onChangeText={setSearchTerm}
-                className="ml-2 text-base"
-              />
-            </View>
-            <TouchableOpacity
-              onPress={() => handleOpenForm()}
-              className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
-            >
-              <Svg
-                height="18"
-                viewBox="0 -960 960 960"
-                width="18"
-                fill="#ffffff"
-              >
-                <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
-              </Svg>
-              <Text className="text-white font-bold ml-2">Agregar Asesor</Text>
-            </TouchableOpacity>
-          </View>
-
-          <TablaAsesores
-            data={asesores}
-            query={searchTerm}
-            isRefetching={isRefetching}
-            onRefresh={handleRefresh}
-            onEdit={handleOpenForm}
-            onDelete={handleDelete}
-            onView={handleOpenForm}
+      <View className="flex-row items-center justify-between p-4">
+        <View className="flex-row items-center bg-white border border-slate-300 rounded-full px-3 py-1 shadow-sm">
+          <Svg height="20" viewBox="0 -960 960 960" width="20" fill="#9ca3af">
+            <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
+          </Svg>
+          <TextInput
+            placeholder="Buscar asesor..."
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+            className="ml-2 text-base"
           />
-        </>
-      )}
+        </View>
+        <TouchableOpacity
+          onPress={() => handleOpenForm()}
+          className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
+        >
+          <Svg height="18" viewBox="0 -960 960 960" width="18" fill="#ffffff">
+            <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+          </Svg>
+          <Text className="text-white font-bold ml-2">Agregar Asesor</Text>
+        </TouchableOpacity>
+      </View>
+
+      <TablaAsesores
+        data={asesores}
+        loading={loading}
+        query={searchTerm}
+        isRefetching={isRefetching}
+        onRefresh={handleRefresh}
+        onEdit={handleOpenForm}
+        onDelete={handleDelete}
+        onView={handleOpenForm}
+      />
       {isFormVisible && (
         <Animated.View
           style={[StyleSheet.absoluteFill, formContainerStyle]}
@@ -1499,6 +1488,7 @@ const ScreenAsesores = () => {
 
 const TablaAsesores = ({
   data,
+  loading = false,
   query,
   isRefetching,
   onRefresh,
@@ -1562,78 +1552,78 @@ const TablaAsesores = ({
   );
 
   return (
-    <View className="px-2 flex-1">
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={onRefresh}
-            tintColor="#6F09EA"
-          />
-        }
+    <View className={`px-2 pb-4 relative flex-1`}>
+      <View
+        className={`rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm ${Platform.OS == "web" ? "flex-1" : ""}`}
+        style={{ opacity: loading || isRefetching ? 0.5 : 1 }}
       >
-        <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
-          {/* Encabezados */}
+        <ScrollView
+          stickyHeaderIndices={[0]}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefetching}
+              onRefresh={onRefresh}
+              tintColor="#6F09EA"
+            />
+          }
+        >
           <View className="bg-slate-100 border-b border-slate-200 flex-row">
             <SortHeader label="Nombre" k="nombre_asesor" flex={3} />
             <SortHeader label="Correo" k="correo_asesor" flex={5} />
             <SortHeader label="Teléfono" k="telefono_asesor" flex={2} />
             <SortHeader label="Acciones" k={null} flex={1.3} center />
           </View>
-          {/* Filas */}
+
           {filtered.length > 0 ? (
             filtered.map((asesor, index) => (
               <Pressable
                 key={asesor.id_asesor}
-                className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
-                onPress={() => {
-                  // Al presionar una fila, abrimos el formulario en modo "solo lectura"
-                  onView(asesor, true);
-                }}
+                className={`flex-row items-center ${index % 2 ? "bg-white" : "bg-slate-50"}`}
                 android_ripple={{ color: "rgba(0,0,0,0.04)" }}
               >
-                <Text
-                  style={{ flex: 3 }}
-                  className="p-3 text-slate-800"
-                  numberOfLines={1}
-                >
-                  {asesor.nombre_asesor}
-                </Text>
-                <Text
-                  style={{ flex: 5 }}
-                  className="p-3 text-slate-700"
-                  numberOfLines={1}
-                >
-                  {asesor.correo_asesor}
-                </Text>
-                <Text style={{ flex: 2 }} className="p-3 text-slate-700">
-                  {asesor.telefono_asesor}
-                </Text>
-                <View
-                  style={{ flex: 1.3 }}
-                  className="p-3 flex-row justify-around items-center gap-x-6"
-                >
-                  <TouchableOpacity onPress={() => onEdit(asesor)}>
-                    <Svg
-                      height="22"
-                      viewBox="0 -960 960 960"
-                      width="22"
-                      fill="#3b82f6"
+                <View style={{ flex: 3 }} className="py-3 px-3">
+                  <Text
+                    numberOfLines={1}
+                    className="text-slate-800 font-medium"
+                  >
+                    {asesor.nombre_asesor}
+                  </Text>
+                </View>
+                <View style={{ flex: 5 }} className="py-3 px-3">
+                  <Text numberOfLines={1} className="text-slate-700">
+                    {asesor.correo_asesor}
+                  </Text>
+                </View>
+                <View style={{ flex: 2 }} className="py-3 px-3">
+                  <Text numberOfLines={1} className="text-slate-700">
+                    {asesor.telefono_asesor}
+                  </Text>
+                </View>
+                <View style={{ flex: 1.3 }} className="py-3 px-3">
+                  <View className="flex flex-row items-center justify-around">
+                    <TouchableOpacity onPress={() => onEdit(asesor)}>
+                      <Svg
+                        height="22"
+                        viewBox="0 -960 960 960"
+                        width="22"
+                        fill="#3b82f6"
+                      >
+                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                      </Svg>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => onDelete(asesor.id_asesor)}
                     >
-                      <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                    </Svg>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => onDelete(asesor.id_asesor)}>
-                    <Svg
-                      height="22"
-                      viewBox="0 -960 960 960"
-                      width="22"
-                      fill="#ef4444"
-                    >
-                      <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
-                    </Svg>
-                  </TouchableOpacity>
+                      <Svg
+                        height="22"
+                        viewBox="0 -960 960 960"
+                        width="22"
+                        fill="#ef4444"
+                      >
+                        <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                      </Svg>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </Pressable>
             ))
@@ -1651,9 +1641,9 @@ const TablaAsesores = ({
               </Text>
             </View>
           )}
-        </View>
-      </ScrollView>
-      {isRefetching && (
+        </ScrollView>
+      </View>
+      {(loading || isRefetching) && (
         <View
           style={StyleSheet.absoluteFill}
           className="absolute inset-0 bg-white/50 flex items-center justify-center rounded-xl"
@@ -3081,10 +3071,7 @@ const TablaEgresos = ({ onEdit, refreshTrigger }) => {
                 >
                   {egreso.desc_egreso || egreso.descripcion || "-"}
                 </Text>
-                <Text
-                  style={{ flex: 2.3}}
-                  className="p-3 text-slate-600"
-                >
+                <Text style={{ flex: 2.3 }} className="p-3 text-slate-600">
                   {new Date(
                     egreso.fecha_egreso || egreso.fecha
                   ).toLocaleDateString("es-MX")}
@@ -3383,10 +3370,7 @@ const TablaIngresos = ({ onEdit, refreshTrigger }) => {
                 >
                   {ingreso.desc_ingreso || "-"}
                 </Text>
-                <Text
-                  style={{ flex: 2.3 }}
-                  className="p-3 text-slate-600"
-                >
+                <Text style={{ flex: 2.3 }} className="p-3 text-slate-600">
                   {ingreso.fecha_ingreso
                     ? new Date(ingreso.fecha_ingreso).toLocaleDateString(
                         "es-MX"
@@ -3864,6 +3848,8 @@ const ScreenCalendario = () => {
     new Date().toISOString().split("T")[0]
   );
   const [allEvents, setAllEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isRefetching, setIsRefetching] = useState(false);
 
   // --- Constante para el ancho del calendario ---
   const CALENDAR_WIDTH = 400;
@@ -4015,6 +4001,7 @@ const ScreenCalendario = () => {
       hora: "09",
       minutos: "00",
     });
+    handleRefresh(); // Refrescar datos al cerrar el formulario
   };
 
   const handleEditEvent = (evento) => {
@@ -4167,10 +4154,10 @@ const ScreenCalendario = () => {
         `No pudo ${editingEventId ? "actualizarse" : "crearse"} el evento`
       );
     } else {
-      fetchEvento();
       setIsAddingEvent(false);
       setEditingEventId(null);
       setNewEvent({ nombre: "", descripcion: "", hora: "09", minutos: "00" });
+      handleRefresh();
 
       Alert.alert(
         "Éxito",
@@ -4178,6 +4165,13 @@ const ScreenCalendario = () => {
       );
     }
   }
+
+  const handleRefresh = async () => {
+    if (isRefetching || loading) return;
+    setIsRefetching(true);
+    await fetchEvento();
+    setTimeout(() => setIsRefetching(false), 300);
+  };
 
   async function fetchEvento() {
     try {
@@ -4225,12 +4219,14 @@ const ScreenCalendario = () => {
       console.error("Unexpected error in fetchEvento:", err);
     } finally {
       setRefreshing(false);
+      setLoading(false);
+      setIsRefetching(false);
     }
   }
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchEvento();
+    handleRefresh();
   }, []);
 
   const handleDeleteEvent = (id) => {
@@ -4252,7 +4248,7 @@ const ScreenCalendario = () => {
               Alert.alert("Error", "No se pudo eliminar el evento");
               console.error(error);
             } else {
-              fetchEvento(); // Recargar la lista
+              handleRefresh(); // Recargar la lista
             }
           },
         },
@@ -4260,9 +4256,19 @@ const ScreenCalendario = () => {
     );
   };
 
-  useEffect(() => {
-    fetchEvento();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      const loadEvents = async () => {
+        if (allEvents.length > 0) {
+          setIsRefetching(true);
+        } else {
+          setLoading(true);
+        }
+        await fetchEvento();
+      };
+      loadEvents();
+    }, [])
+  );
 
   return (
     <TouchableWithoutFeedback
@@ -4581,165 +4587,194 @@ const ScreenCalendario = () => {
             ) : (
               // --- VISTA POR DEFECTO (LISTA DE EVENTOS O MENSAJE) ---
 
-              <View className="flex-1">
-                {visibleEvents.length > 0 ? (
-                  <ScrollView
-                    className="flex-1"
-                    contentContainerStyle={{
-                      paddingBottom: 20,
-                      opacity: refreshing ? 0.5 : 1,
-                    }}
-                    refreshControl={
-                      <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        tintColor="#6F09EA"
-                        colors={["#6F09EA"]}
-                      />
-                    }
-                  >
-                    {visibleEvents.map((evento, index) => (
-                      <TouchableOpacity
-                        key={evento.id_evento || index}
-                        onPress={() => {
-                          if (evento.tipo !== "egreso") {
-                            handleEditEvent(evento);
-                          }
-                        }}
-                        className={`p-4 mb-3 bg-slate-50 rounded-xl border-l-4 shadow-sm border-l-indigo-500 ${
-                          evento.tipo === "egreso"
-                            ? "border-amber-200"
-                            : "border-indigo-500"
-                        }`}
-                        style={{
-                          borderWidth: 0,
-                          borderLeftWidth: 4,
-                          borderColor:
-                            evento.tipo === "egreso" ? "#fcd34d" : "#6366f1", // Amber-300 para egresos, Indigo-500 para normales
-                          borderLeftColor: "#6366f1", // Siempre Indigo-500
-                        }}
-                      >
-                        <View className="flex-row justify-between items-start">
-                          <View className="flex-1">
-                            <Text className="font-bold text-base text-slate-800 mb-1">
-                              {evento.nombre_evento}
-                            </Text>
-                            <Text className="text-slate-600 text-sm mb-2 leading-relaxed">
-                              {evento.detalles_evento}
-                            </Text>
-                            <View className="flex-row items-center">
-                              {/* Icono dinámico según tipo */}
-                              {evento.tipo === "egreso" ? (
-                                <Svg
-                                  height="14"
-                                  width="14"
-                                  viewBox="0 -960 960 960"
-                                  fill="#f59e0b"
-                                  className="mr-1"
-                                >
-                                  <Path d="M440-120v-80h80v80h-80Zm0-320v-80h80v80h-80Zm0-320v-80h80v80h-80ZM200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                                </Svg>
-                              ) : (
-                                <Svg
-                                  height="14"
-                                  width="14"
-                                  viewBox="0 -960 960 960"
-                                  fill="#94a3b8"
-                                  className="mr-1"
-                                >
-                                  <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z" />
-                                </Svg>
-                              )}
-
-                              <Text
-                                className={`text-xs font-medium ${evento.tipo === "egreso" ? "text-amber-600" : "text-slate-500"}`}
-                              >
-                                {(() => {
-                                  if (!evento.fechayhora_evento) return "";
-                                  const d = new Date(evento.fechayhora_evento);
-                                  if (isNaN(d.getTime()))
-                                    return evento.fechayhora_evento;
-                                  const day = d
-                                    .getDate()
-                                    .toString()
-                                    .padStart(2, "0");
-                                  const month = (d.getMonth() + 1)
-                                    .toString()
-                                    .padStart(2, "0");
-                                  const year = d.getFullYear();
-                                  const hours = d
-                                    .getHours()
-                                    .toString()
-                                    .padStart(2, "0");
-                                  const minutes = d
-                                    .getMinutes()
-                                    .toString()
-                                    .padStart(2, "0");
-
-                                  // Para egresos, solo mostramos fecha, no hora (ya que es ficticia)
-                                  if (evento.tipo === "egreso") {
-                                    return `${day}/${month}/${year} (Próximo pago)`;
-                                  }
-                                  return `${day}/${month}/${year} ${hours}:${minutes}`;
-                                })()}
-                              </Text>
-                            </View>
-                          </View>
-
-                          {/* Botones de acción solo para eventos normales */}
-                          {evento.tipo !== "egreso" && (
-                            <View className="flex-row items-center ml-2">
-                              <TouchableOpacity
-                                onPress={() => handleEditEvent(evento)}
-                                className="p-2 opacity-60"
-                              >
-                                <Svg
-                                  height="20"
-                                  viewBox="0 -960 960 960"
-                                  width="20"
-                                  fill="#64748b"
-                                >
-                                  <Path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z" />
-                                </Svg>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                onPress={() =>
-                                  handleDeleteEvent(evento.id_evento)
-                                }
-                                className="p-2 ml-1 opacity-60"
-                              >
-                                <Svg
-                                  height="20"
-                                  viewBox="0 -960 960 960"
-                                  width="20"
-                                  fill="#64748b"
-                                >
-                                  <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
-                                </Svg>
-                              </TouchableOpacity>
-                            </View>
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                ) : (
+              <View className="flex-1 relative">
+                {loading ? (
                   <View className="flex-1 justify-center items-center">
-                    <Svg
-                      height="60"
-                      viewBox="0 -960 960 960"
-                      width="60"
-                      fill="#cbd5e1"
-                    >
-                      <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z" />
-                    </Svg>
-                    <Text className="text-slate-500 font-semibold mt-4 text-center">
-                      No hay eventos registrados.
-                    </Text>
-                    <Text className="text-slate-400 text-sm mt-1 text-center">
-                      Agrega un nuevo evento para comenzar.
-                    </Text>
+                    <ActivityIndicator size="large" color="#6F09EA" />
                   </View>
+                ) : (
+                  <>
+                    <View
+                      className="flex-1"
+                      style={{ opacity: isRefetching ? 0.5 : 1 }}
+                    >
+                      <ScrollView
+                        className="flex-1"
+                        contentContainerStyle={{
+                          paddingBottom: 20,
+                          flexGrow: 1,
+                        }}
+                        nestedScrollEnabled={true}
+                        scrollEventThrottle={16}
+                        refreshControl={
+                          <RefreshControl
+                            refreshing={isRefetching}
+                            onRefresh={handleRefresh}
+                            tintColor="#6F09EA"
+                            colors={["#6F09EA"]}
+                          />
+                        }
+                      >
+                        {visibleEvents.length > 0 ? (
+                          visibleEvents.map((evento, index) => (
+                            <Pressable
+                              key={evento.id_evento || index}
+                              onPress={() => {
+                                if (evento.tipo !== "egreso") {
+                                  handleEditEvent(evento);
+                                }
+                              }}
+                              android_ripple={{ color: "rgba(0,0,0,0.05)" }}
+                              className={`p-4 mb-3 bg-slate-50 rounded-xl border-l-4 shadow-sm border-l-indigo-500 ${
+                                evento.tipo === "egreso"
+                                  ? "border-amber-200"
+                                  : "border-indigo-500"
+                              }`}
+                              style={{
+                                borderWidth: 0,
+                                borderLeftWidth: 4,
+                                borderColor:
+                                  evento.tipo === "egreso"
+                                    ? "#fcd34d"
+                                    : "#6366f1", // Amber-300 para egresos, Indigo-500 para normales
+                                borderLeftColor: "#6366f1", // Siempre Indigo-500
+                              }}
+                            >
+                              <View className="flex-row justify-between items-start">
+                                <View className="flex-1">
+                                  <Text className="font-bold text-base text-slate-800 mb-1">
+                                    {evento.nombre_evento}
+                                  </Text>
+                                  <Text className="text-slate-600 text-sm mb-2 leading-relaxed">
+                                    {evento.detalles_evento}
+                                  </Text>
+                                  <View className="flex-row items-center">
+                                    {/* Icono dinámico según tipo */}
+                                    {evento.tipo === "egreso" ? (
+                                      <Svg
+                                        height="14"
+                                        width="14"
+                                        viewBox="0 -960 960 960"
+                                        fill="#f59e0b"
+                                        className="mr-1"
+                                      >
+                                        <Path d="M440-120v-80h80v80h-80Zm0-320v-80h80v80h-80Zm0-320v-80h80v80h-80ZM200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                                      </Svg>
+                                    ) : (
+                                      <Svg
+                                        height="14"
+                                        width="14"
+                                        viewBox="0 -960 960 960"
+                                        fill="#94a3b8"
+                                        className="mr-1"
+                                      >
+                                        <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z" />
+                                      </Svg>
+                                    )}
+
+                                    <Text
+                                      className={`text-xs font-medium ${evento.tipo === "egreso" ? "text-amber-600" : "text-slate-500"}`}
+                                    >
+                                      {(() => {
+                                        if (!evento.fechayhora_evento)
+                                          return "";
+                                        const d = new Date(
+                                          evento.fechayhora_evento
+                                        );
+                                        if (isNaN(d.getTime()))
+                                          return evento.fechayhora_evento;
+                                        const day = d
+                                          .getDate()
+                                          .toString()
+                                          .padStart(2, "0");
+                                        const month = (d.getMonth() + 1)
+                                          .toString()
+                                          .padStart(2, "0");
+                                        const year = d.getFullYear();
+                                        const hours = d
+                                          .getHours()
+                                          .toString()
+                                          .padStart(2, "0");
+                                        const minutes = d
+                                          .getMinutes()
+                                          .toString()
+                                          .padStart(2, "0");
+
+                                        // Para egresos, solo mostramos fecha, no hora (ya que es ficticia)
+                                        if (evento.tipo === "egreso") {
+                                          return `${day}/${month}/${year} (Próximo pago)`;
+                                        }
+                                        return `${day}/${month}/${year} ${hours}:${minutes}`;
+                                      })()}
+                                    </Text>
+                                  </View>
+                                </View>
+
+                                {/* Botones de acción solo para eventos normales */}
+                                {evento.tipo !== "egreso" && (
+                                  <View className="flex-row items-center ml-2">
+                                    <TouchableOpacity
+                                      onPress={() => handleEditEvent(evento)}
+                                      className="p-2 opacity-60"
+                                    >
+                                      <Svg
+                                        height="20"
+                                        viewBox="0 -960 960 960"
+                                        width="20"
+                                        fill="#64748b"
+                                      >
+                                        <Path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t26 18l55 56q12 11 17.5 26t5.5 30q0 16-5.5 30.5T817-647L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z" />
+                                      </Svg>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                      onPress={() =>
+                                        handleDeleteEvent(evento.id_evento)
+                                      }
+                                      className="p-2 ml-1 opacity-60"
+                                    >
+                                      <Svg
+                                        height="20"
+                                        viewBox="0 -960 960 960"
+                                        width="20"
+                                        fill="#64748b"
+                                      >
+                                        <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                                      </Svg>
+                                    </TouchableOpacity>
+                                  </View>
+                                )}
+                              </View>
+                            </Pressable>
+                          ))
+                        ) : (
+                          <View className="flex-1 justify-center items-center">
+                            <Svg
+                              height="60"
+                              viewBox="0 -960 960 960"
+                              width="60"
+                              fill="#cbd5e1"
+                            >
+                              <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z" />
+                            </Svg>
+                            <Text className="text-slate-500 font-semibold mt-4 text-center">
+                              No hay eventos registrados.
+                            </Text>
+                            <Text className="text-slate-400 text-sm mt-1 text-center">
+                              Agrega un nuevo evento para comenzar.
+                            </Text>
+                          </View>
+                        )}
+                      </ScrollView>
+                    </View>
+                    {isRefetching && (
+                      <View
+                        style={StyleSheet.absoluteFill}
+                        className="absolute inset-0 bg-white/50 flex items-center justify-center"
+                      >
+                        <ActivityIndicator size="large" color="#6F09EA" />
+                      </View>
+                    )}
+                  </>
                 )}
               </View>
             )}
@@ -4773,8 +4808,7 @@ const TablaCursos = ({
       if (!q) return true;
       const nombre = String(r.nombre_curso || "").toLowerCase();
       const precio = String(r.costo_curso || "").toLowerCase();
-      const id = String(r.id_curso || "").toLowerCase();
-      return nombre.includes(q) || precio.includes(q) || id.includes(q);
+      return nombre.includes(q) || precio.includes(q);
     });
     const sorted = [...arr].sort((a, b) => {
       let va = a[sortKey] ?? "";
@@ -4834,7 +4868,6 @@ const TablaCursos = ({
           }
         >
           <View className="bg-slate-100 border-b border-slate-200 flex-row">
-            <SortHeader label="#" k="id_curso" flex={0.1} center />
             <SortHeader label="Nombre" k="nombre_curso" flex={1} />
             <SortHeader label="Precio" k="costo_curso" flex={0.3} />
             <SortHeader label="Acciones" k="Acciones" flex={0.2} center />
@@ -4847,9 +4880,6 @@ const TablaCursos = ({
                 className={`flex-row items-center ${id_curso % 2 ? "bg-white" : "bg-slate-50"}`}
                 android_ripple={{ color: "rgba(0,0,0,0.04)" }}
               >
-                <View style={{ flex: 0.1 }} className="py-3 px-3 items-center">
-                  <Text className="text-slate-700">{r.id_curso}</Text>
-                </View>
                 <View style={{ flex: 1 }} className="py-3 px-3">
                   <Text
                     numberOfLines={1}
@@ -5428,7 +5458,7 @@ const ScreenCursos = () => {
                 <Path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
               </Svg>
               <TextInput
-                placeholder="Buscar por ID, nombre o precio"
+                placeholder="Buscar por nombre o precio"
                 value={searchTerm}
                 onChangeText={setSearchTerm}
                 className="ml-2 text-base"
@@ -5513,7 +5543,184 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
       useNativeDriver: true,
     }).start(() => {
       setIsFormVisible(false); // Oculta el componente después de la animación
+      // Actualizar la tabla después de cerrar el formulario
+      handleRefresh();
     });
+  };
+
+  const handleReprint = async (transaccion) => {
+    try {
+      console.log("Reimprimiendo ticket para transacción:", transaccion);
+
+      // Verificar que tenemos el ID de la transacción
+      if (!transaccion || !transaccion.id_transaccion) {
+        Alert.alert("Error", "No se pudo identificar la transacción.");
+        return;
+      }
+
+      // Obtener los datos completos de la transacción con relaciones
+      const { data, error } = await supabase
+        .from("transacciones")
+        .select(
+          `
+          *,
+          alumnos!fk_transacciones_alumno (nombre_alumno, direccion_alumno, grupo),
+          cursos (nombre_curso)
+        `
+        )
+        .eq("id_transaccion", transaccion.id_transaccion)
+        .single();
+
+      if (error) {
+        console.error("Error obteniendo transacción:", error);
+        throw error;
+      }
+
+      if (!data) {
+        Alert.alert("Error", "No se encontró la transacción.");
+        return;
+      }
+
+      // Generar el folio con el formato MQ-YEAR-ID (con padding de 4 dígitos)
+      const year = new Date(data.fecha_transaction).getFullYear();
+      const paddedId = String(data.id_transaccion).padStart(4, "0");
+      const folio = `MQ-${year}-${paddedId}`;
+
+      const currencyFormatter = new Intl.NumberFormat("es-MX", {
+        style: "currency",
+        currency: "MXN",
+      });
+
+      const today = new Date(data.fecha_transaction);
+
+      // Generar el HTML del ticket directamente
+      const html = `
+  <html>
+    <head>
+    <style></style>
+    </head>
+    <body style="width:181px; background-color: #ffffff; font-family: monospace; font-size: 0.75rem; line-height: 1rem; color: #000000;">
+      <div style="display: flex; height: 2rem; justify-content: center; position: relative;">
+        <h1 style="position: absolute; top: -0.6rem; letter-spacing: .025em; font-family: sans-serif; font-weight: 700; font-size: 12px; z-index: 1;">
+          MQerK
+        </h1>
+        <h2 style="position: absolute; bottom: 0rem; left: 4.375rem; letter-spacing: .3em; font-family: sans-serif; font-size: 10px; font-weight: 300; z-index: 1;">
+          Academy
+        </h2>
+        <div style="position: absolute; top: 0rem; right: 3.75rem; border-radius: 9999px; padding: 0.2rem; border-width: 1px; border-style: solid; border-color: #000000;"></div>
+        <p style="font-size: 0.01rem; position: absolute; top: -0.2rem; right: 3.85rem; font-weight: 700;">
+          R
+        </p>
+      </div>
+      <header>
+        <p style="margin: -1px 0px -1px 0px;">Asesores Especializados en la enseñanza de la Ciencia y Tecnología</p>
+        <p style="margin: -1px 0px -1px 0px;">C. Benito Juárez #25 Col. Centro</p>
+        <p style="margin: -1px 0px -1px 0px;">Tuxtepec, Oaxaca</p>
+        <p style="margin: -1px 0px -1px 0px;">C.P. 68300</p>
+        <p style="margin: -1px 0px -1px 0px;">Tel. 287-181-1231</p>
+        <p style="margin: -1px 0px -1px 0px;">RFC: GORK980908K61</p>
+        <p style="margin: -1px 0px -1px 0px;">${today.toLocaleString("es-MX")}</p>
+        <p style="margin: -1px 0px -1px 0px;">Folio: ${folio}</p>
+        <h4 style="font-size: 0.875rem; margin: -1px 0px -18px 0px; line-height: 1.25rem;">Comprobante de Venta</h4>
+      </header>
+
+      <article style="margin-bottom: -1rem;">
+        <h5 style="font-size: 0.75rem; line-height: 1rem; font-weight: 700; border-bottom: 1px solid #000;">
+          Cliente
+        </h5>
+        <p style="margin: -15px 0px 0px 0px;">${data.alumnos?.nombre_alumno || "No especificado"}</p>
+        <p style="margin: 0px 0px 0px 0px;">${data.alumnos?.direccion_alumno || "No especificado"}</p>
+        <p style="margin: 0px 0px 0px 0px;">${data.grupo_alumno || data.alumnos?.grupo || "No especificado"}</p>
+        <p style="margin: 0px 0px 0px 0px;">${data.referencia || ""}</p>
+      </article>
+
+      <div style="margin-bottom: -1rem;">
+        <h5 style="font-size: 0.75rem; line-height: 1rem; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 0.25rem; margin-bottom: 0.25rem;">
+          Detalles
+        </h5>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: -0.75rem 0 0 0">
+          ${
+            data.cursos?.nombre_curso
+              ? `
+              <p style="flex-shrink: 1; margin-right: 0.5rem;">
+                1x ${data.cursos.nombre_curso}
+              </p>
+              <p>${currencyFormatter.format(data.monto || 0)}</p>
+            `
+              : `
+              <p>Curso(s) no especificado(s)</p>
+              <p>${currencyFormatter.format(0)}</p>
+            `
+          }
+        </div>
+      </div>
+
+      ${
+        (data.incentivo_premium || 0) > 0
+          ? `
+        <div style="margin: 0 0 -0.75rem 0; display: flex; justify-content: space-between; align-items: center;">
+          <p>Incentivo Premium:</p>
+          <p style="white-space: nowrap;">- ${currencyFormatter.format(data.incentivo_premium)}</p>
+        </div>
+      `
+          : ""
+      }
+
+      <div style="border-top: 1px dashed #000;"></div>
+
+      <div style="margin: -0.75rem 0;display: flex; justify-content: space-between; align-items: center;">
+        <p>Anticipo:</p>
+        <p>- ${currencyFormatter.format(data.anticipo || 0)}</p>
+      </div>
+
+      <div style="border-top: 1px dashed #000;"></div>
+
+      ${
+        (data.anticipo || 0) > 0 && data.cursos?.nombre_curso
+          ? `
+        <div style="display: flex; margin: -0.75rem 0; justify-content: space-between; align-items: center;">
+          <p style="font-weight: 700;">Pendiente:</p>
+          <p style="font-size: 1rem; line-height: 1.5rem; font-weight: 700;">
+            ${currencyFormatter.format((data.pendiente || 0) < 0 ? 0 : data.pendiente || 0)}
+          </p>
+        </div>
+      `
+          : ""
+      }
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.2rem;">
+        <p style="font-weight: 600;">Total a Pagar:</p>
+        <p style="font-weight: 600; font-size: 1rem; line-height: 1.5rem;">
+          ${currencyFormatter.format(data.total || 0)}
+        </p>
+      </div>
+      <div style="border-top: 1px solid; border-bottom: 1px solid;">
+        <p>Forma de pago: Efectivo</p>
+      </div>
+      <p style="font-weight: 700; text-align:center; margin: -0.05rem 0;">*CONSERVE ESTE COMPROBANTE*</p>
+      <p style="margin: -0.05rem 0;">PAGO REALIZADO CON EXITO</p>
+      <p style="margin: -0.05rem 0;">NO HAY DEVOLUCION DEL PAGO POR CUALQUIER SERVICIO PRESTADO EN NUESTRA INSTITUCIÓN</p>
+      <p style="margin: -0.05rem 0;">Dudas o quejas al:</p>
+      <p style="margin: -0.05rem 0;">287-181-1231</p>
+      <p style="margin: -0.05rem 0;">¡GRACIAS POR LA CONFIANZA!</p>
+      <p style="margin: -0.05rem 0;">Direccion: Lic. Kelvin Valentin Gómez Ramírez</p>
+    </div>
+    </body>
+    </html>
+  `;
+
+      // Generar el PDF
+      const { uri } = await Print.printToFileAsync({
+        html: html,
+        width: 200,
+      });
+
+      console.log("Ticket PDF generado en:", uri);
+      await shareAsync(uri, { UTI: ".pdf", mimeType: "application/pdf" });
+    } catch (error) {
+      console.error("Error al reimprimir ticket:", error);
+      Alert.alert("Error", "No se pudo reimprimir el ticket: " + error.message);
+    }
   };
 
   useEffect(() => {
@@ -5804,8 +6011,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
               query={searchTerm}
               isRefetching={isRefetching}
               onRefresh={handleRefresh}
-              onEdit={(est) => console.log("Edit", est)}
-              onReprint={(id) => console.log("Reprinting ticket for", id)}
+              onReprint={handleReprint}
               onRowClick={handleOpenPaymentModal}
             />
           </>
@@ -6032,8 +6238,8 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
 
 const SeccionReportes = () => {
   const [year, setYear] = useState(new Date().getFullYear());
-  const [salesData, setSalesData] = useState([]);
-  const [studentsData, setStudentsData] = useState([]);
+  const [ingresosData, setIngresosData] = useState([]);
+  const [egresosData, setEgresosData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const currencyFormatter = new Intl.NumberFormat("es-MX", {
@@ -6047,106 +6253,147 @@ const SeccionReportes = () => {
   });
 
   const fetchData = async (selectedYear) => {
-    setLoading(true);
     const startDate = `${selectedYear}-01-01`;
     const endDate = `${selectedYear}-12-31`;
 
-    // 1. Fetch Sales
-    const { data: sales, error: salesError } = await supabase
-      .from("transacciones")
-      .select("fecha_transaction, total")
-      .gte("fecha_transaction", startDate)
-      .lte("fecha_transaction", endDate);
+    try {
+      // 1. Fetch Transacciones (Ventas)
+      const { data: transacciones, error: transError } = await supabase
+        .from("transacciones")
+        .select("fecha_transaction, total")
+        .gte("fecha_transaction", startDate)
+        .lte("fecha_transaction", endDate);
 
-    if (salesError) {
-      console.error("Error fetching sales:", salesError);
-    }
-    if (sales == []) {
-      console.log("No sales found for the selected year");
-    }
+      if (transError)
+        console.error("Error fetching transacciones:", transError);
 
-    const monthsTemplate = Array.from({ length: 12 }, (_, i) => ({
-      value: 0,
-      label: new Date(0, i).toLocaleString("es-MX", { month: "short" }),
-      dataPointText: "0",
-    }));
+      // 2. Fetch Ingresos (Otros ingresos)
+      const { data: ingresos, error: ingresosError } = await supabase
+        .from("ingresos")
+        .select("fecha_ingreso, monto_ingreso")
+        .gte("fecha_ingreso", startDate)
+        .lte("fecha_ingreso", endDate);
 
-    const monthlySales = JSON.parse(JSON.stringify(monthsTemplate));
-    sales?.forEach((sale) => {
-      // Parse the date string correctly to avoid timezone issues
-      // If the date is in format YYYY-MM-DD, we need to parse it as local time
-      const dateStr = sale.fecha_transaction;
-      let date;
+      if (ingresosError)
+        console.error("Error fetching ingresos:", ingresosError);
 
-      if (typeof dateStr === "string" && dateStr.includes("-")) {
-        // Parse as local date to avoid timezone offset issues
-        const [year, month, day] = dateStr.split("T")[0].split("-").map(Number);
-        date =
-          Platform.OS === "web"
+      // 3. Fetch Egresos (Solo pagados)
+      const { data: egresos, error: egresosError } = await supabase
+        .from("egresos")
+        .select("fecha_egreso, monto_egreso")
+        .eq("estado", "pagado")
+        .gte("fecha_egreso", startDate)
+        .lte("fecha_egreso", endDate);
+
+      if (egresosError) console.error("Error fetching egresos:", egresosError);
+
+      const monthsTemplate = Array.from({ length: 12 }, (_, i) => ({
+        value: 0,
+        label: new Date(0, i).toLocaleString("es-MX", { month: "short" }),
+        dataPointText: "0",
+      }));
+
+      const monthlyIngresos = JSON.parse(JSON.stringify(monthsTemplate));
+      const monthlyEgresos = JSON.parse(JSON.stringify(monthsTemplate));
+
+      // Helper to parse date
+      const parseDate = (dateStr) => {
+        if (!dateStr) return null;
+        if (typeof dateStr === "string" && dateStr.includes("-")) {
+          const [year, month, day] = dateStr
+            .split("T")[0]
+            .split("-")
+            .map(Number);
+          return Platform.OS === "web"
             ? new Date(year, month - 1, day)
             : new Date(year, month, day);
-      } else {
-        date = new Date(dateStr);
-      }
+        }
+        return new Date(dateStr);
+      };
 
-      if (!isNaN(date.getTime())) {
-        const month = date.getMonth();
-        monthlySales[month].value += sale.total;
-      }
-    });
+      // Process Transacciones (Add to Ingresos)
+      transacciones?.forEach((item) => {
+        const date = parseDate(item.fecha_transaction);
+        if (date && !isNaN(date.getTime())) {
+          monthlyIngresos[date.getMonth()].value += item.total || 0;
+        }
+      });
 
-    // Update dataPointText after calculating totals
-    monthlySales.forEach((item) => {
-      item.dataPointText =
-        item.value > 0 ? item.value.toLocaleString("es-MX") : "";
-    });
+      // Process Ingresos (Add to Ingresos)
+      ingresos?.forEach((item) => {
+        const date = parseDate(item.fecha_ingreso);
+        if (date && !isNaN(date.getTime())) {
+          monthlyIngresos[date.getMonth()].value += item.monto_ingreso || 0;
+        }
+      });
 
-    // Filter to show only from first month with data to last month with data
-    const filterDataByRange = (data) => {
-      const firstNonZeroIndex = data.findIndex((item) => item.value > 0);
-      const lastNonZeroIndex = data
-        .map((item, idx) => (item.value > 0 ? idx : -1))
-        .reduce((max, curr) => Math.max(max, curr), -1);
+      // Process Egresos
+      egresos?.forEach((item) => {
+        const date = parseDate(item.fecha_egreso);
+        if (date && !isNaN(date.getTime())) {
+          monthlyEgresos[date.getMonth()].value += item.monto_egreso || 0;
+        }
+      });
 
-      if (firstNonZeroIndex === -1) {
-        // No data at all, return empty array or first month only
-        return [data[0]];
-      }
+      // Update dataPointText
+      monthlyIngresos.forEach((item) => {
+        item.dataPointText =
+          item.value > 0 ? item.value.toLocaleString("es-MX") : "";
+      });
+      monthlyEgresos.forEach((item) => {
+        item.dataPointText =
+          item.value > 0 ? item.value.toLocaleString("es-MX") : "";
+      });
 
-      return data.slice(firstNonZeroIndex, lastNonZeroIndex + 1);
-    };
+      // Filter to show relevant range
+      const filterDataByRange = (data) => {
+        const firstNonZeroIndex = data.findIndex((item) => item.value > 0);
+        const lastNonZeroIndex = data
+          .map((item, idx) => (item.value > 0 ? idx : -1))
+          .reduce((max, curr) => Math.max(max, curr), -1);
 
-    const monthlyStudents = JSON.parse(JSON.stringify(monthsTemplate));
-    // students?.forEach((student) => {
-    //   const month = new Date(student.created_at).getMonth();
-    //   monthlyStudents[month].value += 1;
-    // });
+        if (firstNonZeroIndex === -1) return [data[0]];
+        return data.slice(firstNonZeroIndex, lastNonZeroIndex + 1);
+      };
 
-    // Update dataPointText for students
-    monthlyStudents.forEach((item) => {
-      item.dataPointText = item.value > 0 ? item.value.toString() : "";
-    });
+      setIngresosData(filterDataByRange(monthlyIngresos));
+      setEgresosData(filterDataByRange(monthlyEgresos));
+    } catch (error) {
+      console.error("Error in fetchData:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    setSalesData(filterDataByRange(monthlySales));
-    setStudentsData(filterDataByRange(monthlyStudents));
-    setLoading(false);
+  const handleRefresh = async () => {
+    if (loading) return;
+    setLoading(true);
+    await fetchData(year);
   };
 
   useEffect(() => {
+    setLoading(true);
     fetchData(year);
   }, [year]);
 
-  const totalSales = useMemo(
-    () => salesData.reduce((sum, item) => sum + item.value, 0),
-    [salesData]
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      fetchData(year);
+    }, [])
   );
-  const totalStudents = useMemo(
-    () => studentsData.reduce((sum, item) => sum + item.value, 0),
-    [studentsData]
+
+  const totalIngresos = useMemo(
+    () => ingresosData.reduce((sum, item) => sum + item.value, 0),
+    [ingresosData]
+  );
+  const totalEgresos = useMemo(
+    () => egresosData.reduce((sum, item) => sum + item.value, 0),
+    [egresosData]
   );
 
   const ChartCard = ({ title, total, data, unit = "" }) => (
-    <View className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-1 min-w-[300px]">
+    <View className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-1 min-w-[300px] mb-4">
       <View className="flex-row justify-between items-baseline mb-4">
         <Text className="text-lg font-bold text-slate-800">{title}</Text>
         <Text className="text-xl font-extrabold text-indigo-600">
@@ -6190,7 +6437,16 @@ const SeccionReportes = () => {
   );
 
   return (
-    <ScrollView className={`flex-1 p-4 bg-slate-50`}>
+    <ScrollView
+      className={`flex-1 p-4 bg-slate-50`}
+      refreshControl={
+        <RefreshControl
+          refreshing={loading}
+          onRefresh={handleRefresh}
+          tintColor="#6F09EA"
+        />
+      }
+    >
       <View className="flex-row justify-between items-center mb-6">
         <Text className="text-2xl font-bold text-slate-800">Reporte Anual</Text>
         <View className="w-40">
@@ -6205,17 +6461,31 @@ const SeccionReportes = () => {
         </View>
       </View>
 
-      <View
-        className={`flex-1 flex-wrap justify-center items-center flex-row gap-6`}
-      >
-        <ChartCard
-          title="Ventas"
-          total={totalSales}
-          data={salesData}
-          unit="$"
-        />
-        <ChartCard title="Alumnos" total={totalStudents} data={studentsData} />
-      </View>
+      {loading ? (
+        <View className="flex-1 justify-center items-center py-20">
+          <ActivityIndicator size="large" color="#6F09EA" />
+          <Text className="text-slate-500 mt-4 text-base">
+            Cargando reportes...
+          </Text>
+        </View>
+      ) : (
+        <View
+          className={`flex-1 flex-wrap justify-center items-center flex-row gap-6`}
+        >
+          <ChartCard
+            title="Ingresos"
+            total={totalIngresos}
+            data={ingresosData}
+            unit="$"
+          />
+          <ChartCard
+            title="Egresos"
+            total={totalEgresos}
+            data={egresosData}
+            unit="$"
+          />
+        </View>
+      )}
     </ScrollView>
   );
 };

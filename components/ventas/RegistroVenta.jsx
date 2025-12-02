@@ -1245,6 +1245,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
               .insert({
                 nombre_alumno: nombreLimpio,
                 direccion_alumno: form.direccion ? form.direccion.trim() : null,
+                grupo: form.grupo,
                 fecha_inscripcion: new Date().toISOString(),
                 estatus_alumno: true,
               })
@@ -1274,8 +1275,8 @@ export default function RegistroVenta({ navigation, onFormClose }) {
         throw new Error("No se ha podido determinar el ID del alumno.");
       }
 
-      // 1.8 Actualizar el grupo del alumno si se seleccionó uno
-      if (form.grupo) {
+      // 1.8 Actualizar el grupo del alumno si se seleccionó uno (solo para alumnos existentes)
+      if (form.grupo && !isNewStudent) {
         const { error: updateGroupError } = await supabase
           .from("alumnos")
           .update({ grupo: form.grupo })
@@ -1320,10 +1321,22 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       // 3.5 Actualizar alumno con id_transaccion y id_curso
       console.log("Datos de transacción retornados:", transactionData);
 
+      let generatedFolio = "MQ-0000-0000"; // Valor por defecto
+
       if (transactionData && transactionData.id_transaccion) {
         console.log(
           `Actualizando alumno ${finalIdAlumno} con id_transaccion: ${transactionData.id_transaccion}`
         );
+
+        // Generar el folio con el formato MQ-AAAA-ID_TRANSACCION (con padding de 4 dígitos mínimo)
+        const currentYear = new Date().getFullYear();
+        const paddedId = String(transactionData.id_transaccion).padStart(
+          4,
+          "0"
+        );
+        generatedFolio = `MQ-${currentYear}-${paddedId}`;
+        console.log("Folio generado:", generatedFolio);
+
         const { error: updateStudentError } = await supabase
           .from("alumnos")
           .update({
@@ -1345,8 +1358,8 @@ export default function RegistroVenta({ navigation, onFormClose }) {
         console.error("No se recibió id_transaccion después de la inserción.");
       }
 
-      // 4. Generar PDF
-      await printToFile();
+      // 4. Generar PDF con el folio
+      await printToFile(generatedFolio);
 
       Keyboard.dismiss();
       Alert.alert("Venta Registrada", "La venta se ha guardado con éxito.", [
@@ -1512,10 +1525,140 @@ export default function RegistroVenta({ navigation, onFormClose }) {
     });
   };
 
-  const printToFile = async () => {
+  const printToFile = async (folio = "MQ-0000-0000") => {
+    // Generar el HTML dinámicamente con el folio proporcionado
+    const htmlWithFolio = `
+  <html>
+    <head>
+    <style></style>
+    </head>
+    <body style="width:181px; background-color: #ffffff; font-family: monospace; font-size: 0.75rem; line-height: 1rem; color: #000000;">
+      <div style="display: flex; height: 2rem; justify-content: center; position: relative;">
+      
+        <h1 style="position: absolute; top: -0.6rem; letter-spacing: .025em; font-family: sans-serif; font-weight: 700; font-size: 12px; z-index: 1;">
+          MQerK
+        </h1>
+        <h2 style="position: absolute; bottom: 0rem; left: 4.375rem; letter-spacing: .3em; font-family: sans-serif; font-size: 10px; font-weight: 300; z-index: 1;">
+          Academy
+        </h2>
+        
+        <div style="position: absolute; top: 0rem; right: 3.75rem; border-radius: 9999px; padding: 0.2rem; border-width: 1px; border-style: solid; border-color: #000000;"></div>
+        <p style="font-size: 0.01rem; position: absolute; top: -0.2rem; right: 3.85rem; font-weight: 700;">
+          R
+        </p>
+      </div>
+      <header>
+        <p style="margin: -1px 0px -1px 0px;">Asesores Especializados en la enseñanza de la Ciencia y Tecnología</p>
+        <p style="margin: -1px 0px -1px 0px;">C. Benito Juárez #25 Col. Centro</p>
+        <p style="margin: -1px 0px -1px 0px;">Tuxtepec, Oaxaca</p>
+        <p style="margin: -1px 0px -1px 0px;">C.P. 68300</p>
+        <p style="margin: -1px 0px -1px 0px;">Tel. 287-181-1231</p>
+        <p style="margin: -1px 0px -1px 0px;">RFC: GORK980908K61</p>
+        <p style="margin: -1px 0px -1px 0px;">${today.toLocaleString("es-MX")}</p>
+        <p style="margin: -1px 0px -1px 0px;">Folio: ${folio}</p>
+        <h4 style="font-size: 0.875rem; margin: -1px 0px -18px 0px; line-height: 1.25rem;">Comprobante de Venta</h4>
+      </header>
+
+      <article style="margin-bottom: -1rem;">
+        <h5 style="font-size: 0.75rem; line-height: 1rem; font-weight: 700; border-bottom: 1px solid #000;">
+          Cliente
+        </h5>
+        <p style="margin: -15px 0px 0px 0px;">${form.nombre_cliente || "No especificado"}</p>
+        <p style="margin: 0px 0px 0px 0px;">${form.direccion || "No especificado"}</p>
+        <p style="margin: 0px 0px 0px 0px;">${form.grupo || "No especificado"}</p>
+        <p style="margin: 0px 0px 0px 0px;">${form.descripcion}</p>
+      </article>
+
+      <div style="margin-bottom: -1rem;">
+        <h5 style="font-size: 0.75rem; line-height: 1rem; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 0.25rem; margin-bottom: 0.25rem;">
+          Detalles
+        </h5>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: -0.75rem 0 0 0">
+          ${
+            form.curso_id
+              ? `
+              <p style="flex-shrink: 1; margin-right: 0.5rem;">
+                ${form.curso_quantity}x ${selectedCursoInfo?.label || "Curso..."}
+              </p>
+              <p>${currencyFormatter.format(form.importe)}</p>
+            `
+              : `
+              <p>Curso(s) no seleccionado(s)</p>
+              <p>${currencyFormatter.format(0)}</p>
+            `
+          }
+        </div>
+      </div>
+      
+
+      ${
+        form.incentivo_premium > 0
+          ? `
+        <div style="margin: 0 0 -0.75rem 0; display: flex; justify-content: space-between; align-items: center;">
+          <p>Incentivo Premium:</p>
+          <p style="white-space: nowrap;">- ${currencyFormatter.format(form.importe - totalConIncentivo)}</p>
+        </div>
+      `
+          : ""
+      }
+
+      <div style="border-top: 1px dashed #000;"></div>
+
+      <div style="margin: -0.75rem 0;display: flex; justify-content: space-between; align-items: center;">
+        <p>Anticipo:</p>
+        <p>- ${currencyFormatter.format(form.anticipo || 0)}</p>
+      </div>
+
+      <div style="border-top: 1px dashed #000;"></div>
+
+      ${
+        form.anticipo > 0 && form.curso_id
+          ? `
+        <div style="display: flex; margin: -0.75rem 0; justify-content: space-between; align-items: center;">
+          <p style="font-weight: 700;">Pendiente:</p>
+          <p style="font-size: 1rem; line-height: 1.5rem; font-weight: 700;">
+            ${currencyFormatter.format(totalFinal < 0 ? 0 : totalFinal)}
+          </p>
+        </div>
+      `
+          : ""
+      }
+
+      ${
+        form.fecha_limite_pago
+          ? `
+        <div style="display: flex; margin: -1.25rem 0; justify-content: space-between; align-items: center; font-size: 0.75rem; line-height: 1rem;">
+          <p>Fecha de pago:</p>
+          <p>${form.fecha_limite_pago}</p>
+        </div>
+      `
+          : ""
+      }
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.2rem;">
+        <p style="font-weight: 600;">Total a Pagar:</p>
+        <p style="font-weight: 600; font-size: 1rem; line-height: 1.5rem;">
+          ${currencyFormatter.format(totalConIncentivo)}
+        </p>
+      </div>
+      <div style="border-top: 1px solid; border-bottom: 1px solid;">
+        <p>Forma de pago: Efectivo</p>
+      </div>
+      <p style="font-weight: 700; text-align:center; margin: -0.05rem 0;">*CONSERVE ESTE COMPROBANTE*</p>
+      <p style="margin: -0.05rem 0;">PAGO REALIZADO CON EXITO</p>
+      <p style="margin: -0.05rem 0;">NO HAY DEVOLUCION DEL PAGO POR CUALQUIER SERVICIO PRESTADO EN NUESTRA INSTITUCIÓN</p>
+      <p style="margin: -0.05rem 0;">Dudas o quejas al:</p>
+      <p style="margin: -0.05rem 0;">287-181-1231</p>
+      <p style="margin: -0.05rem 0;">¡GRACIAS POR LA CONFIANZA!</p>
+      <p style="margin: -0.05rem 0;">Direccion: Lic. Kelvin Valentin Gómez Ramírez</p>
+    </div>
+    </body>
+    </html>
+  `;
+
     // On iOS/android prints the given html. On web prints the HTML from the current page.
     const { uri } = await Print.printToFileAsync({
-      html: html,
+      html: htmlWithFolio,
       width: 200,
     });
     console.log("File has been saved to:", uri);
