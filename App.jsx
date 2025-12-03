@@ -243,6 +243,7 @@ function AppScreens() {
               component={ScreenConfiguracion}
               options={{
                 title: "Configuración",
+                drawerItemStyle: { display: "none" }, // Ocultar del menú principal
                 drawerIcon: ({}) => (
                   <Svg
                     height="24"
@@ -263,7 +264,52 @@ function AppScreens() {
 }
 
 function AppHeader({ navigation, route }) {
-  const { profile } = useAuthContext();
+  const { profile, session } = useAuthContext();
+  const [avatarUrl, setAvatarUrl] = useState("");
+
+  // Cargar avatar del usuario
+  useEffect(() => {
+    const loadAvatar = async () => {
+      if (!session?.user?.id) {
+        setAvatarUrl("");
+        return;
+      }
+
+      try {
+        // Buscar avatar en la carpeta del usuario
+        const { data: files } = await supabase.storage
+          .from("PPUser")
+          .list(session.user.id, {
+            limit: 10,
+            offset: 0,
+          });
+
+        // Buscar archivo que comience con "avatar"
+        const avatarFile = files?.find((file) =>
+          file.name.startsWith("avatar.")
+        );
+
+        if (avatarFile) {
+          const {
+            data: { publicUrl },
+          } = supabase.storage
+            .from("PPUser")
+            .getPublicUrl(`${session.user.id}/${avatarFile.name}`);
+
+          setAvatarUrl(`${publicUrl}?t=${Date.now()}`);
+        } else {
+          // Si no hay archivo, limpiar la URL para mostrar iniciales
+          setAvatarUrl("");
+        }
+      } catch (error) {
+        console.error("Error loading avatar in header:", error);
+        setAvatarUrl("");
+      }
+    };
+
+    loadAvatar();
+  }, [session, profile, route]); // Recargar cuando cambie el perfil o la ruta
+
   // Títulos de sección según la ruta actual del Drawer
   const routeTitles = {
     Inicio: "Panel Principal",
@@ -289,11 +335,13 @@ function AppHeader({ navigation, route }) {
         email: profile?.email || "",
         role: "Admin",
         lastLogin: new Date().toLocaleString(),
+        avatar: avatarUrl || undefined, // Pasar la URL del avatar
       }}
       unreadCount={0}
       notifications={[]}
       onNotificationPress={() => {}}
       onMarkAllAsRead={() => {}}
+      onNavigateToSettings={() => navigation?.navigate?.("Configuración")}
       onLogout={() =>
         supabase.auth.signOut().catch((e) => console.error("Sign out error", e))
       }
@@ -303,10 +351,22 @@ function AppHeader({ navigation, route }) {
 
 const CustomDrawerContent = (props) => {
   const { state, ...rest } = props;
-  // Filtramos la ruta 'LogOut' para que no aparezca en la lista principal
+
+  // Solo filtramos 'LogOut', dejamos 'Configuración' en el estado original
+  const filteredRoutes = state.routes.filter((item) => item.name !== "LogOut");
+
+  // Verificar si Configuración está activa
+  const isConfigActive = state.routes[state.index]?.name === "Configuración";
+
+  // Recalculamos el índice activo después del filtrado
+  const activeRouteIndex = filteredRoutes.findIndex(
+    (route) => route.key === state.routes[state.index]?.key
+  );
+
   const newState = {
     ...state,
-    routes: state.routes.filter((item) => item.name !== "LogOut"),
+    routes: filteredRoutes,
+    index: activeRouteIndex >= 0 ? activeRouteIndex : 0,
   };
 
   return (
@@ -314,7 +374,21 @@ const CustomDrawerContent = (props) => {
       <DrawerContentScrollView {...props}>
         <DrawerItemList state={newState} {...rest} />
       </DrawerContentScrollView>
-      <View style={{ padding: 5, borderTopColor: "#4a4a4a" }}>
+      <View
+        style={{ padding: 5, borderTopColor: "#4a4a4a", borderTopWidth: 1 }}
+      >
+        <DrawerItem
+          label="Configuración"
+          activeTintColor="white"
+          inactiveTintColor="#ffffff"
+          focused={isConfigActive}
+          onPress={() => props.navigation.navigate("Configuración")}
+          icon={() => (
+            <Svg height="24" viewBox="0 -960 960 960" width="24" fill="#ffffff">
+              <Path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-2 13.5l103 78-110 190-118-50q-11 8-23 15t-24 12L590-80H370Zm70-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z" />
+            </Svg>
+          )}
+        />
         <DrawerItem
           label="Cerrar sesión"
           labelStyle={{ color: "#dc2626", fontWeight: "bold" }}
@@ -460,9 +534,9 @@ const TablaVentasPendientes = ({
           <View className="bg-slate-100 border-b border-slate-200 flex-row">
             <SortHeader label="Curso" k="curso_asignado" flex={3} />
             <SortHeader label="Nombre" k="nombre_estudiante" flex={3} />
-            <SortHeader label="Pendiente" k="monto_pendiente" flex={2} center />
-            <SortHeader label="Grupo" k="grupo" flex={1.5} center />
-            <SortHeader label="" k={null} flex={1.5} center />
+            <SortHeader label="Pendiente" k="monto_pendiente" flex={1.5} />
+            <SortHeader label="Grupo" k="grupo" flex={1.5} />
+            <SortHeader label="" k={null} flex={1} center />
           </View>
           {filtered.length > 0 ? (
             filtered.map((alumno, index) => (
@@ -471,13 +545,13 @@ const TablaVentasPendientes = ({
                 className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
               >
                 <TouchableOpacity
-                  style={{ flex: 9.5, flexDirection: "row" }}
+                  style={{flexDirection: "row", flex:10 }}
                   onPress={() => onRowClick && onRowClick(alumno)}
                 >
                   <Text
                     style={{ flex: 3 }}
                     className="p-3 text-slate-700"
-                    numberOfLines={1}
+                    numberOfLines={2}
                   >
                     {alumno.nombre_curso}
                   </Text>
@@ -489,20 +563,21 @@ const TablaVentasPendientes = ({
                     {alumno.nombre_alumno}
                   </Text>
                   <Text
-                    style={{ flex: 2, textAlign: "center" }}
+                    style={{ flex: 1.5 }}
                     className="p-3 text-slate-700 font-medium"
                   >
                     {currencyFormatter.format(alumno.monto_pendiente || 0)}
                   </Text>
                   <Text
-                    style={{ flex: 1.5, textAlign: "center" }}
+                    style={{ flex: 1.5, marginLeft: 0}}
                     className="p-3 text-slate-700"
+                    numberOfLines={1}
                   >
                     {alumno.grupo}
                   </Text>
                 </TouchableOpacity>
                 <View
-                  style={{ flex: 1.5 }}
+                  style={{ flex: 1 }}
                   className="p-3 flex-row justify-center items-center"
                 >
                   <TouchableOpacity onPress={() => onReprint(alumno)}>

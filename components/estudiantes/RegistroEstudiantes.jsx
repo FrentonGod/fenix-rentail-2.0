@@ -125,32 +125,74 @@ export default function RegistroEstudiantes({ onFormClose }) {
     if (!validate()) return;
 
     setSaving(true);
-    const { error } = await supabase.from("alumnos").insert([
-      {
-        nombre_alumno: form.nombre_estudiante.trim(),
-        id_curso: form.id_curso, // Requiere agregar esta columna a la tabla alumnos
-        grupo: form.grupo, // Requiere agregar esta columna a la tabla alumnos
-        fecha_inscripcion: new Date(),
-        estatus_alumno: true,
-      },
-    ]);
 
-    if (error) {
+    try {
+      // 1. Insertar el estudiante
+      const { data: nuevoEstudiante, error: errorEstudiante } = await supabase
+        .from("alumnos")
+        .insert([
+          {
+            nombre_alumno: form.nombre_estudiante.trim(),
+            id_curso: form.id_curso,
+            grupo: form.grupo,
+            fecha_inscripcion: new Date(),
+            estatus_alumno: true,
+          },
+        ])
+        .select()
+        .single();
+
+      if (errorEstudiante) {
+        throw errorEstudiante;
+      }
+
+      // 2. Obtener el costo del curso
+      const { data: cursoData, error: errorCurso } = await supabase
+        .from("cursos")
+        .select("costo_curso")
+        .eq("id_curso", form.id_curso)
+        .single();
+
+      if (errorCurso) {
+        throw errorCurso;
+      }
+
+      // 3. Crear la transacción (deuda) del estudiante
+      const { error: errorTransaccion } = await supabase
+        .from("transacciones")
+        .insert([
+          {
+            alumno_id: nuevoEstudiante.id_alumno,
+            curso_id: form.id_curso,
+            grupo_alumno: form.grupo,
+            monto: cursoData.costo_curso,
+            total: cursoData.costo_curso,
+            pendiente: cursoData.costo_curso, // Deuda completa
+            anticipo: 0, // Sin anticipo inicial
+            fecha_transaction: new Date().toISOString(),
+          },
+        ]);
+
+      if (errorTransaccion) {
+        throw errorTransaccion;
+      }
+
+      setToast({
+        type: "ok",
+        msg: "Estudiante registrado correctamente con su deuda del curso.",
+      });
+      setForm(initialFormState);
+      setFieldErrors({});
+      if (onFormClose) setTimeout(() => onFormClose(), 1500);
+    } catch (error) {
       console.error("Error saving student:", error);
       setToast({
         type: "error",
         msg: "No se pudo registrar al estudiante. Intenta de nuevo.",
       });
-    } else {
-      setToast({
-        type: "ok",
-        msg: "Estudiante registrado correctamente.",
-      });
-      setForm(initialFormState);
-      setFieldErrors({});
-      if (onFormClose) setTimeout(() => onFormClose(), 1500);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const selectedCurso = cursos.find((c) => c.id_curso === form.id_curso);
