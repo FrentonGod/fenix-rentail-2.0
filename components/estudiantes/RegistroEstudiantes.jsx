@@ -385,7 +385,11 @@ export default function RegistroEstudiantes({ onFormClose }) {
               },
             ]}
           >
-            <ScrollView>
+            <ScrollView
+              nestedScrollEnabled={true}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={true}
+            >
               {cursos.map((curso) => (
                 <Pressable
                   key={curso.id_curso}
@@ -433,28 +437,34 @@ export default function RegistroEstudiantes({ onFormClose }) {
               },
             ]}
           >
-            {GRUPOS.map((grupo) => (
-              <Pressable
-                key={grupo}
-                onPress={() => {
-                  set("grupo")(grupo);
-                  setGrupoOpen(false);
-                }}
-                className="px-4 py-3 active:bg-slate-50 flex-row items-center justify-between"
-              >
-                <Text className="text-slate-800">{grupo}</Text>
-                {form.grupo === grupo && (
-                  <Svg
-                    width={18}
-                    height={18}
-                    viewBox="0 -960 960 960"
-                    fill="#10b981"
-                  >
-                    <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
-                  </Svg>
-                )}
-              </Pressable>
-            ))}
+            <ScrollView
+              nestedScrollEnabled={true}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={true}
+            >
+              {GRUPOS.map((grupo) => (
+                <Pressable
+                  key={grupo}
+                  onPress={() => {
+                    set("grupo")(grupo);
+                    setGrupoOpen(false);
+                  }}
+                  className="px-4 py-3 active:bg-slate-50 flex-row items-center justify-between"
+                >
+                  <Text className="text-slate-800">{grupo}</Text>
+                  {form.grupo === grupo && (
+                    <Svg
+                      width={18}
+                      height={18}
+                      viewBox="0 -960 960 960"
+                      fill="#10b981"
+                    >
+                      <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+                    </Svg>
+                  )}
+                </Pressable>
+              ))}
+            </ScrollView>
           </View>
         </Modal>
       </KeyboardAvoidingView>

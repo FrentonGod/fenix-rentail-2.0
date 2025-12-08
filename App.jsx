@@ -457,8 +457,9 @@ const TablaVentasPendientes = ({
   onRefresh,
   onReprint,
   onRowClick, // Nueva prop
+  selectedYear, // Año seleccionado para filtrar
 }) => {
-  const [sortKey, setSortKey] = useState("monto_pendiente");
+  const [sortKey, setSortKey] = useState("fecha_transaction");
   const [sortDir, setSortDir] = useState("desc");
 
   const currencyFormatter = new Intl.NumberFormat("es-MX", {
@@ -469,6 +470,12 @@ const TablaVentasPendientes = ({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const arr = data.filter((r) => {
+      // Filtrar por año si está definido
+      if (selectedYear && r.fecha_transaction) {
+        const transactionYear = new Date(r.fecha_transaction).getFullYear();
+        if (transactionYear !== selectedYear) return false;
+      }
+
       if (!q) return true;
       return (
         String(r.nombre_estudiante).toLowerCase().includes(q) ||
@@ -486,7 +493,51 @@ const TablaVentasPendientes = ({
       return 0;
     });
     return sorted;
-  }, [data, query, sortKey, sortDir]);
+  }, [data, query, sortKey, sortDir, selectedYear]);
+
+  // Agrupar por año o por mes según el filtro seleccionado
+  const groupedData = useMemo(() => {
+    if (selectedYear === null) {
+      // Agrupar por año cuando se selecciona "Todos"
+      const groups = filtered.reduce((acc, alumno) => {
+        const year = alumno.fecha_transaction
+          ? new Date(alumno.fecha_transaction).getFullYear()
+          : "Sin fecha";
+        if (!acc[year]) acc[year] = [];
+        acc[year].push(alumno);
+        return acc;
+      }, {});
+
+      const sortedYears = Object.keys(groups).sort((a, b) => {
+        if (a === "Sin fecha") return 1;
+        if (b === "Sin fecha") return -1;
+        return b - a;
+      });
+
+      return { grouped: true, type: "year", keys: sortedYears, data: groups };
+    } else {
+      // Agrupar por mes cuando se selecciona un año específico
+      const groups = filtered.reduce((acc, alumno) => {
+        if (alumno.fecha_transaction) {
+          const fecha = new Date(alumno.fecha_transaction);
+          const mes = fecha.toLocaleDateString("es-MX", { month: "long" });
+          const mesNumero = fecha.getMonth();
+          const key = `${mesNumero}-${mes}`;
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(alumno);
+        }
+        return acc;
+      }, {});
+
+      const sortedMonths = Object.keys(groups).sort((a, b) => {
+        const numA = parseInt(a.split("-")[0]);
+        const numB = parseInt(b.split("-")[0]);
+        return numB - numA;
+      });
+
+      return { grouped: true, type: "month", keys: sortedMonths, data: groups };
+    }
+  }, [filtered, selectedYear]);
 
   const SortHeader = ({ label, k, flex = 1, center }) => (
     <Pressable
@@ -535,64 +586,256 @@ const TablaVentasPendientes = ({
             <SortHeader label="Curso" k="curso_asignado" flex={3} />
             <SortHeader label="Nombre" k="nombre_estudiante" flex={3} />
             <SortHeader label="Pendiente" k="monto_pendiente" flex={1.5} />
+            <SortHeader label="Fecha" k="fecha_transaction" flex={1.5} />
             <SortHeader label="Grupo" k="grupo" flex={1.5} />
             <SortHeader label="" k={null} flex={1} center />
           </View>
           {filtered.length > 0 ? (
-            filtered.map((alumno, index) => (
-              <View
-                key={alumno.id_transaccion || index}
-                className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
-              >
-                <TouchableOpacity
-                  style={{flexDirection: "row", flex:10 }}
-                  onPress={() => onRowClick && onRowClick(alumno)}
-                >
-                  <Text
-                    style={{ flex: 3 }}
-                    className="p-3 text-slate-700"
-                    numberOfLines={2}
+            groupedData.grouped ? (
+              // Vista agrupada por años o meses
+              groupedData.keys.map((key) => {
+                const displayLabel =
+                  groupedData.type === "month"
+                    ? key.split("-")[1].charAt(0).toUpperCase() +
+                      key.split("-")[1].slice(1)
+                    : key;
+                const icon =
+                  groupedData.type === "month"
+                    ? "M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Zm0 200q17 0 28.5-11.5T520-320v-160q0-17-11.5-28.5T480-520q-17 0-28.5 11.5T440-480v160q0 17 11.5 28.5T480-280Zm0-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Z"
+                    : "M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z";
+
+                return (
+                  <View key={key}>
+                    {/* Header del año o mes */}
+                    <View className="bg-indigo-600 py-3 px-4 flex-row items-center border-t border-indigo-700">
+                      <Svg
+                        height="20"
+                        viewBox="0 -960 960 960"
+                        width="20"
+                        fill="#ffffff"
+                      >
+                        <Path d={icon} />
+                      </Svg>
+                      <Text className="text-white font-bold text-lg ml-2">
+                        {displayLabel}
+                      </Text>
+                      <View className="flex-1" />
+                      <View className="bg-white/20 px-3 py-1 rounded-full">
+                        <Text className="text-white text-sm font-semibold">
+                          {groupedData.data[key].length}{" "}
+                          {groupedData.data[key].length === 1
+                            ? "transacción"
+                            : "transacciones"}
+                        </Text>
+                      </View>
+                    </View>
+                    {/* Transacciones del grupo */}
+                    {groupedData.data[key].map((alumno, index) => {
+                      const fecha = alumno.fecha_transaction
+                        ? new Date(alumno.fecha_transaction)
+                        : null;
+                      const añoActual = new Date().getFullYear();
+                      const esAñoActual = fecha
+                        ? fecha.getFullYear() === añoActual
+                        : true;
+
+                      return (
+                        <View
+                          key={alumno.id_transaccion || `\$\{key\}-\$\{index\}`}
+                          className={`flex-row items-center border-t ${
+                            esAñoActual
+                              ? `border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`
+                              : "border-orange-200 bg-orange-50/30"
+                          }`}
+                        >
+                          <TouchableOpacity
+                            style={{ flexDirection: "row", flex: 11.5 }}
+                            onPress={() => onRowClick && onRowClick(alumno)}
+                          >
+                            <Text
+                              style={{ flex: 3 }}
+                              className={`p-3 ${esAñoActual ? "text-slate-700" : "text-slate-600"}`}
+                              numberOfLines={2}
+                            >
+                              {alumno.nombre_curso}
+                            </Text>
+                            <Text
+                              style={{ flex: 3 }}
+                              className={`p-3 ${esAñoActual ? "text-slate-800" : "text-slate-700"}`}
+                              numberOfLines={1}
+                            >
+                              {alumno.nombre_alumno}
+                            </Text>
+                            <Text
+                              style={{ flex: 1.5 }}
+                              className={`p-3 font-medium ${esAñoActual ? "text-slate-700" : "text-slate-600"}`}
+                            >
+                              {currencyFormatter.format(
+                                alumno.monto_pendiente || 0
+                              )}
+                            </Text>
+                            <View style={{ flex: 1.5 }} className="p-3">
+                              {alumno.fecha_transaction ? (
+                                (() => {
+                                  const fecha = new Date(
+                                    alumno.fecha_transaction
+                                  );
+                                  const diaMes = fecha.toLocaleDateString(
+                                    "es-MX",
+                                    {
+                                      day: "2-digit",
+                                      month: "short",
+                                    }
+                                  );
+
+                                  return (
+                                    <Text
+                                      className={
+                                        esAñoActual
+                                          ? "text-slate-700"
+                                          : "text-slate-600"
+                                      }
+                                      numberOfLines={1}
+                                    >
+                                      {diaMes}
+                                    </Text>
+                                  );
+                                })()
+                              ) : (
+                                <Text className="text-slate-400">N/A</Text>
+                              )}
+                            </View>
+                            <Text
+                              style={{ flex: 1.5, marginLeft: 0 }}
+                              className={`p-3 ${esAñoActual ? "text-slate-700" : "text-slate-600"}`}
+                              numberOfLines={1}
+                            >
+                              {alumno.grupo}
+                            </Text>
+                          </TouchableOpacity>
+                          <View
+                            style={{ flex: 1 }}
+                            className="p-3 flex-row justify-center items-center"
+                          >
+                            <TouchableOpacity onPress={() => onReprint(alumno)}>
+                              <Svg
+                                height="22"
+                                viewBox="0 -960 960 960"
+                                width="22"
+                                fill="#475569"
+                              >
+                                <Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z" />
+                              </Svg>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                );
+              })
+            ) : (
+              // Vista normal (año específico seleccionado)
+              filtered.map((alumno, index) => {
+                // Determinar si la transacción es del año actual
+                const fecha = alumno.fecha_transaction
+                  ? new Date(alumno.fecha_transaction)
+                  : null;
+                const añoActual = new Date().getFullYear();
+                const esAñoActual = fecha
+                  ? fecha.getFullYear() === añoActual
+                  : true;
+
+                return (
+                  <View
+                    key={alumno.id_transaccion || index}
+                    className={`flex-row items-center border-t ${
+                      esAñoActual
+                        ? `border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`
+                        : "border-orange-200 bg-orange-50/30"
+                    }`}
                   >
-                    {alumno.nombre_curso}
-                  </Text>
-                  <Text
-                    style={{ flex: 3 }}
-                    className="p-3 text-slate-800"
-                    numberOfLines={1}
-                  >
-                    {alumno.nombre_alumno}
-                  </Text>
-                  <Text
-                    style={{ flex: 1.5 }}
-                    className="p-3 text-slate-700 font-medium"
-                  >
-                    {currencyFormatter.format(alumno.monto_pendiente || 0)}
-                  </Text>
-                  <Text
-                    style={{ flex: 1.5, marginLeft: 0}}
-                    className="p-3 text-slate-700"
-                    numberOfLines={1}
-                  >
-                    {alumno.grupo}
-                  </Text>
-                </TouchableOpacity>
-                <View
-                  style={{ flex: 1 }}
-                  className="p-3 flex-row justify-center items-center"
-                >
-                  <TouchableOpacity onPress={() => onReprint(alumno)}>
-                    <Svg
-                      height="22"
-                      viewBox="0 -960 960 960"
-                      width="22"
-                      fill="#475569"
+                    <TouchableOpacity
+                      style={{ flexDirection: "row", flex: 11.5 }}
+                      onPress={() => onRowClick && onRowClick(alumno)}
                     >
-                      <Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z" />
-                    </Svg>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
+                      <Text
+                        style={{ flex: 3 }}
+                        className={`p-3 ${esAñoActual ? "text-slate-700" : "text-slate-600"}`}
+                        numberOfLines={2}
+                      >
+                        {alumno.nombre_curso}
+                      </Text>
+                      <Text
+                        style={{ flex: 3 }}
+                        className={`p-3 ${esAñoActual ? "text-slate-800" : "text-slate-700"}`}
+                        numberOfLines={1}
+                      >
+                        {alumno.nombre_alumno}
+                      </Text>
+                      <Text
+                        style={{ flex: 1.5 }}
+                        className={`p-3 font-medium ${esAñoActual ? "text-slate-700" : "text-slate-600"}`}
+                      >
+                        {currencyFormatter.format(alumno.monto_pendiente || 0)}
+                      </Text>
+                      <View style={{ flex: 1.5 }} className="p-3">
+                        {alumno.fecha_transaction ? (
+                          (() => {
+                            const fecha = new Date(alumno.fecha_transaction);
+                            const añoActual = new Date().getFullYear();
+                            const añoTransaccion = fecha.getFullYear();
+                            const esAñoActual = añoTransaccion === añoActual;
+
+                            const diaMes = fecha.toLocaleDateString("es-MX", {
+                              day: "2-digit",
+                              month: "short",
+                            });
+
+                            return (
+                              <Text
+                                className={
+                                  esAñoActual
+                                    ? "text-slate-700"
+                                    : "text-slate-600"
+                                }
+                                numberOfLines={1}
+                              >
+                                {diaMes}
+                              </Text>
+                            );
+                          })()
+                        ) : (
+                          <Text className="text-slate-400">N/A</Text>
+                        )}
+                      </View>
+                      <Text
+                        style={{ flex: 1.5, marginLeft: 0 }}
+                        className={`p-3 ${esAñoActual ? "text-slate-700" : "text-slate-600"}`}
+                        numberOfLines={1}
+                      >
+                        {alumno.grupo}
+                      </Text>
+                    </TouchableOpacity>
+                    <View
+                      style={{ flex: 1 }}
+                      className="p-3 flex-row justify-center items-center"
+                    >
+                      <TouchableOpacity onPress={() => onReprint(alumno)}>
+                        <Svg
+                          height="22"
+                          viewBox="0 -960 960 960"
+                          width="22"
+                          fill="#475569"
+                        >
+                          <Path d="M640-640v-120H320v120h-80v-200h480v200h-80Zm-480 80h640-640Zm560 100q17 0 28.5-11.5T760-500q0-17-11.5-28.5T720-540q-17 0-28.5 11.5T680-500q0 17 11.5 28.5T720-460Zm-80 260v-160H320v160h320Zm80 80H240v-160H80v-240q0-51 35-85.5t85-34.5h560q51 0 85.5 34.5T880-520v240H720v160Zm80-240v-160q0-17-11.5-28.5T760-560H200q-17 0-28.5 11.5T160-520v160h80v-80h480v80h80Z" />
+                        </Svg>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })
+            )
           ) : (
             <View className="p-8 items-center justify-center bg-white">
               <Text className="text-slate-500 text-center font-medium">
@@ -720,6 +963,18 @@ const StudentDetailsModal = ({
                         <Text className="font-semibold text-slate-800 text-base">
                           {curso.nombre}
                         </Text>
+                        {curso.fecha_transaction && (
+                          <Text className="text-slate-500 text-xs mt-0.5">
+                            Fecha:{" "}
+                            {new Date(
+                              curso.fecha_transaction
+                            ).toLocaleDateString("es-MX", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </Text>
+                        )}
                         {curso.pendiente > 0 ? (
                           <Text className="text-red-500 text-sm mt-1 font-medium">
                             Pendiente: $
@@ -778,6 +1033,9 @@ const ScreenEstudiantes = ({ navigation }) => {
     useState(null);
   const [processingPayment, setProcessingPayment] = useState(false);
 
+  // Estado para el filtro de estatus
+  const [showOnlyActive, setShowOnlyActive] = useState(true);
+
   const handleRefresh = async () => {
     if (isRefetching || loading) return;
     setIsRefetching(true);
@@ -788,6 +1046,7 @@ const ScreenEstudiantes = ({ navigation }) => {
         id_alumno,
         nombre_alumno,
         grupo,
+        estatus_alumno,
         cursos (nombre_curso)
       `
       )
@@ -799,6 +1058,7 @@ const ScreenEstudiantes = ({ navigation }) => {
         id_estudiante: item.id_alumno,
         nombre_estudiante: item.nombre_alumno,
         grupo: item.grupo,
+        estatus_alumno: item.estatus_alumno,
         curso_asignado: item.cursos?.nombre_curso || "Sin curso",
       }));
       setEstudiantes(formattedData);
@@ -808,9 +1068,13 @@ const ScreenEstudiantes = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
+      let isMounted = true;
+
       const fetchEstudiantes = async () => {
-        if (estudiantes.length > 0) setIsRefetching(true);
-        else setLoading(true);
+        if (isMounted) {
+          if (estudiantes.length > 0) setIsRefetching(true);
+          else setLoading(true);
+        }
 
         const { data, error } = await supabase
           .from("alumnos")
@@ -819,24 +1083,33 @@ const ScreenEstudiantes = ({ navigation }) => {
             id_alumno,
             nombre_alumno,
             grupo,
+            estatus_alumno,
             cursos (nombre_curso)
           `
           )
           .order("id_alumno", { ascending: false });
 
-        if (!error && data) {
-          const formattedData = data.map((item) => ({
-            id_estudiante: item.id_alumno,
-            nombre_estudiante: item.nombre_alumno,
-            grupo: item.grupo,
-            curso_asignado: item.cursos?.nombre_curso || "Sin curso",
-          }));
-          setEstudiantes(formattedData);
+        if (isMounted) {
+          if (!error && data) {
+            const formattedData = data.map((item) => ({
+              id_estudiante: item.id_alumno,
+              nombre_estudiante: item.nombre_alumno,
+              grupo: item.grupo,
+              estatus_alumno: item.estatus_alumno,
+              curso_asignado: item.cursos?.nombre_curso || "Sin curso",
+            }));
+            setEstudiantes(formattedData);
+          }
+          setLoading(false);
+          setIsRefetching(false);
         }
-        setLoading(false);
-        setIsRefetching(false);
       };
+
       fetchEstudiantes();
+
+      return () => {
+        isMounted = false;
+      };
     }, [])
   );
 
@@ -923,6 +1196,7 @@ const ScreenEstudiantes = ({ navigation }) => {
       if (fetchError) throw fetchError;
 
       let remainingPayment = amount;
+      const abonos = []; // Array para registrar los abonos
 
       // 2. Iterar y actualizar transacciones
       for (const transaction of transactions) {
@@ -934,6 +1208,7 @@ const ScreenEstudiantes = ({ navigation }) => {
         );
         const newPendiente = transaction.pendiente - paymentForThisTransaction;
 
+        // Actualizar pendiente en transacciones
         const { error: updateError } = await supabase
           .from("transacciones")
           .update({ pendiente: newPendiente })
@@ -941,8 +1216,26 @@ const ScreenEstudiantes = ({ navigation }) => {
 
         if (updateError) throw updateError;
 
+        // Guardar info del abono para registrarlo en ingresos
+        abonos.push({
+          monto: paymentForThisTransaction,
+          id_transaccion: transaction.id_transaccion,
+        });
+
         remainingPayment -= paymentForThisTransaction;
       }
+
+      // 3. Registrar el abono total en la tabla de ingresos
+      const { error: ingresoError } = await supabase.from("ingresos").insert([
+        {
+          fecha_ingreso: new Date().toISOString().split("T")[0],
+          monto_ingreso: amount,
+          nombre_ingreso: selectedCourseForPayment.nombre,
+          desc_ingreso: selectedStudent.nombre_estudiante,
+        },
+      ]);
+
+      if (ingresoError) throw ingresoError;
 
       Alert.alert("Éxito", "Abono registrado correctamente.");
       setPaymentModalVisible(false);
@@ -970,6 +1263,7 @@ const ScreenEstudiantes = ({ navigation }) => {
           total,
           anticipo,
           curso_id,
+          fecha_transaction,
           cursos (nombre_curso)
         `
         )
@@ -993,11 +1287,21 @@ const ScreenEstudiantes = ({ navigation }) => {
               id: t.curso_id,
               nombre: t.cursos.nombre_curso,
               pendiente: 0,
+              fecha_transaction: t.fecha_transaction, // Guardar la primera fecha
             });
           }
           // Sumamos pendiente por curso si hay múltiples transacciones para el mismo curso
           const curso = cursosMap.get(t.curso_id);
           curso.pendiente += t.pendiente || 0;
+
+          // Actualizar con la fecha más reciente
+          if (
+            t.fecha_transaction &&
+            (!curso.fecha_transaction ||
+              new Date(t.fecha_transaction) > new Date(curso.fecha_transaction))
+          ) {
+            curso.fecha_transaction = t.fecha_transaction;
+          }
         }
       });
 
@@ -1015,6 +1319,49 @@ const ScreenEstudiantes = ({ navigation }) => {
     } finally {
       setLoadingDetails(false);
     }
+  };
+
+  const handleStatusChange = async (estudiante) => {
+    const nuevoEstatus = !estudiante.estatus_alumno;
+    const estatusTexto = nuevoEstatus ? "activo" : "inactivo";
+
+    Alert.alert(
+      "Cambiar Estatus",
+      `¿Deseas marcar a ${estudiante.nombre_estudiante} como ${estatusTexto}?`,
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "Confirmar",
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from("alumnos")
+                .update({ estatus_alumno: nuevoEstatus })
+                .eq("id_alumno", estudiante.id_estudiante);
+
+              if (error) throw error;
+
+              Alert.alert(
+                "Éxito",
+                `El estudiante ha sido marcado como ${estatusTexto}.`
+              );
+
+              // Refrescar la lista
+              handleRefresh();
+            } catch (error) {
+              console.error("Error updating student status:", error);
+              Alert.alert(
+                "Error",
+                "No se pudo actualizar el estatus del estudiante."
+              );
+            }
+          },
+        },
+      ]
+    );
   };
 
   const formContainerStyle = {
@@ -1053,22 +1400,44 @@ const ScreenEstudiantes = ({ navigation }) => {
                 className="ml-2 text-base"
               />
             </View>
-            <TouchableOpacity
-              onPress={handleAdd}
-              className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
-            >
-              <Svg
-                height="18"
-                viewBox="0 -960 960 960"
-                width="18"
-                fill="#ffffff"
+            <View className="flex-row gap-2">
+              <TouchableOpacity
+                onPress={() => setShowOnlyActive(!showOnlyActive)}
+                className={`p-2 rounded-full shadow-md flex-row items-center px-4 ${
+                  showOnlyActive
+                    ? "bg-green-600 shadow-green-600/30"
+                    : "bg-slate-500 shadow-slate-500/30"
+                }`}
               >
-                <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
-              </Svg>
-              <Text className="text-white font-bold ml-2">
-                Agregar Estudiante
-              </Text>
-            </TouchableOpacity>
+                <Svg
+                  height="18"
+                  viewBox="0 -960 960 960"
+                  width="18"
+                  fill="#ffffff"
+                >
+                  <Path d="M440-120v-240h80v80h320v80H520v80h-80Zm-320-80v-80h240v80H120Zm160-160v-80H120v-80h160v-80h80v240h-80Zm160-80v-80h400v80H440Zm160-160v-240h80v80h160v80H680v80h-80Zm-480-80v-80h400v80H120Z" />
+                </Svg>
+                <Text className="text-white font-bold ml-2">
+                  {showOnlyActive ? "Solo Activos" : "Todos"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleAdd}
+                className="bg-indigo-600 p-2 rounded-full shadow-md shadow-indigo-600/30 flex-row items-center px-4"
+              >
+                <Svg
+                  height="18"
+                  viewBox="0 -960 960 960"
+                  width="18"
+                  fill="#ffffff"
+                >
+                  <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+                </Svg>
+                <Text className="text-white font-bold ml-2">
+                  Agregar Estudiante
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TablaEstudiantes
@@ -1079,6 +1448,8 @@ const ScreenEstudiantes = ({ navigation }) => {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onViewDetails={handleViewDetails}
+            onStatusChange={handleStatusChange}
+            showOnlyActive={showOnlyActive}
           />
         </>
       )}
@@ -1222,7 +1593,9 @@ const TablaEstudiantes = ({
   onRefresh,
   onEdit,
   onDelete,
-  onViewDetails, // Nueva prop
+  onViewDetails,
+  onStatusChange, // Nueva prop para cambiar estatus
+  showOnlyActive = true, // Nueva prop para filtrar por estatus
 }) => {
   const [sortKey, setSortKey] = useState("nombre_estudiante");
   const [sortDir, setSortDir] = useState("asc");
@@ -1230,6 +1603,9 @@ const TablaEstudiantes = ({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const arr = data.filter((r) => {
+      // Filtrar por estatus si showOnlyActive está activado
+      if (showOnlyActive && !r.estatus_alumno) return false;
+
       if (!q) return true;
       return (
         String(r.nombre_estudiante).toLowerCase().includes(q) ||
@@ -1247,7 +1623,7 @@ const TablaEstudiantes = ({
       return 0;
     });
     return sorted;
-  }, [data, query, sortKey, sortDir]);
+  }, [data, query, sortKey, sortDir, showOnlyActive]);
 
   const SortHeader = ({ label, k, flex = 1, center }) => (
     <Pressable
@@ -1296,7 +1672,8 @@ const TablaEstudiantes = ({
             <SortHeader label="Nombre" k="nombre_estudiante" flex={4} />
             <SortHeader label="Último Curso" k="curso_asignado" flex={3} />
             <SortHeader label="Grupo" k="grupo" flex={2} center />
-            <SortHeader label="Acciones" k={null} flex={1.5} center />
+            <SortHeader label="Estatus" k="estatus_alumno" flex={1.5} center />
+            <SortHeader label="" k={null} flex={1.5} center />
           </View>
           {filtered.length > 0 ? (
             filtered.map((estudiante, index) => (
@@ -1305,7 +1682,7 @@ const TablaEstudiantes = ({
                 className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
               >
                 <TouchableOpacity
-                  style={{ flex: 9, flexDirection: "row" }}
+                  style={{ flex: 10.5, flexDirection: "row" }}
                   onPress={() => onViewDetails(estudiante)}
                 >
                   <Text
@@ -1329,20 +1706,35 @@ const TablaEstudiantes = ({
                     {estudiante.grupo}
                   </Text>
                 </TouchableOpacity>
+                {/* Columna de Estatus */}
+                <View
+                  style={{ flex: 1.5 }}
+                  className="p-3 flex-row justify-center items-center"
+                >
+                  <TouchableOpacity
+                    onPress={() => onStatusChange(estudiante)}
+                    className="p-2"
+                  >
+                    <View
+                      style={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: 8,
+                        backgroundColor: estudiante.estatus_alumno
+                          ? "#22c55e"
+                          : "#ef4444",
+                        borderWidth: 2,
+                        borderColor: estudiante.estatus_alumno
+                          ? "#16a34a"
+                          : "#dc2626",
+                      }}
+                    />
+                  </TouchableOpacity>
+                </View>
                 <View
                   style={{ flex: 1.5 }}
                   className="p-3 flex-row justify-center items-center gap-x-4"
                 >
-                  <TouchableOpacity onPress={() => onEdit(estudiante)}>
-                    <Svg
-                      height="22"
-                      viewBox="0 -960 960 960"
-                      width="22"
-                      fill="#3b82f6"
-                    >
-                      <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                    </Svg>
-                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => onDelete(estudiante.id_estudiante)}
                   >
@@ -2086,7 +2478,13 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
     nombre: "",
     descripcion: "",
     monto: "",
-    fecha: new Date().toISOString().split("T")[0],
+    fecha: (() => {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const day = String(today.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    })(),
     es_recurrente: false,
   };
 
@@ -2128,12 +2526,17 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
   useEffect(() => {
     const { day, month, year } = dateParts;
     if (day.length === 2 && month.length === 2 && year.length === 4) {
-      const newDateString = `${year}-${month}-${day}`;
-      const d = new Date(newDateString + "T00:00:00");
-      if (d && d.toISOString().slice(0, 10) === newDateString) {
-        if (newDateString !== form.fecha) {
-          setForm((prev) => ({ ...prev, fecha: newDateString }));
-        }
+      // Construir fecha en formato local sin conversión UTC
+      const newDateString = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      // Validar que la fecha sea válida
+      const testDate = new Date(year, parseInt(month) - 1, parseInt(day));
+      const isValidDate =
+        testDate.getFullYear() === parseInt(year) &&
+        testDate.getMonth() === parseInt(month) - 1 &&
+        testDate.getDate() === parseInt(day);
+
+      if (isValidDate && newDateString !== form.fecha) {
+        setForm((prev) => ({ ...prev, fecha: newDateString }));
       }
     }
   }, [dateParts]);
@@ -2200,14 +2603,25 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
 
         // Si es recurrente, crear el siguiente mes como pendiente
         if (form.es_recurrente) {
-          const siguienteFecha = new Date(form.fecha);
+          // Parsear la fecha desde el formato YYYY-MM-DD
+          const [year, month, day] = form.fecha.split("-").map(Number);
+          const siguienteFecha = new Date(year, month - 1, day);
           siguienteFecha.setMonth(siguienteFecha.getMonth() + 1);
+
+          // Formatear la fecha en formato local
+          const nextYear = siguienteFecha.getFullYear();
+          const nextMonth = String(siguienteFecha.getMonth() + 1).padStart(
+            2,
+            "0"
+          );
+          const nextDay = String(siguienteFecha.getDate()).padStart(2, "0");
+          const nextDateString = `${nextYear}-${nextMonth}-${nextDay}`;
 
           const egresoSiguiente = {
             nombre_egreso: form.nombre,
             desc_egreso: form.descripcion || null,
             monto_egreso: Number(form.monto),
-            fecha_egreso: siguienteFecha.toISOString().split("T")[0],
+            fecha_egreso: nextDateString,
             es_recurrente: true,
             estado: "pendiente",
           };
@@ -2493,10 +2907,31 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
               </Pressable>
               <Pressable
                 onPress={handleSave}
-                className="px-5 py-3 rounded-xl items-center justify-center bg-[#6F09EA]"
+                disabled={!form.nombre.trim() || Number(form.monto) <= 0}
+                style={{
+                  paddingHorizontal: 20,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor:
+                    form.nombre.trim() && Number(form.monto) > 0
+                      ? "#6F09EA"
+                      : "#cbd5e1",
+                }}
                 android_ripple={{ color: "rgba(255,255,255,0.15)" }}
               >
-                <Text className="text-white font-bold">Guardar</Text>
+                <Text
+                  style={{
+                    fontWeight: "bold",
+                    color:
+                      form.nombre.trim() && Number(form.monto) > 0
+                        ? "#ffffff"
+                        : "#64748b",
+                  }}
+                >
+                  Guardar
+                </Text>
               </Pressable>
             </View>
           </ScrollView>
@@ -2538,7 +2973,13 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
     nombre: "",
     descripcion: "",
     monto: "",
-    fecha: new Date().toISOString().split("T")[0],
+    fecha: (() => {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const day = String(today.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    })(),
     es_recurrente: false,
   };
 
@@ -2579,12 +3020,17 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
   useEffect(() => {
     const { day, month, year } = dateParts;
     if (day.length === 2 && month.length === 2 && year.length === 4) {
-      const newDateString = `${year}-${month}-${day}`;
-      const d = new Date(newDateString + "T00:00:00");
-      if (d && d.toISOString().slice(0, 10) === newDateString) {
-        if (newDateString !== form.fecha) {
-          setForm((prev) => ({ ...prev, fecha: newDateString }));
-        }
+      // Construir fecha en formato local sin conversión UTC
+      const newDateString = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      // Validar que la fecha sea válida
+      const testDate = new Date(year, parseInt(month) - 1, parseInt(day));
+      const isValidDate =
+        testDate.getFullYear() === parseInt(year) &&
+        testDate.getMonth() === parseInt(month) - 1 &&
+        testDate.getDate() === parseInt(day);
+
+      if (isValidDate && newDateString !== form.fecha) {
+        setForm((prev) => ({ ...prev, fecha: newDateString }));
       }
     }
   }, [dateParts]);
@@ -2870,10 +3316,31 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
               </Pressable>
               <Pressable
                 onPress={handleSave}
-                className="px-5 py-3 rounded-xl items-center justify-center bg-[#6F09EA]"
+                disabled={!form.nombre.trim() || Number(form.monto) <= 0}
+                style={{
+                  paddingHorizontal: 20,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor:
+                    form.nombre.trim() && Number(form.monto) > 0
+                      ? "#6F09EA"
+                      : "#cbd5e1",
+                }}
                 android_ripple={{ color: "rgba(255,255,255,0.15)" }}
               >
-                <Text className="text-white font-bold">Guardar</Text>
+                <Text
+                  style={{
+                    fontWeight: "bold",
+                    color:
+                      form.nombre.trim() && Number(form.monto) > 0
+                        ? "#ffffff"
+                        : "#64748b",
+                  }}
+                >
+                  Guardar
+                </Text>
               </Pressable>
             </View>
           </ScrollView>
@@ -2933,7 +3400,7 @@ const TablaEgresos = ({ onEdit, refreshTrigger }) => {
     { title: "Descripción", flex: 5, key: "desc_egreso" },
     { title: "Fecha", flex: 2.3, center: true, key: "fecha_egreso" },
     { title: "Monto", flex: 2.5, center: true, key: "monto_egreso" }, // Increased flex slightly
-    { title: "", flex: 1, center: true },
+    { title: "", flex: 1, center: true, key: "actions" },
   ];
 
   const handleFetch = async () => {
@@ -2974,7 +3441,9 @@ const TablaEgresos = ({ onEdit, refreshTrigger }) => {
     for (const egreso of egresos) {
       // Solo procesar egresos recurrentes pendientes
       if (egreso.es_recurrente && egreso.estado === "pendiente") {
-        const egresoDate = new Date(egreso.fecha_egreso);
+        // Parsear la fecha desde el formato YYYY-MM-DD
+        const [year, month, day] = egreso.fecha_egreso.split("-").map(Number);
+        const egresoDate = new Date(year, month - 1, day);
         egresoDate.setHours(0, 0, 0, 0);
 
         // Si la fecha del egreso ya pasó o es hoy
@@ -2995,11 +3464,20 @@ const TablaEgresos = ({ onEdit, refreshTrigger }) => {
             const nextMonthDate = new Date(egresoDate);
             nextMonthDate.setMonth(nextMonthDate.getMonth() + 1);
 
+            // Formatear la fecha en formato local
+            const nextYear = nextMonthDate.getFullYear();
+            const nextMonth = String(nextMonthDate.getMonth() + 1).padStart(
+              2,
+              "0"
+            );
+            const nextDay = String(nextMonthDate.getDate()).padStart(2, "0");
+            const nextDateString = `${nextYear}-${nextMonth}-${nextDay}`;
+
             const newEgreso = {
               nombre_egreso: egreso.nombre_egreso,
               desc_egreso: egreso.desc_egreso,
               monto_egreso: egreso.monto_egreso,
-              fecha_egreso: nextMonthDate.toISOString().split("T")[0],
+              fecha_egreso: nextDateString,
               es_recurrente: true,
               estado: "pendiente",
             };
@@ -3087,7 +3565,7 @@ const TablaEgresos = ({ onEdit, refreshTrigger }) => {
           <View className="bg-slate-100 border-b border-slate-200 flex-row">
             {headers.map((header, index) => (
               <TouchableOpacity
-                key={index}
+                key={header.key || header.title || index}
                 style={{
                   flex: header.flex,
                   alignItems: header.center ? "center" : "flex-start",
@@ -3147,9 +3625,12 @@ const TablaEgresos = ({ onEdit, refreshTrigger }) => {
                   {egreso.desc_egreso || egreso.descripcion || "-"}
                 </Text>
                 <Text style={{ flex: 2.3 }} className="p-3 text-slate-600">
-                  {new Date(
-                    egreso.fecha_egreso || egreso.fecha
-                  ).toLocaleDateString("es-MX")}
+                  {(() => {
+                    const fechaStr = egreso.fecha_egreso || egreso.fecha;
+                    const [year, month, day] = fechaStr.split("-").map(Number);
+                    const date = new Date(year, month - 1, day);
+                    return date.toLocaleDateString("es-MX");
+                  })()}
                 </Text>
 
                 {/* Columna de Monto con Icono de Estado */}
@@ -3303,6 +3784,26 @@ const CustomFinanzasTabBar = (props) => {
   );
 };
 
+// Helper function para formatear fechas sin usar .map()
+const formatDateMX = (dateString) => {
+  if (!dateString) return "-";
+  const parts = dateString.split("-");
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString("es-MX");
+};
+
+// Headers de la tabla de ingresos
+const ingresosHeaders = [
+  { title: "Nombre", flex: 4, key: "nombre_ingreso" },
+  { title: "Descripción", flex: 5, key: "desc_ingreso" },
+  { title: "Fecha", flex: 2.3, center: true, key: "fecha_ingreso" },
+  { title: "Monto", flex: 2.5, center: true, key: "monto_ingreso" },
+  { title: "", flex: 1, center: true, key: "actions" },
+];
+
 const TablaIngresos = ({ onEdit, refreshTrigger }) => {
   const currencyFormatter = new Intl.NumberFormat("es-MX", {
     style: "currency",
@@ -3362,13 +3863,7 @@ const TablaIngresos = ({ onEdit, refreshTrigger }) => {
     return sorted;
   }, [data, sortKey, sortDir]);
 
-  const headers = [
-    { title: "Nombre", flex: 4, key: "nombre_ingreso" },
-    { title: "Descripción", flex: 5, key: "desc_ingreso" },
-    { title: "Fecha", flex: 2.3, center: true, key: "fecha_ingreso" },
-    { title: "Monto", flex: 2.5, center: true, key: "monto_ingreso" },
-    { title: "", flex: 1, center: true },
-  ];
+  const refreshColors = ["#6366f1"];
 
   return (
     <View className="flex-1">
@@ -3378,7 +3873,7 @@ const TablaIngresos = ({ onEdit, refreshTrigger }) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#6366f1"]}
+            colors={refreshColors}
             tintColor="#6366f1"
           />
         }
@@ -3386,14 +3881,14 @@ const TablaIngresos = ({ onEdit, refreshTrigger }) => {
         <View className="rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm">
           {/* Header */}
           <View className="bg-slate-100 border-b border-slate-200 flex-row">
-            {headers.map((header, index) => (
+            {ingresosHeaders.map((header, index) => (
               <TouchableOpacity
-                key={index}
+                key={header.key || header.title || index}
                 style={{
                   flex: header.flex,
                   alignItems: header.center ? "center" : "flex-start",
                 }}
-                className="py-3 px-3 flex-row gap-1"
+                className="py-3 px-3 flex-row"
                 onPress={() => {
                   if (!header.key) return;
                   if (sortKey === header.key) {
@@ -3409,7 +3904,7 @@ const TablaIngresos = ({ onEdit, refreshTrigger }) => {
                   {header.title}
                 </Text>
                 {sortKey === header.key && (
-                  <Text className="text-slate-600 text-xs">
+                  <Text className="text-slate-600 text-xs ml-1">
                     {sortDir === "asc" ? "↑" : "↓"}
                   </Text>
                 )}
@@ -3428,8 +3923,14 @@ const TablaIngresos = ({ onEdit, refreshTrigger }) => {
           ) : sortedData.length > 0 ? (
             sortedData.map((ingreso, index) => (
               <View
-                key={ingreso.id_ingreso}
-                className={`flex-row items-center border-t border-slate-200 ${index % 2 ? "bg-white" : "bg-slate-50"}`}
+                key={ingreso.id_ingreso || index}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  borderTopWidth: 1,
+                  borderTopColor: "#e2e8f0",
+                  backgroundColor: index % 2 ? "#ffffff" : "#f8fafc",
+                }}
               >
                 <Text
                   style={{ flex: 4 }}
@@ -3446,11 +3947,7 @@ const TablaIngresos = ({ onEdit, refreshTrigger }) => {
                   {ingreso.desc_ingreso || "-"}
                 </Text>
                 <Text style={{ flex: 2.3 }} className="p-3 text-slate-600">
-                  {ingreso.fecha_ingreso
-                    ? new Date(ingreso.fecha_ingreso).toLocaleDateString(
-                        "es-MX"
-                      )
-                    : "-"}
+                  {formatDateMX(ingreso.fecha_ingreso)}
                 </Text>
                 <Text
                   style={{ flex: 2.5 }}
@@ -3914,14 +4411,21 @@ const ScreenFinanzas = () => {
           </View>
         )}
       </Tab.Screen>
+      <Tab.Screen name="Reportes" key="reportes-tab">
+        {() => <SeccionReportes />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 };
 
-const ScreenCalendario = () => {
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
-  );
+const ScreenCalendario = ({ navigation, route }) => {
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  });
   const [allEvents, setAllEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isRefetching, setIsRefetching] = useState(false);
@@ -4080,12 +4584,21 @@ const ScreenCalendario = () => {
   };
 
   const handleEditEvent = (evento) => {
-    const d = new Date(evento.fechayhora_evento);
-    const year = d.getFullYear().toString();
-    const month = (d.getMonth() + 1).toString().padStart(2, "0");
-    const day = d.getDate().toString().padStart(2, "0");
-    const hours = d.getHours().toString().padStart(2, "0");
-    const minutes = d.getMinutes().toString().padStart(2, "0");
+    // Parsear el timestamp en formato local
+    // Formato esperado: "YYYY-MM-DD HH:MM:SS" o "YYYY-MM-DDTHH:MM:SS"
+    const timestampStr = evento.fechayhora_evento
+      .replace("T", " ")
+      .split(".")[0];
+    const [datePart, timePart] = timestampStr.split(" ");
+    const [year, month, day] = datePart.split("-");
+
+    let hours = "09",
+      minutes = "00";
+    if (timePart) {
+      const [h, m] = timePart.split(":");
+      hours = h.padStart(2, "0");
+      minutes = m.padStart(2, "0");
+    }
 
     setNewEvent({
       nombre: evento.nombre_evento,
@@ -4104,18 +4617,12 @@ const ScreenCalendario = () => {
 
   // Función para volver al día y mes actual
   const goToToday = () => {
-    const today = new Date().toISOString().split("T")[0];
+    const todayDate = new Date();
+    const year = todayDate.getFullYear();
+    const month = String(todayDate.getMonth() + 1).padStart(2, "0");
+    const day = String(todayDate.getDate()).padStart(2, "0");
+    const today = `${year}-${month}-${day}`;
     setSelectedDate(today);
-
-    // Si el calendario ya está visible, lo forzamos a navegar al mes actual.
-    if (calendarRef.current) {
-      const todayDate = new Date();
-      const currentDate = new Date(calendarRef.current.props.current);
-      const monthDiff =
-        (todayDate.getFullYear() - currentDate.getFullYear()) * 12 +
-        (todayDate.getMonth() - currentDate.getMonth());
-      calendarRef.current.addMonth(monthDiff);
-    }
   };
 
   LocaleConfig.locales["es"] = {
@@ -4194,7 +4701,30 @@ const ScreenCalendario = () => {
   }, [selectedDate, allEvents]);
 
   async function submitEvento() {
-    const fechaCompleta = `${selectedDate} ${newEvent.hora}:${newEvent.minutos}:00`;
+    // Validar que el nombre no esté vacío
+    if (!newEvent.nombre.trim()) {
+      Alert.alert("Error", "El nombre del evento es obligatorio");
+      return;
+    }
+
+    // Parsear la fecha seleccionada
+    const [year, month, day] = selectedDate.split("-").map(Number);
+    const hora = parseInt(newEvent.hora, 10);
+    const minutos = parseInt(newEvent.minutos, 10);
+
+    // Crear un objeto Date en hora local
+    const fechaLocal = new Date(year, month - 1, day, hora, minutos, 0);
+
+    // Formatear como timestamp para PostgreSQL en formato local
+    // PostgreSQL espera formato: YYYY-MM-DD HH:MM:SS
+    const yearStr = fechaLocal.getFullYear();
+    const monthStr = String(fechaLocal.getMonth() + 1).padStart(2, "0");
+    const dayStr = String(fechaLocal.getDate()).padStart(2, "0");
+    const horaStr = String(fechaLocal.getHours()).padStart(2, "0");
+    const minutosStr = String(fechaLocal.getMinutes()).padStart(2, "0");
+    const segundosStr = String(fechaLocal.getSeconds()).padStart(2, "0");
+
+    const fechaCompleta = `${yearStr}-${monthStr}-${dayStr} ${horaStr}:${minutosStr}:${segundosStr}`;
 
     let error;
 
@@ -4497,10 +5027,13 @@ const ScreenCalendario = () => {
                 </Text>
 
                 {/* Campo Nombre del Evento */}
-                <LabeledInput
-                  label="Nombre del Evento"
-                  containerClassName="mb-4"
-                >
+                <View className="mb-4">
+                  <View className="flex-row items-center mb-1">
+                    <Text className="text-sm font-semibold text-slate-700">
+                      Nombre del Evento
+                    </Text>
+                    <Text className="text-red-500 ml-1">*</Text>
+                  </View>
                   <TextInput
                     className="border border-slate-300 rounded-xl px-4 py-3 text-slate-900 bg-white"
                     placeholder="Ej. Reunión de equipo"
@@ -4509,7 +5042,7 @@ const ScreenCalendario = () => {
                       setNewEvent((prev) => ({ ...prev, nombre: text }))
                     }
                   />
-                </LabeledInput>
+                </View>
 
                 {/* Campo de Fecha */}
                 <View className="mb-4">
@@ -4600,9 +5133,34 @@ const ScreenCalendario = () => {
                       placeholder="HH"
                       value={newEvent.hora}
                       editable={isTimeEditable}
-                      onChangeText={(text) =>
-                        setNewEvent((prev) => ({ ...prev, hora: text }))
-                      }
+                      onChangeText={(text) => {
+                        // Solo permitir números
+                        const numericValue = text.replace(/[^0-9]/g, "");
+                        // Validar que esté entre 00 y 23
+                        if (numericValue === "" || numericValue.length === 1) {
+                          setNewEvent((prev) => ({
+                            ...prev,
+                            hora: numericValue,
+                          }));
+                        } else if (numericValue.length === 2) {
+                          const hourValue = parseInt(numericValue, 10);
+                          if (hourValue >= 0 && hourValue <= 23) {
+                            setNewEvent((prev) => ({
+                              ...prev,
+                              hora: numericValue,
+                            }));
+                          }
+                        }
+                      }}
+                      onBlur={() => {
+                        // Agregar cero a la izquierda si es necesario
+                        if (newEvent.hora.length === 1) {
+                          setNewEvent((prev) => ({
+                            ...prev,
+                            hora: prev.hora.padStart(2, "0"),
+                          }));
+                        }
+                      }}
                       keyboardType="number-pad"
                       maxLength={2}
                     />
@@ -4612,9 +5170,34 @@ const ScreenCalendario = () => {
                       placeholder="MM"
                       value={newEvent.minutos}
                       editable={isTimeEditable}
-                      onChangeText={(text) =>
-                        setNewEvent((prev) => ({ ...prev, minutos: text }))
-                      }
+                      onChangeText={(text) => {
+                        // Solo permitir números
+                        const numericValue = text.replace(/[^0-9]/g, "");
+                        // Validar que esté entre 00 y 59
+                        if (numericValue === "" || numericValue.length === 1) {
+                          setNewEvent((prev) => ({
+                            ...prev,
+                            minutos: numericValue,
+                          }));
+                        } else if (numericValue.length === 2) {
+                          const minuteValue = parseInt(numericValue, 10);
+                          if (minuteValue >= 0 && minuteValue <= 59) {
+                            setNewEvent((prev) => ({
+                              ...prev,
+                              minutos: numericValue,
+                            }));
+                          }
+                        }
+                      }}
+                      onBlur={() => {
+                        // Agregar cero a la izquierda si es necesario
+                        if (newEvent.minutos.length === 1) {
+                          setNewEvent((prev) => ({
+                            ...prev,
+                            minutos: prev.minutos.padStart(2, "0"),
+                          }));
+                        }
+                      }}
                       keyboardType="number-pad"
                       maxLength={2}
                     />
@@ -4651,9 +5234,31 @@ const ScreenCalendario = () => {
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={handleSaveEvent}
-                    className="bg-indigo-600 px-5 py-3 rounded-lg shadow-md shadow-indigo-600/30"
+                    disabled={!newEvent.nombre.trim()}
+                    style={[
+                      {
+                        paddingHorizontal: 20,
+                        paddingVertical: 12,
+                        borderRadius: 8,
+                      },
+                      newEvent.nombre.trim()
+                        ? {
+                            backgroundColor: "#6366f1",
+                            shadowColor: "#6366f1",
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.3,
+                            shadowRadius: 4,
+                            elevation: 4,
+                          }
+                        : { backgroundColor: "#cbd5e1" },
+                    ]}
                   >
-                    <Text className="text-white font-bold">
+                    <Text
+                      style={{
+                        fontWeight: "bold",
+                        color: newEvent.nombre.trim() ? "#ffffff" : "#64748b",
+                      }}
+                    >
                       {editingEventId ? "Actualizar" : "Guardar Evento"}
                     </Text>
                   </TouchableOpacity>
@@ -4753,33 +5358,50 @@ const ScreenCalendario = () => {
                                       {(() => {
                                         if (!evento.fechayhora_evento)
                                           return "";
-                                        const d = new Date(
+
+                                        // Parsear el timestamp en formato local
+                                        // Formato esperado: "YYYY-MM-DD HH:MM:SS"
+                                        const timestampStr =
                                           evento.fechayhora_evento
+                                            .replace("T", " ")
+                                            .split(".")[0];
+                                        const [datePart, timePart] =
+                                          timestampStr.split(" ");
+                                        const [year, month, day] = datePart
+                                          .split("-")
+                                          .map(Number);
+
+                                        let hours = 0,
+                                          minutes = 0;
+                                        if (timePart) {
+                                          const [h, m] = timePart
+                                            .split(":")
+                                            .map(Number);
+                                          hours = h;
+                                          minutes = m;
+                                        }
+
+                                        const dayStr = String(day).padStart(
+                                          2,
+                                          "0"
                                         );
-                                        if (isNaN(d.getTime()))
-                                          return evento.fechayhora_evento;
-                                        const day = d
-                                          .getDate()
-                                          .toString()
-                                          .padStart(2, "0");
-                                        const month = (d.getMonth() + 1)
-                                          .toString()
-                                          .padStart(2, "0");
-                                        const year = d.getFullYear();
-                                        const hours = d
-                                          .getHours()
-                                          .toString()
-                                          .padStart(2, "0");
-                                        const minutes = d
-                                          .getMinutes()
-                                          .toString()
-                                          .padStart(2, "0");
+                                        const monthStr = String(month).padStart(
+                                          2,
+                                          "0"
+                                        );
+                                        const hoursStr = String(hours).padStart(
+                                          2,
+                                          "0"
+                                        );
+                                        const minutesStr = String(
+                                          minutes
+                                        ).padStart(2, "0");
 
                                         // Para egresos, solo mostramos fecha, no hora (ya que es ficticia)
                                         if (evento.tipo === "egreso") {
-                                          return `${day}/${month}/${year} (Próximo pago)`;
+                                          return `${dayStr}/${monthStr}/${year} (Próximo pago)`;
                                         }
-                                        return `${day}/${month}/${year} ${hours}:${minutes}`;
+                                        return `${dayStr}/${monthStr}/${year} ${hoursStr}:${minutesStr}`;
                                       })()}
                                     </Text>
                                   </View>
@@ -5142,7 +5764,7 @@ const ChipButtonGroup = ({
     )}
     {chips.map((chip) => (
       <ChipButton
-        key={chip.label}
+        key={chip.value}
         label={chip.label}
         onPress={() => {
           if (chip.value === selectedValue) {
@@ -5602,6 +6224,10 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
   const [studentDetails, setStudentDetails] = useState(null);
   const [processingPayment, setProcessingPayment] = useState(false);
 
+  // Estado para el filtro de año
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [availableYears, setAvailableYears] = useState([]);
+
   const handleGenerateSale = () => {
     setIsFormVisible(true);
     Animated.spring(anim, {
@@ -5657,7 +6283,9 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
       }
 
       // Generar el folio con el formato MQ-YEAR-ID (con padding de 4 dígitos)
-      const year = new Date(data.fecha_transaction).getFullYear();
+      // Parsear la fecha en zona horaria local
+      const fechaParts = data.fecha_transaction.split("T")[0].split("-");
+      const year = parseInt(fechaParts[0], 10);
       const paddedId = String(data.id_transaccion).padStart(4, "0");
       const folio = `MQ-${year}-${paddedId}`;
 
@@ -5666,7 +6294,25 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
         currency: "MXN",
       });
 
-      const today = new Date(data.fecha_transaction);
+      // Usar la fecha y hora actual de la reimpresión
+      const today = new Date();
+
+      // Generar descripción automática si no hay referencia
+      let descripcion = data.referencia;
+      if (!descripcion || descripcion.trim() === "") {
+        // Formatear la fecha de la transacción original
+        const [yearTx, monthTx, dayTx] = data.fecha_transaction
+          .split("T")[0]
+          .split("-");
+        const fechaTransaccion = new Date(
+          parseInt(yearTx, 10),
+          parseInt(monthTx, 10) - 1,
+          parseInt(dayTx, 10)
+        );
+        const fechaFormateada = `${String(fechaTransaccion.getDate()).padStart(2, "0")}/${String(fechaTransaccion.getMonth() + 1).padStart(2, "0")}/${fechaTransaccion.getFullYear()}`;
+
+        descripcion = `Compra del curso "${data.cursos?.nombre_curso || "No especificado"}", del día ${fechaFormateada} por ${data.alumnos?.nombre_alumno || "No especificado"}`;
+      }
 
       // Generar el HTML del ticket directamente
       const html = `
@@ -5696,7 +6342,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
         <p style="margin: -1px 0px -1px 0px;">RFC: GORK980908K61</p>
         <p style="margin: -1px 0px -1px 0px;">${today.toLocaleString("es-MX")}</p>
         <p style="margin: -1px 0px -1px 0px;">Folio: ${folio}</p>
-        <h4 style="font-size: 0.875rem; margin: -1px 0px -18px 0px; line-height: 1.25rem;">Comprobante de Venta</h4>
+        <h4 style="font-size: 0.875rem; margin: -1px 0px -18px 0px; line-height: 1.25rem;">Comprobante de Venta (Reimpresión)</h4>
       </header>
 
       <article style="margin-bottom: -1rem;">
@@ -5706,7 +6352,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
         <p style="margin: -15px 0px 0px 0px;">${data.alumnos?.nombre_alumno || "No especificado"}</p>
         <p style="margin: 0px 0px 0px 0px;">${data.alumnos?.direccion_alumno || "No especificado"}</p>
         <p style="margin: 0px 0px 0px 0px;">${data.grupo_alumno || data.alumnos?.grupo || "No especificado"}</p>
-        <p style="margin: 0px 0px 0px 0px;">${data.referencia || ""}</p>
+        <p style="margin: 0px 0px 0px 0px;">${descripcion}</p>
       </article>
 
       <div style="margin-bottom: -1rem;">
@@ -5861,6 +6507,21 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
         };
       });
 
+      // Extraer años únicos de todas las transacciones
+      const years = [
+        ...new Set(
+          formattedData
+            .map((t) => {
+              if (t.fecha_transaction) {
+                return new Date(t.fecha_transaction).getFullYear();
+              }
+              return null;
+            })
+            .filter((y) => y !== null)
+        ),
+      ].sort((a, b) => b - a);
+
+      setAvailableYears(years);
       setEstudiantesConAdeudo(formattedData);
     } else if (error) {
       console.error("Error fetching deudas:", error);
@@ -5899,6 +6560,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
           anticipo,
           curso_id,
           id_transaccion,
+          fecha_transaction,
           cursos (nombre_curso)
         `
         )
@@ -5923,11 +6585,21 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
               nombre: t.cursos.nombre_curso,
               pendiente: 0,
               transacciones: [],
+              fecha_transaction: t.fecha_transaction, // Guardar la primera fecha
             });
           }
           const curso = cursosMap.get(t.curso_id);
           curso.pendiente += t.pendiente || 0;
           curso.transacciones.push(t);
+
+          // Actualizar con la fecha más reciente
+          if (
+            t.fecha_transaction &&
+            (!curso.fecha_transaction ||
+              new Date(t.fecha_transaction) > new Date(curso.fecha_transaction))
+          ) {
+            curso.fecha_transaction = t.fecha_transaction;
+          }
         }
       });
 
@@ -5997,6 +6669,18 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
         remainingPayment -= paymentForThisTransaction;
       }
 
+      // Registrar el abono en la tabla de ingresos
+      const { error: ingresoError } = await supabase.from("ingresos").insert([
+        {
+          fecha_ingreso: new Date().toISOString().split("T")[0],
+          monto_ingreso: amount,
+          nombre_ingreso: selectedCourseForPayment.nombre,
+          desc_ingreso: selectedDebtForPayment?.nombre_alumno,
+        },
+      ]);
+
+      if (ingresoError) throw ingresoError;
+
       Alert.alert("Éxito", "Abono registrado correctamente.");
       setCoursePaymentModalVisible(false);
       // Recargar detalles del estudiante
@@ -6043,7 +6727,8 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
           </View>
         ) : (
           <>
-            <View className="flex-row items-center justify-between p-4">
+            {/* Primera fila: Búsqueda */}
+            <View className="px-4 pt-4">
               <View className="flex-row items-center bg-white border border-slate-300 rounded-full px-3 py-1 shadow-sm">
                 <Svg
                   height="20"
@@ -6058,27 +6743,86 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
                   placeholder="Buscar por nombre, curso..."
                   value={searchTerm}
                   onChangeText={setSearchTerm}
-                  className="ml-2 text-base z-0"
+                  className="ml-2 text-base flex-1"
                 />
               </View>
-              <View className="flex-row">
-                <TouchableOpacity
-                  onPress={handleGenerateSale}
-                  className="bg-teal-600 p-2 rounded-full shadow-md shadow-teal-600/30 flex-row items-center px-4"
+            </View>
+
+            {/* Segunda fila: Filtro de año y botón */}
+            <View className="flex-row items-center justify-between px-4 pb-4 pt-2">
+              {/* Selector de Año */}
+              <View className="bg-white border border-slate-300 rounded-full px-3 py-1 shadow-sm flex-row items-center flex-1 mr-2">
+                <Svg
+                  height="18"
+                  viewBox="0 -960 960 960"
+                  width="18"
+                  fill="#6b7280"
                 >
-                  <Svg
-                    height="18"
-                    viewBox="0 -960 960 960"
-                    width="18"
-                    fill="#ffffff"
-                  >
-                    <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
-                  </Svg>
-                  <Text className="text-white font-bold ml-2">
-                    Generar Venta
-                  </Text>
-                </TouchableOpacity>
+                  <Path d="M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z" />
+                </Svg>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  className="ml-2"
+                >
+                  <View className="flex-row gap-2">
+                    {/* Opción "Todos" */}
+                    <TouchableOpacity
+                      onPress={() => setSelectedYear(null)}
+                      className={`px-3 py-1 rounded-full ${
+                        selectedYear === null ? "bg-purple-600" : "bg-slate-100"
+                      }`}
+                    >
+                      <Text
+                        className={`text-sm font-semibold ${
+                          selectedYear === null
+                            ? "text-white"
+                            : "text-slate-600"
+                        }`}
+                      >
+                        Todos
+                      </Text>
+                    </TouchableOpacity>
+                    {availableYears.map((year) => (
+                      <TouchableOpacity
+                        key={year}
+                        onPress={() => setSelectedYear(year)}
+                        className={`px-3 py-1 rounded-full ${
+                          selectedYear === year
+                            ? "bg-indigo-600"
+                            : "bg-slate-100"
+                        }`}
+                      >
+                        <Text
+                          className={`text-sm font-semibold ${
+                            selectedYear === year
+                              ? "text-white"
+                              : "text-slate-600"
+                          }`}
+                        >
+                          {year}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
               </View>
+
+              {/* Botón Generar Venta */}
+              <TouchableOpacity
+                onPress={handleGenerateSale}
+                className="bg-teal-600 p-2 rounded-full shadow-md shadow-teal-600/30 flex-row items-center px-4"
+              >
+                <Svg
+                  height="18"
+                  viewBox="0 -960 960 960"
+                  width="18"
+                  fill="#ffffff"
+                >
+                  <Path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
+                </Svg>
+                <Text className="text-white font-bold ml-2">Generar Venta</Text>
+              </TouchableOpacity>
             </View>
 
             <TablaVentasPendientes
@@ -6088,6 +6832,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
               onRefresh={handleRefresh}
               onReprint={handleReprint}
               onRowClick={handleOpenPaymentModal}
+              selectedYear={selectedYear}
             />
           </>
         )}
@@ -6105,96 +6850,18 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
           </Animated.View>
         )}
 
-        {/* Modal de detalles del estudiante */}
-        <Modal
-          animationType="fade"
-          transparent={true}
+        {/* Modal de detalles del estudiante - Usando el mismo componente que en Estudiantes */}
+        <StudentDetailsModal
           visible={paymentModalVisible}
-          onRequestClose={() => setPaymentModalVisible(false)}
-        >
-          <View className="flex-1 justify-center items-center bg-black/50 px-4">
-            <View className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl max-h-5/6">
-              <View className="flex-row justify-between items-center mb-4">
-                <Text className="text-2xl font-bold text-slate-800">
-                  {selectedDebtForPayment?.nombre_alumno}
-                </Text>
-                <TouchableOpacity onPress={() => setPaymentModalVisible(false)}>
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#64748b"
-                  >
-                    <Path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
-                  </Svg>
-                </TouchableOpacity>
-              </View>
-
-              <Text className="text-slate-600 mb-6">
-                Grupo: {selectedDebtForPayment?.grupo}
-              </Text>
-
-              {processingPayment ? (
-                <View className="py-8">
-                  <ActivityIndicator size="large" color="#6366f1" />
-                </View>
-              ) : studentDetails ? (
-                <ScrollView className="max-h-96">
-                  {/* Resumen financiero */}
-                  <View className="bg-slate-50 rounded-xl p-4 mb-4">
-                    <Text className="text-sm font-semibold text-slate-600 mb-2">
-                      Resumen Financiero
-                    </Text>
-                    <View className="flex-row justify-between mb-1">
-                      <Text className="text-slate-700">Deuda Total:</Text>
-                      <Text className="font-bold text-red-600">
-                        ${studentDetails.deudaTotal.toLocaleString("es-MX")}
-                      </Text>
-                    </View>
-                    <View className="flex-row justify-between">
-                      <Text className="text-slate-700">Total Pagado:</Text>
-                      <Text className="font-bold text-green-600">
-                        ${studentDetails.pagadoTotal.toLocaleString("es-MX")}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Lista de cursos */}
-                  <Text className="text-sm font-semibold text-slate-600 mb-2">
-                    Cursos Inscritos
-                  </Text>
-                  {studentDetails.cursos.map((curso, idx) => (
-                    <View
-                      key={idx}
-                      className="bg-white border border-slate-200 rounded-lg p-3 mb-2"
-                    >
-                      <View className="flex-row justify-between items-center">
-                        <View className="flex-1">
-                          <Text className="font-semibold text-slate-800">
-                            {curso.nombre}
-                          </Text>
-                          <Text className="text-sm text-slate-600 mt-1">
-                            Saldo: ${curso.pendiente.toLocaleString("es-MX")}
-                          </Text>
-                        </View>
-                        {curso.pendiente > 0 && (
-                          <TouchableOpacity
-                            onPress={() => handleOpenCoursePaymentModal(curso)}
-                            className="bg-indigo-600 px-3 py-2 rounded-lg ml-2"
-                          >
-                            <Text className="text-white text-xs font-semibold">
-                              Abonar
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    </View>
-                  ))}
-                </ScrollView>
-              ) : null}
-            </View>
-          </View>
-        </Modal>
+          onClose={() => setPaymentModalVisible(false)}
+          student={{
+            nombre_estudiante: selectedDebtForPayment?.nombre_alumno,
+            grupo: selectedDebtForPayment?.grupo,
+          }}
+          details={studentDetails}
+          loading={processingPayment}
+          onMakePayment={handleOpenCoursePaymentModal}
+        />
 
         {/* Modal de abono a curso específico */}
         <Modal
@@ -6332,10 +6999,10 @@ const SeccionReportes = () => {
     const endDate = `${selectedYear}-12-31`;
 
     try {
-      // 1. Fetch Transacciones (Ventas)
+      // 1. Fetch Transacciones (Ventas) - Solo el anticipo es ingreso real
       const { data: transacciones, error: transError } = await supabase
         .from("transacciones")
-        .select("fecha_transaction, total")
+        .select("fecha_transaction, anticipo")
         .gte("fecha_transaction", startDate)
         .lte("fecha_transaction", endDate);
 
@@ -6375,22 +7042,22 @@ const SeccionReportes = () => {
       const parseDate = (dateStr) => {
         if (!dateStr) return null;
         if (typeof dateStr === "string" && dateStr.includes("-")) {
-          const [year, month, day] = dateStr
-            .split("T")[0]
-            .split("-")
-            .map(Number);
-          return Platform.OS === "web"
-            ? new Date(year, month - 1, day)
-            : new Date(year, month, day);
+          const datePart = dateStr.split("T")[0];
+          const [year, month, day] = datePart.split("-").map(Number);
+
+          // Usar el mes directamente como viene de Supabase (formato 1-12)
+          const parsedDate = new Date(year, month, day);
+
+          return parsedDate;
         }
         return new Date(dateStr);
       };
 
-      // Process Transacciones (Add to Ingresos)
+      // Process Transacciones (Add to Ingresos) - Sumar solo el anticipo
       transacciones?.forEach((item) => {
         const date = parseDate(item.fecha_transaction);
         if (date && !isNaN(date.getTime())) {
-          monthlyIngresos[date.getMonth()].value += item.total || 0;
+          monthlyIngresos[date.getMonth()].value += item.anticipo || 0;
         }
       });
 

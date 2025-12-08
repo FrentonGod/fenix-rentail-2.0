@@ -186,7 +186,7 @@ const ChipButtonGroup = ({
     )}
     {chips.map((chip) => (
       <ChipButton
-        key={chip.label}
+        key={chip.value}
         label={chip.label}
         onPress={() => {
           // Si el chip ya está seleccionado, al presionarlo de nuevo se resetea a 0.
@@ -1275,20 +1275,31 @@ export default function RegistroVenta({ navigation, onFormClose }) {
         throw new Error("No se ha podido determinar el ID del alumno.");
       }
 
-      // 1.8 Actualizar el grupo del alumno si se seleccionó uno (solo para alumnos existentes)
-      if (form.grupo && !isNewStudent) {
-        const { error: updateGroupError } = await supabase
-          .from("alumnos")
-          .update({ grupo: form.grupo })
-          .eq("id_alumno", finalIdAlumno);
+      // 1.8 Actualizar el grupo y dirección del alumno (solo para alumnos existentes)
+      if (!isNewStudent) {
+        const updateData = {};
 
-        if (updateGroupError) {
-          console.error(
-            "Error actualizando grupo del alumno:",
-            updateGroupError
-          );
-          // No lanzamos error fatal aquí para intentar guardar la venta de todos modos,
-          // pero si la FK es estricta, fallará en el siguiente paso.
+        // Actualizar grupo si se seleccionó uno
+        if (form.grupo) {
+          updateData.grupo = form.grupo;
+        }
+
+        // Actualizar dirección si se proporcionó una
+        if (form.direccion && form.direccion.trim()) {
+          updateData.direccion_alumno = form.direccion.trim();
+        }
+
+        // Solo hacer el update si hay algo que actualizar
+        if (Object.keys(updateData).length > 0) {
+          const { error: updateError } = await supabase
+            .from("alumnos")
+            .update(updateData)
+            .eq("id_alumno", finalIdAlumno);
+
+          if (updateError) {
+            console.error("Error actualizando datos del alumno:", updateError);
+            // No lanzamos error fatal aquí para intentar guardar la venta de todos modos
+          }
         }
       }
 
