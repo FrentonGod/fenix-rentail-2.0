@@ -965,7 +965,7 @@ const StudentDetailsModal = ({
                         </Text>
                         {curso.fecha_transaction && (
                           <Text className="text-slate-500 text-xs mt-0.5">
-                            Fecha:{" "}
+                            Fecha de inscripción:{" "}
                             {new Date(
                               curso.fecha_transaction
                             ).toLocaleDateString("es-MX", {
@@ -3350,7 +3350,7 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
   );
 };
 
-const TablaEgresos = ({ onEdit, refreshTrigger }) => {
+const TablaEgresos = ({ onEdit, refreshTrigger, dateFilter }) => {
   const currencyFormatter = new Intl.NumberFormat("es-MX", {
     style: "currency",
     currency: "MXN",
@@ -3363,37 +3363,153 @@ const TablaEgresos = ({ onEdit, refreshTrigger }) => {
   const [sortKey, setSortKey] = useState(null); // Default to null to respect fetch order
   const [sortDir, setSortDir] = useState("desc");
 
-  const sortedData = useMemo(() => {
-    // Filtrar pendientes si es necesario
-    let filteredData = data;
+  // Filtrar y agrupar datos
+  const filteredAndGroupedData = useMemo(() => {
+    // 1. Filtrar pendientes si es necesario
+    let filtered = data;
     if (!showPending) {
-      filteredData = data.filter((item) => item.estado !== "pendiente");
+      filtered = data.filter((item) => item.estado !== "pendiente");
     }
 
-    // If no sort key, return data as is (already sorted by fetch)
-    if (!sortKey) return filteredData;
+    // 2. Filtrar por fecha según dateFilter
+    if (dateFilter) {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
 
-    const sorted = [...filteredData].sort((a, b) => {
-      // Always put 'pendiente' at the bottom
-      if (a.estado !== b.estado) {
-        if (a.estado === "pendiente") return 1;
-        if (b.estado === "pendiente") return -1;
-      }
+      filtered = filtered.filter((item) => {
+        if (!item.fecha_egreso) return false;
+        const [year, month, day] = item.fecha_egreso.split("-").map(Number);
+        const itemDate = new Date(year, month - 1, day);
 
-      // If no sort key, maintain default order (which is by date desc from fetch)
-      if (!sortKey) return 0;
+        if (dateFilter === "last_month") {
+          const oneMonthAgo = new Date(now);
+          oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+          return itemDate >= oneMonthAgo;
+        } else if (dateFilter === "3_months_ago") {
+          const threeMonthsAgo = new Date(now);
+          threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+          return itemDate >= threeMonthsAgo;
+        } else if (dateFilter.startsWith("year-")) {
+          const filterYear = parseInt(dateFilter.split("-")[1]);
+          return itemDate.getFullYear() === filterYear;
+        }
+        return true;
+      });
+    }
 
-      let va = a[sortKey] ?? "";
-      let vb = b[sortKey] ?? "";
-      if (typeof va === "string") va = va.toLowerCase();
-      if (typeof vb === "string") vb = vb.toLowerCase();
+    // 3. Ordenar si hay sortKey
+    if (sortKey) {
+      filtered = [...filtered].sort((a, b) => {
+        // Always put 'pendiente' at the bottom
+        if (a.estado !== b.estado) {
+          if (a.estado === "pendiente") return 1;
+          if (b.estado === "pendiente") return -1;
+        }
 
-      if (va < vb) return sortDir === "asc" ? -1 : 1;
-      if (va > vb) return sortDir === "asc" ? 1 : -1;
-      return 0;
-    });
-    return sorted;
-  }, [data, sortKey, sortDir, showPending]);
+        let va = a[sortKey] ?? "";
+        let vb = b[sortKey] ?? "";
+        if (typeof va === "string") va = va.toLowerCase();
+        if (typeof vb === "string") vb = vb.toLowerCase();
+
+        if (va < vb) return sortDir === "asc" ? -1 : 1;
+        if (va > vb) return sortDir === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    // 4. Determinar si agrupar por año o mes
+    // Agrupar por MES en todos los casos
+    const shouldGroupByMonth =
+      dateFilter === "last_month" ||
+      dateFilter === "3_months_ago" ||
+      dateFilter?.startsWith("year-");
+
+    if (shouldGroupByMonth) {
+      // Separar pendientes y pagados
+      const pendientes = filtered.filter((item) => item.estado === "pendiente");
+      const pagados = filtered.filter((item) => item.estado === "pagado");
+
+      // Determinar si necesitamos agregar el año a los pendientes
+      const needYearInPending = () => {
+        if (pendientes.length === 0) return false;
+
+        const currentYear = new Date().getFullYear();
+
+        // Obtener el año de los pendientes
+        const pendienteYear = parseInt(
+          pendientes[0].fecha_egreso.split("-")[0]
+        );
+
+        // Solo agregar año si los pendientes son de un año diferente al actual
+        return pendienteYear !== currentYear;
+      };
+
+      const addYearToPending = needYearInPending();
+
+      // Agrupar pendientes por mes
+      const pendientesGroups = {};
+      pendientes.forEach((item) => {
+        if (!item.fecha_egreso) return;
+        const [year, month] = item.fecha_egreso.split("-");
+        const monthNum = parseInt(month) - 1;
+        const monthName = new Date(year, monthNum).toLocaleDateString("es-MX", {
+          month: "long",
+        });
+        const displayName = addYearToPending
+          ? `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}`
+          : monthName.charAt(0).toUpperCase() + monthName.slice(1);
+        const key = `${monthNum}-${displayName}-pendiente`;
+        if (!pendientesGroups[key]) pendientesGroups[key] = [];
+        pendientesGroups[key].push(item);
+      });
+
+      // Agrupar pagados por mes
+      const pagadosGroups = {};
+      pagados.forEach((item) => {
+        if (!item.fecha_egreso) return;
+        const [year, month] = item.fecha_egreso.split("-");
+        const monthNum = parseInt(month) - 1;
+        const monthName = new Date(year, monthNum).toLocaleDateString("es-MX", {
+          month: "long",
+        });
+        const key = `${monthNum}-${monthName}`;
+        if (!pagadosGroups[key]) pagadosGroups[key] = [];
+        pagadosGroups[key].push(item);
+      });
+
+      // Ordenar grupos
+      const sortedPendientes = Object.keys(pendientesGroups).sort((a, b) => {
+        const numA = parseInt(a.split("-")[0]);
+        const numB = parseInt(b.split("-")[0]);
+        return numA - numB; // Ascendente para pendientes (próximos primero)
+      });
+
+      const sortedPagados = Object.keys(pagadosGroups).sort((a, b) => {
+        const numA = parseInt(a.split("-")[0]);
+        const numB = parseInt(b.split("-")[0]);
+        return numB - numA; // Descendente para pagados (más recientes primero)
+      });
+
+      // Combinar: pendientes arriba, pagados abajo
+      const allGroups = { ...pendientesGroups, ...pagadosGroups };
+      const allKeys = [...sortedPendientes, ...sortedPagados];
+
+      return { grouped: true, type: "month", keys: allKeys, data: allGroups };
+    } else {
+      // Agrupar por año
+      const groups = {};
+      filtered.forEach((item) => {
+        if (!item.fecha_egreso) return;
+        const year = item.fecha_egreso.split("-")[0];
+        if (!groups[year]) groups[year] = [];
+        groups[year].push(item);
+      });
+
+      const sortedYears = Object.keys(groups).sort((a, b) => b - a);
+      return { grouped: true, type: "year", keys: sortedYears, data: groups };
+    }
+  }, [data, sortKey, sortDir, showPending, dateFilter]);
 
   const headers = [
     { title: "Nombre", flex: 4, key: "nombre_egreso" },
@@ -3602,90 +3718,137 @@ const TablaEgresos = ({ onEdit, refreshTrigger }) => {
                 Cargando egresos...
               </Text>
             </View>
-          ) : sortedData.length > 0 ? (
-            sortedData.map((egreso, index) => (
-              <View
-                key={egreso.id}
-                className={`flex-row items-center border-t border-slate-200 ${
-                  index % 2 ? "bg-white" : "bg-slate-50"
-                } ${egreso.estado === "pendiente" ? "opacity-50" : ""}`}
-              >
-                <Text
-                  style={{ flex: 4 }}
-                  className="p-3 text-slate-800"
-                  numberOfLines={1}
-                >
-                  {egreso.nombre_egreso || egreso.nombre || "Sin nombre"}
-                </Text>
-                <Text
-                  style={{ flex: 5 }}
-                  className="p-3 text-slate-700"
-                  numberOfLines={1}
-                >
-                  {egreso.desc_egreso || egreso.descripcion || "-"}
-                </Text>
-                <Text style={{ flex: 2.3 }} className="p-3 text-slate-600">
-                  {(() => {
-                    const fechaStr = egreso.fecha_egreso || egreso.fecha;
-                    const [year, month, day] = fechaStr.split("-").map(Number);
-                    const date = new Date(year, month - 1, day);
-                    return date.toLocaleDateString("es-MX");
-                  })()}
-                </Text>
+          ) : filteredAndGroupedData.keys &&
+            filteredAndGroupedData.keys.length > 0 ? (
+            filteredAndGroupedData.keys.map((key) => {
+              const displayLabel =
+                filteredAndGroupedData.type === "month"
+                  ? key.split("-")[1].charAt(0).toUpperCase() +
+                    key.split("-")[1].slice(1)
+                  : key;
+              const icon =
+                filteredAndGroupedData.type === "month"
+                  ? "M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Zm0 200q17 0 28.5-11.5T520-320v-160q0-17-11.5-28.5T480-520q-17 0-28.5 11.5T440-480v160q0 17 11.5 28.5T480-280Zm0-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Z"
+                  : "M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z";
 
-                {/* Columna de Monto con Icono de Estado */}
-                <View
-                  style={{
-                    flex: 2.5,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                  className="p-3"
-                >
-                  <Text className="text-slate-800 font-medium">
-                    {currencyFormatter.format(
-                      egreso.monto_egreso || egreso.monto || 0
-                    )}
-                  </Text>
-                  {egreso.estado === "pagado" ? (
+              return (
+                <View key={key}>
+                  {/* Header del año o mes */}
+                  <View className="bg-red-600 py-3 px-4 flex-row items-center border-t border-red-700">
                     <Svg
-                      height="16"
+                      height="20"
                       viewBox="0 -960 960 960"
-                      width="16"
-                      fill="#22c55e"
+                      width="20"
+                      fill="#ffffff"
                     >
-                      <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+                      <Path d={icon} />
                     </Svg>
-                  ) : (
-                    <Svg
-                      height="16"
-                      viewBox="0 -960 960 960"
-                      width="16"
-                      fill="#f59e0b"
+                    <Text className="text-white font-bold text-lg ml-2">
+                      {displayLabel}
+                    </Text>
+                    <View className="flex-1" />
+                    <View className="bg-white/20 px-3 py-1 rounded-full">
+                      <Text className="text-white text-sm font-semibold">
+                        {filteredAndGroupedData.data[key].length}{" "}
+                        {filteredAndGroupedData.data[key].length === 1
+                          ? "egreso"
+                          : "egresos"}
+                      </Text>
+                    </View>
+                  </View>
+                  {/* Egresos del grupo */}
+                  {filteredAndGroupedData.data[key].map((egreso, index) => (
+                    <View
+                      key={egreso.id}
+                      className={`flex-row items-center border-t border-slate-200 ${
+                        index % 2 ? "bg-white" : "bg-slate-50"
+                      } ${egreso.estado === "pendiente" ? "opacity-50" : ""}`}
                     >
-                      <Path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm-40-200h120v-80H480v-160h-80v200h40Z" />
-                    </Svg>
-                  )}
-                </View>
+                      <Text
+                        style={{ flex: 4 }}
+                        className="p-3 text-slate-800"
+                        numberOfLines={1}
+                      >
+                        {egreso.nombre_egreso || egreso.nombre || "Sin nombre"}
+                      </Text>
+                      <Text
+                        style={{ flex: 5 }}
+                        className="p-3 text-slate-700"
+                        numberOfLines={1}
+                      >
+                        {egreso.desc_egreso || egreso.descripcion || "-"}
+                      </Text>
+                      <Text
+                        style={{ flex: 2.3 }}
+                        className="p-3 text-slate-600"
+                      >
+                        {(() => {
+                          const [year, month, day] =
+                            egreso.fecha_egreso.split("-");
+                          const date = new Date(year, parseInt(month) - 1, day);
+                          const monthName = date.toLocaleDateString("es-MX", {
+                            month: "short",
+                          });
+                          return `${day} ${monthName}`;
+                        })()}
+                      </Text>
 
-                <View
-                  style={{ flex: 1 }}
-                  className="p-3 flex-row justify-center items-center"
-                >
-                  <TouchableOpacity onPress={() => onEdit(egreso)}>
-                    <Svg
-                      height="22"
-                      viewBox="0 -960 960 960"
-                      width="22"
-                      fill="#3b82f6"
-                    >
-                      <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                    </Svg>
-                  </TouchableOpacity>
+                      {/* Columna de Monto con Icono de Estado */}
+                      <View
+                        style={{
+                          flex: 2.5,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                        className="p-3"
+                      >
+                        <Text className="text-slate-800 font-medium">
+                          {currencyFormatter.format(
+                            egreso.monto_egreso || egreso.monto || 0
+                          )}
+                        </Text>
+                        {egreso.estado === "pagado" ? (
+                          <Svg
+                            height="16"
+                            viewBox="0 -960 960 960"
+                            width="16"
+                            fill="#22c55e"
+                          >
+                            <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+                          </Svg>
+                        ) : (
+                          <Svg
+                            height="16"
+                            viewBox="0 -960 960 960"
+                            width="16"
+                            fill="#f59e0b"
+                          >
+                            <Path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm-40-200h120v-80H480v-160h-80v200h40Z" />
+                          </Svg>
+                        )}
+                      </View>
+
+                      <View
+                        style={{ flex: 1 }}
+                        className="p-3 flex-row justify-center items-center"
+                      >
+                        <TouchableOpacity onPress={() => onEdit(egreso)}>
+                          <Svg
+                            height="22"
+                            viewBox="0 -960 960 960"
+                            width="22"
+                            fill="#3b82f6"
+                          >
+                            <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                          </Svg>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
                 </View>
-              </View>
-            ))
+              );
+            })
           ) : (
             <View className="p-8 items-center justify-center bg-white">
               <Text className="text-slate-500 text-center font-medium">
@@ -3751,35 +3914,6 @@ const CustomFinanzasTabBar = (props) => {
           );
         })}
       </View>
-
-      {/* Control de Sincronización */}
-      <View className="flex-row items-center gap-x-2">
-        <Text className="text-slate-600 text-xs font-semibold uppercase">
-          Sincronizar filtros
-        </Text>
-        <TouchableOpacity
-          onPress={() => {
-            const newValue = !syncDateFilters;
-            setSyncDateFilters(newValue);
-            if (newValue)
-              setSelectedEgresoDateFilter(selectedIngresoDateFilter);
-          }}
-          className={`p-1.5 rounded-full ${syncDateFilters ? "bg-indigo-100" : "bg-slate-200"}`}
-        >
-          <Svg
-            height="18"
-            viewBox="0 -960 960 960"
-            width="18"
-            fill={syncDateFilters ? "#6F09EA" : "#64748b"}
-          >
-            {syncDateFilters ? (
-              <Path d="M432-288H288q-79.68 0-135.84-56.23Q96-400.45 96-480.23 96-560 152.16-616q56.16-56 135.84-56h144v72H288q-50 0-85 35t-35 85q0 50 35 85t85 35h144v72Zm-96-156v-72h288v72H336Zm192 156v-72h144q50 0 85-35t35-85q0-50-35-85t-85-35H528v-72h144q79.68 0 135.84 56.23 56.16 56.22 56.16 136Q864-400 807.84-344 751.68-288 672-288H528Z" />
-            ) : (
-              <Path d="m754-308-56-55q41.78-11.3 67.89-43.65Q792-439 792-480q0-50-35-85t-85-35H528v-72h144q79.68 0 135.84 56.22 56.16 56.23 56.16 136Q864-425 834.5-379T754-308ZM618-444l-72-72h78v72h-6ZM768-90 90-768l51-51 678 678-51 51ZM432-288H288q-79.68 0-135.84-56.16T96-480q0-63.93 38-113.97Q172-644 242-673l70 73h-23q-51 0-86 35t-35 85q0 50 35 85t85 35h144v72Zm-96-156v-72h56l71 72H336Z" />
-            )}
-          </Svg>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };
@@ -3804,7 +3938,7 @@ const ingresosHeaders = [
   { title: "", flex: 1, center: true, key: "actions" },
 ];
 
-const TablaIngresos = ({ onEdit, refreshTrigger }) => {
+const TablaIngresos = ({ onEdit, refreshTrigger, dateFilter }) => {
   const currencyFormatter = new Intl.NumberFormat("es-MX", {
     style: "currency",
     currency: "MXN",
@@ -3849,19 +3983,93 @@ const TablaIngresos = ({ onEdit, refreshTrigger }) => {
     setRefreshing(false);
   };
 
-  const sortedData = useMemo(() => {
-    if (!sortKey) return data;
-    const sorted = [...data].sort((a, b) => {
-      let va = a[sortKey] ?? "";
-      let vb = b[sortKey] ?? "";
-      if (typeof va === "string") va = va.toLowerCase();
-      if (typeof vb === "string") vb = vb.toLowerCase();
-      if (va < vb) return sortDir === "asc" ? -1 : 1;
-      if (va > vb) return sortDir === "asc" ? 1 : -1;
-      return 0;
-    });
-    return sorted;
-  }, [data, sortKey, sortDir]);
+  // Filtrar y agrupar datos
+  const filteredAndGroupedData = useMemo(() => {
+    // 1. Filtrar por fecha según dateFilter
+    let filtered = data;
+
+    if (dateFilter) {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+
+      filtered = data.filter((item) => {
+        if (!item.fecha_ingreso) return false;
+        const [year, month, day] = item.fecha_ingreso.split("-").map(Number);
+        const itemDate = new Date(year, month - 1, day);
+
+        if (dateFilter === "last_month") {
+          const oneMonthAgo = new Date(now);
+          oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+          return itemDate >= oneMonthAgo;
+        } else if (dateFilter === "3_months_ago") {
+          const threeMonthsAgo = new Date(now);
+          threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+          return itemDate >= threeMonthsAgo;
+        } else if (dateFilter.startsWith("year-")) {
+          const filterYear = parseInt(dateFilter.split("-")[1]);
+          return itemDate.getFullYear() === filterYear;
+        }
+        return true;
+      });
+    }
+
+    // 2. Ordenar si hay sortKey
+    if (sortKey) {
+      filtered = [...filtered].sort((a, b) => {
+        let va = a[sortKey] ?? "";
+        let vb = b[sortKey] ?? "";
+        if (typeof va === "string") va = va.toLowerCase();
+        if (typeof vb === "string") vb = vb.toLowerCase();
+        if (va < vb) return sortDir === "asc" ? -1 : 1;
+        if (va > vb) return sortDir === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    // 3. Determinar si agrupar por año o mes
+    // Agrupar por MES en todos los casos
+    const shouldGroupByMonth =
+      dateFilter === "last_month" ||
+      dateFilter === "3_months_ago" ||
+      dateFilter?.startsWith("year-");
+
+    if (shouldGroupByMonth) {
+      // Agrupar por mes
+      const groups = {};
+      filtered.forEach((item) => {
+        if (!item.fecha_ingreso) return;
+        const [year, month] = item.fecha_ingreso.split("-");
+        const monthNum = parseInt(month) - 1;
+        const monthName = new Date(year, monthNum).toLocaleDateString("es-MX", {
+          month: "long",
+        });
+        const key = `${monthNum}-${monthName}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
+      });
+
+      const sortedMonths = Object.keys(groups).sort((a, b) => {
+        const numA = parseInt(a.split("-")[0]);
+        const numB = parseInt(b.split("-")[0]);
+        return numB - numA;
+      });
+
+      return { grouped: true, type: "month", keys: sortedMonths, data: groups };
+    } else {
+      // Agrupar por año
+      const groups = {};
+      filtered.forEach((item) => {
+        if (!item.fecha_ingreso) return;
+        const year = item.fecha_ingreso.split("-")[0];
+        if (!groups[year]) groups[year] = [];
+        groups[year].push(item);
+      });
+
+      const sortedYears = Object.keys(groups).sort((a, b) => b - a);
+      return { grouped: true, type: "year", keys: sortedYears, data: groups };
+    }
+  }, [data, sortKey, sortDir, dateFilter]);
 
   const refreshColors = ["#6366f1"];
 
@@ -3920,55 +4128,110 @@ const TablaIngresos = ({ onEdit, refreshTrigger }) => {
                 Cargando ingresos...
               </Text>
             </View>
-          ) : sortedData.length > 0 ? (
-            sortedData.map((ingreso, index) => (
-              <View
-                key={ingreso.id_ingreso || index}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  borderTopWidth: 1,
-                  borderTopColor: "#e2e8f0",
-                  backgroundColor: index % 2 ? "#ffffff" : "#f8fafc",
-                }}
-              >
-                <Text
-                  style={{ flex: 4 }}
-                  className="p-3 text-slate-800"
-                  numberOfLines={1}
-                >
-                  {ingreso.nombre_ingreso}
-                </Text>
-                <Text
-                  style={{ flex: 5 }}
-                  className="p-3 text-slate-700"
-                  numberOfLines={1}
-                >
-                  {ingreso.desc_ingreso || "-"}
-                </Text>
-                <Text style={{ flex: 2.3 }} className="p-3 text-slate-600">
-                  {formatDateMX(ingreso.fecha_ingreso)}
-                </Text>
-                <Text
-                  style={{ flex: 2.5 }}
-                  className="p-3 text-slate-800 font-medium"
-                >
-                  {currencyFormatter.format(ingreso.monto_ingreso)}
-                </Text>
-                <View style={{ flex: 1, alignItems: "center" }} className="p-3">
-                  <TouchableOpacity onPress={() => onEdit(ingreso)}>
+          ) : filteredAndGroupedData.keys &&
+            filteredAndGroupedData.keys.length > 0 ? (
+            filteredAndGroupedData.keys.map((key) => {
+              const displayLabel =
+                filteredAndGroupedData.type === "month"
+                  ? key.split("-")[1].charAt(0).toUpperCase() +
+                    key.split("-")[1].slice(1)
+                  : key;
+              const icon =
+                filteredAndGroupedData.type === "month"
+                  ? "M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Zm0 200q17 0 28.5-11.5T520-320v-160q0-17-11.5-28.5T480-520q-17 0-28.5 11.5T440-480v160q0 17 11.5 28.5T480-280Zm0-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Z"
+                  : "M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z";
+
+              return (
+                <View key={key}>
+                  {/* Header del año o mes */}
+                  <View className="bg-indigo-600 py-3 px-4 flex-row items-center border-t border-indigo-700">
                     <Svg
                       height="20"
                       viewBox="0 -960 960 960"
                       width="20"
-                      fill="#6366f1"
+                      fill="#ffffff"
                     >
-                      <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                      <Path d={icon} />
                     </Svg>
-                  </TouchableOpacity>
+                    <Text className="text-white font-bold text-lg ml-2">
+                      {displayLabel}
+                    </Text>
+                    <View className="flex-1" />
+                    <View className="bg-white/20 px-3 py-1 rounded-full">
+                      <Text className="text-white text-sm font-semibold">
+                        {filteredAndGroupedData.data[key].length}{" "}
+                        {filteredAndGroupedData.data[key].length === 1
+                          ? "ingreso"
+                          : "ingresos"}
+                      </Text>
+                    </View>
+                  </View>
+                  {/* Ingresos del grupo */}
+                  {filteredAndGroupedData.data[key].map((ingreso, index) => (
+                    <View
+                      key={ingreso.id_ingreso || index}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        borderTopWidth: 1,
+                        borderTopColor: "#e2e8f0",
+                        backgroundColor: index % 2 ? "#ffffff" : "#f8fafc",
+                      }}
+                    >
+                      <Text
+                        style={{ flex: 4 }}
+                        className="p-3 text-slate-800"
+                        numberOfLines={1}
+                      >
+                        {ingreso.nombre_ingreso}
+                      </Text>
+                      <Text
+                        style={{ flex: 5 }}
+                        className="p-3 text-slate-700"
+                        numberOfLines={1}
+                      >
+                        {ingreso.desc_ingreso || "-"}
+                      </Text>
+                      <Text
+                        style={{ flex: 2.3 }}
+                        className="p-3 text-slate-600"
+                      >
+                        {(() => {
+                          const [year, month, day] =
+                            ingreso.fecha_ingreso.split("-");
+                          const date = new Date(year, parseInt(month) - 1, day);
+                          const monthName = date.toLocaleDateString("es-MX", {
+                            month: "short",
+                          });
+                          return `${day} ${monthName}`;
+                        })()}
+                      </Text>
+                      <Text
+                        style={{ flex: 2.5 }}
+                        className="p-3 text-slate-800 font-medium"
+                      >
+                        {currencyFormatter.format(ingreso.monto_ingreso)}
+                      </Text>
+                      <View
+                        style={{ flex: 1, alignItems: "center" }}
+                        className="p-3"
+                      >
+                        <TouchableOpacity onPress={() => onEdit(ingreso)}>
+                          <Svg
+                            height="20"
+                            viewBox="0 -960 960 960"
+                            width="20"
+                            fill="#6366f1"
+                          >
+                            <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                          </Svg>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
                 </View>
-              </View>
-            ))
+              );
+            })
           ) : (
             <View className="p-8 items-center justify-center bg-white">
               <Text className="text-slate-500 text-center font-medium">
@@ -4034,19 +4297,89 @@ const ScreenFinanzas = () => {
   ];
 
   // --- Nueva lógica de filtrado de fecha ---
-  const currentYear = new Date().getFullYear();
-  // Genera una lista de los 4 años ANTERIORES al actual.
-  const previousYears = Array.from({ length: 4 }, (_, i) => {
-    const year = currentYear - 1 - i;
-    return { label: String(year), value: `year-${year}` };
-  });
+  const [availableYears, setAvailableYears] = useState([]);
+  const [loadingYears, setLoadingYears] = useState(false);
+
+  // Función para cargar años disponibles desde Supabase
+  const fetchAvailableYears = async () => {
+    setLoadingYears(true);
+    try {
+      // Obtener años de ingresos
+      const { data: ingresos, error: ingresosError } = await supabase
+        .from("ingresos")
+        .select("fecha_ingreso");
+
+      // Obtener años de egresos (solo pagados)
+      const { data: egresos, error: egresosError } = await supabase
+        .from("egresos")
+        .select("fecha_egreso, estado")
+        .eq("estado", "pagado"); // Solo egresos pagados
+
+      if (ingresosError || egresosError) {
+        console.error("Error fetching years:", ingresosError || egresosError);
+        return;
+      }
+
+      // Extraer años únicos
+      const yearsSet = new Set();
+
+      ingresos?.forEach((item) => {
+        if (item.fecha_ingreso) {
+          const year = item.fecha_ingreso.split("-")[0];
+          yearsSet.add(parseInt(year));
+        }
+      });
+
+      egresos?.forEach((item) => {
+        if (item.fecha_egreso) {
+          const year = item.fecha_egreso.split("-")[0];
+          yearsSet.add(parseInt(year));
+        }
+      });
+
+      // Convertir a array y separar por año actual, futuros y pasados
+      const currentYear = new Date().getFullYear();
+      const yearsArray = Array.from(yearsSet).sort((a, b) => b - a);
+
+      const futureYears = yearsArray
+        .filter((year) => year > currentYear)
+        .map((year) => ({
+          label: String(year),
+          value: `year-${year}`,
+        }));
+
+      const pastYears = yearsArray
+        .filter((year) => year < currentYear)
+        .map((year) => ({
+          label: String(year),
+          value: `year-${year}`,
+        }));
+
+      // Construir el array final: futuros, actual (si existe), pasados
+      const hasCurrentYear = yearsSet.has(currentYear);
+      const currentYearOption = hasCurrentYear
+        ? [{ label: "Este año", value: `year-${currentYear}` }]
+        : [];
+
+      setAvailableYears([...futureYears, ...currentYearOption, ...pastYears]);
+    } catch (error) {
+      console.error("Error fetching available years:", error);
+    } finally {
+      setLoadingYears(false);
+    }
+  };
+
+  // Cargar años cada vez que se entra a la sección de Finanzas
+  useFocusEffect(
+    useCallback(() => {
+      fetchAvailableYears();
+    }, [])
+  );
 
   const dateFilterOptions = [
     { label: "Último mes", value: "last_month" },
-    { label: "Del mes pasado", value: "previous_month" },
     { label: "Hace 3 meses", value: "3_months_ago" },
-    { label: "Este año", value: "this_year" },
-    ...previousYears,
+    ...availableYears,
   ];
 
   const handleIngresoFilterChange = (item) => {
@@ -4266,6 +4599,12 @@ const ScreenFinanzas = () => {
       screenOptions={{
         swipeEnabled: !isAnyFormVisible, // Deshabilita swipe si hay un formulario abierto
       }}
+      screenListeners={{
+        focus: () => {
+          // Ejecutar fetch cada vez que se cambia de pestaña
+          fetchAvailableYears();
+        },
+      }}
     >
       <Tab.Screen name="Ingresos" key="ingresos-tab">
         {/* Añadido key para claridad */}
@@ -4291,12 +4630,20 @@ const ScreenFinanzas = () => {
               <View className="w-60">
                 {/* Contenedor para el Dropdown de Ingresos */}
                 <Dropdown
-                  style={styles.dropdownIngresos}
+                  style={[
+                    styles.dropdownIngresos,
+                    loadingYears && { opacity: 0.5 },
+                  ]}
+                  containerStyle={loadingYears && { opacity: 0.5 }}
                   data={dateFilterOptions}
                   labelField="label"
                   valueField="value"
+                  placeholder={
+                    loadingYears ? "Cargando..." : "Seleccionar filtro"
+                  }
                   value={selectedIngresoDateFilter}
                   onChange={handleIngresoFilterChange}
+                  disable={loadingYears}
                 />
               </View>
 
@@ -4321,6 +4668,7 @@ const ScreenFinanzas = () => {
             <TablaIngresos
               onEdit={(ingreso) => handleOpenIngresoForm(ingreso)}
               refreshTrigger={ingresoRefreshTrigger}
+              dateFilter={selectedIngresoDateFilter}
             />
             {isIngresoFormVisible && (
               <Animated.View
@@ -4362,12 +4710,20 @@ const ScreenFinanzas = () => {
               <View className="w-60">
                 {/* Contenedor para el Dropdown de Egresos */}
                 <Dropdown
-                  style={styles.dropdownIngresos}
+                  style={[
+                    styles.dropdownIngresos,
+                    loadingYears && { opacity: 0.5 },
+                  ]}
+                  containerStyle={loadingYears && { opacity: 0.5 }}
                   data={dateFilterOptions}
                   labelField="label"
                   valueField="value"
+                  placeholder={
+                    loadingYears ? "Cargando..." : "Seleccionar filtro"
+                  }
                   value={selectedEgresoDateFilter}
                   onChange={handleEgresoFilterChange}
+                  disable={loadingYears}
                 />
               </View>
 
@@ -4392,6 +4748,7 @@ const ScreenFinanzas = () => {
             <TablaEgresos
               onEdit={(egreso) => handleOpenEgresoForm(egreso)}
               refreshTrigger={egresoRefreshTrigger}
+              dateFilter={selectedEgresoDateFilter}
             />
             {isEgresoFormVisible && (
               <Animated.View
@@ -6983,16 +7340,81 @@ const SeccionReportes = () => {
   const [ingresosData, setIngresosData] = useState([]);
   const [egresosData, setEgresosData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [availableYears, setAvailableYears] = useState([]);
+  const [loadingYears, setLoadingYears] = useState(false);
 
   const currencyFormatter = new Intl.NumberFormat("es-MX", {
     style: "currency",
     currency: "MXN",
   });
 
-  const years = Array.from({ length: 5 }, (_, i) => {
-    const y = new Date().getFullYear() - i;
-    return { label: String(y), value: y };
-  });
+  // Función para cargar años disponibles desde Supabase
+  const fetchAvailableYears = async () => {
+    setLoadingYears(true);
+    try {
+      // Obtener años de ingresos
+      const { data: ingresos, error: ingresosError } = await supabase
+        .from("ingresos")
+        .select("fecha_ingreso");
+
+      // Obtener años de egresos (solo pagados)
+      const { data: egresos, error: egresosError } = await supabase
+        .from("egresos")
+        .select("fecha_egreso, estado")
+        .eq("estado", "pagado");
+
+      // Obtener años de transacciones (ventas)
+      const { data: transacciones, error: transError } = await supabase
+        .from("transacciones")
+        .select("fecha_transaction");
+
+      if (ingresosError || egresosError || transError) {
+        console.error(
+          "Error fetching years:",
+          ingresosError || egresosError || transError
+        );
+        return;
+      }
+
+      // Extraer años únicos
+      const yearsSet = new Set();
+
+      ingresos?.forEach((item) => {
+        if (item.fecha_ingreso) {
+          const year = item.fecha_ingreso.split("-")[0];
+          yearsSet.add(parseInt(year));
+        }
+      });
+
+      egresos?.forEach((item) => {
+        if (item.fecha_egreso) {
+          const year = item.fecha_egreso.split("-")[0];
+          yearsSet.add(parseInt(year));
+        }
+      });
+
+      transacciones?.forEach((item) => {
+        if (item.fecha_transaction) {
+          const year = item.fecha_transaction.split("-")[0];
+          yearsSet.add(parseInt(year));
+        }
+      });
+
+      // Convertir a array y ordenar descendente
+      const yearsArray = Array.from(yearsSet)
+        .sort((a, b) => b - a)
+        .map((year) => ({
+          label: String(year),
+          value: year,
+        }));
+
+      setAvailableYears(yearsArray);
+    } catch (error) {
+      console.error("Error fetching available years:", error);
+    } finally {
+      setLoadingYears(false);
+    }
+  };
 
   const fetchData = async (selectedYear) => {
     const startDate = `${selectedYear}-01-01`;
@@ -7029,77 +7451,115 @@ const SeccionReportes = () => {
 
       if (egresosError) console.error("Error fetching egresos:", egresosError);
 
-      const monthsTemplate = Array.from({ length: 12 }, (_, i) => ({
-        value: 0,
-        label: new Date(0, i).toLocaleString("es-MX", { month: "short" }),
-        dataPointText: "0",
-      }));
+      // Crear array con 13 elementos (0-12), donde 0 estará vacío y 1-12 serán los meses
+      const monthsTemplate = Array.from({ length: 13 }, (_, i) => {
+        if (i === 0) return null; // Índice 0 no se usa
+
+        // Nota: en Date el mes es base-0 (0=Ene, 11=Dic)
+        // Como 'i' va de 1 a 12, (i - 1) va de 0 a 11 correctamente.
+        const label = new Date(0, i - 1).toLocaleString("es-MX", {
+          month: "short",
+        });
+
+        return {
+          value: 0,
+          label: label,
+          dataPointText: "0",
+        };
+      });
 
       const monthlyIngresos = JSON.parse(JSON.stringify(monthsTemplate));
       const monthlyEgresos = JSON.parse(JSON.stringify(monthsTemplate));
 
-      // Helper to parse date
-      const parseDate = (dateStr) => {
+      // Helper to parse date - Extraer mes directamente del string
+      const getMonthFromDate = (dateStr) => {
         if (!dateStr) return null;
         if (typeof dateStr === "string" && dateStr.includes("-")) {
           const datePart = dateStr.split("T")[0];
           const [year, month, day] = datePart.split("-").map(Number);
-
-          // Usar el mes directamente como viene de Supabase (formato 1-12)
-          const parsedDate = new Date(year, month, day);
-
-          return parsedDate;
+          // Usar el mes directamente (1-12)
+          return month;
         }
-        return new Date(dateStr);
+        return null;
       };
 
       // Process Transacciones (Add to Ingresos) - Sumar solo el anticipo
       transacciones?.forEach((item) => {
-        const date = parseDate(item.fecha_transaction);
-        if (date && !isNaN(date.getTime())) {
-          monthlyIngresos[date.getMonth()].value += item.anticipo || 0;
+        const monthIndex = getMonthFromDate(item.fecha_transaction);
+        if (monthIndex !== null) {
+          monthlyIngresos[monthIndex].value += item.anticipo || 0;
         }
       });
 
       // Process Ingresos (Add to Ingresos)
       ingresos?.forEach((item) => {
-        const date = parseDate(item.fecha_ingreso);
-        if (date && !isNaN(date.getTime())) {
-          monthlyIngresos[date.getMonth()].value += item.monto_ingreso || 0;
+        const monthIndex = getMonthFromDate(item.fecha_ingreso);
+        if (monthIndex !== null) {
+          monthlyIngresos[monthIndex].value += item.monto_ingreso || 0;
         }
       });
 
       // Process Egresos
       egresos?.forEach((item) => {
-        const date = parseDate(item.fecha_egreso);
-        if (date && !isNaN(date.getTime())) {
-          monthlyEgresos[date.getMonth()].value += item.monto_egreso || 0;
+        const monthIndex = getMonthFromDate(item.fecha_egreso);
+        if (monthIndex !== null) {
+          monthlyEgresos[monthIndex].value += item.monto_egreso || 0;
         }
       });
 
       // Update dataPointText
       monthlyIngresos.forEach((item) => {
-        item.dataPointText =
-          item.value > 0 ? item.value.toLocaleString("es-MX") : "";
+        if (item) {
+          item.dataPointText =
+            item.value > 0 ? item.value.toLocaleString("es-MX") : "";
+        }
       });
       monthlyEgresos.forEach((item) => {
-        item.dataPointText =
-          item.value > 0 ? item.value.toLocaleString("es-MX") : "";
+        if (item) {
+          item.dataPointText =
+            item.value > 0 ? item.value.toLocaleString("es-MX") : "";
+        }
       });
 
       // Filter to show relevant range
-      const filterDataByRange = (data) => {
-        const firstNonZeroIndex = data.findIndex((item) => item.value > 0);
-        const lastNonZeroIndex = data
-          .map((item, idx) => (item.value > 0 ? idx : -1))
-          .reduce((max, curr) => Math.max(max, curr), -1);
+      const filterDataByRange = (data, selectedYear) => {
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth() + 1; // Convertir de 0-11 a 1-12 (1=Ene, 12=Dic)
 
-        if (firstNonZeroIndex === -1) return [data[0]];
-        return data.slice(firstNonZeroIndex, lastNonZeroIndex + 1);
+        console.log("=== filterDataByRange ===");
+        console.log("currentYear:", currentYear);
+        console.log("currentMonth:", currentMonth);
+        console.log("selectedYear:", selectedYear);
+        console.log("Es año actual?", selectedYear === currentYear);
+
+        // Filtrar el null del índice 0
+        const validData = data.filter((item) => item !== null);
+
+        // Si es el año actual, mostrar desde enero (1) hasta el mes actual
+        if (selectedYear === currentYear) {
+          console.log("Usando slice(1,", currentMonth + 1, ")");
+          return validData.slice(1, currentMonth + 1);
+        }
+
+        // Si es un año pasado, mostrar todo el año (enero a diciembre = 12 meses)
+        console.log("Año pasado - Usando slice(1, 13)");
+        return validData.slice(1, 13);
       };
 
-      setIngresosData(filterDataByRange(monthlyIngresos));
-      setEgresosData(filterDataByRange(monthlyEgresos));
+      const filteredIngresos = filterDataByRange(monthlyIngresos, selectedYear);
+      const filteredEgresos = filterDataByRange(monthlyEgresos, selectedYear);
+
+      console.log("Año seleccionado:", selectedYear);
+      console.log("Año actual:", new Date().getFullYear());
+      console.log("Mes actual:", new Date().getMonth() + 1);
+      console.log("Ingresos filtrados:", filteredIngresos.length, "meses");
+      console.log(
+        "Etiquetas:",
+        filteredIngresos.map((d) => d.label)
+      );
+
+      setIngresosData(filteredIngresos);
+      setEgresosData(filteredEgresos);
     } catch (error) {
       console.error("Error in fetchData:", error);
     } finally {
@@ -7120,9 +7580,10 @@ const SeccionReportes = () => {
 
   useFocusEffect(
     useCallback(() => {
+      fetchAvailableYears(); // Cargar años disponibles
       setLoading(true);
       fetchData(year);
-    }, [])
+    }, [year])
   );
 
   const totalIngresos = useMemo(
@@ -7165,7 +7626,6 @@ const SeccionReportes = () => {
           startOpacity={0.4}
           endOpacity={0.1}
           areaChart
-          curved
           dataPointsColor="#6F09EA"
           dataPointsRadius={4}
           textColor="#64748b"
@@ -7193,12 +7653,15 @@ const SeccionReportes = () => {
         <Text className="text-2xl font-bold text-slate-800">Reporte Anual</Text>
         <View className="w-40">
           <Dropdown
-            style={styles.dropdownIngresos}
-            data={years}
+            style={[styles.dropdownIngresos, loadingYears && { opacity: 0.5 }]}
+            containerStyle={loadingYears && { opacity: 0.5 }}
+            data={availableYears}
             labelField="label"
             valueField="value"
+            placeholder={loadingYears ? "Cargando..." : "Seleccionar año"}
             value={year}
             onChange={(item) => setYear(item.value)}
+            disable={loadingYears}
           />
         </View>
       </View>
