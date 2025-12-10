@@ -7337,19 +7337,48 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
 
 const SeccionReportes = () => {
   const [year, setYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // 1-12
   const [ingresosData, setIngresosData] = useState([]);
   const [egresosData, setEgresosData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [availableYears, setAvailableYears] = useState([]);
   const [loadingYears, setLoadingYears] = useState(false);
 
-  const currencyFormatter = new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-  });
+  // Opciones de meses
+  const monthOptions = useMemo(
+    () => [
+      { label: "Enero", value: 1 },
+      { label: "Febrero", value: 2 },
+      { label: "Marzo", value: 3 },
+      { label: "Abril", value: 4 },
+      { label: "Mayo", value: 5 },
+      { label: "Junio", value: 6 },
+      { label: "Julio", value: 7 },
+      { label: "Agosto", value: 8 },
+      { label: "Septiembre", value: 9 },
+      { label: "Octubre", value: 10 },
+      { label: "Noviembre", value: 11 },
+      { label: "Diciembre", value: 12 },
+    ],
+    []
+  );
 
-  // Función para cargar años disponibles desde Supabase
-  const fetchAvailableYears = async () => {
+  // Detectar orientación de la pantalla
+  const { width, height } = useWindowDimensions();
+  const isPortrait = height > width;
+
+  // Memoizar currencyFormatter para evitar recrearlo en cada render
+  const currencyFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat("es-MX", {
+        style: "currency",
+        currency: "MXN",
+      }),
+    []
+  );
+
+  // Función para cargar años disponibles desde Supabase (memoizada)
+  const fetchAvailableYears = useCallback(async () => {
     setLoadingYears(true);
     try {
       // Obtener años de ingresos
@@ -7414,9 +7443,9 @@ const SeccionReportes = () => {
     } finally {
       setLoadingYears(false);
     }
-  };
+  }, []);
 
-  const fetchData = async (selectedYear) => {
+  const fetchData = useCallback(async (selectedYear) => {
     const startDate = `${selectedYear}-01-01`;
     const endDate = `${selectedYear}-12-31`;
 
@@ -7451,13 +7480,8 @@ const SeccionReportes = () => {
 
       if (egresosError) console.error("Error fetching egresos:", egresosError);
 
-      // Crear array con 13 elementos (0-12), donde 0 estará vacío y 1-12 serán los meses
       const monthsTemplate = Array.from({ length: 13 }, (_, i) => {
-        if (i === 0) return null; // Índice 0 no se usa
-
-        // Nota: en Date el mes es base-0 (0=Ene, 11=Dic)
-        // Como 'i' va de 1 a 12, (i - 1) va de 0 a 11 correctamente.
-        const label = new Date(0, i - 1).toLocaleString("es-MX", {
+        const label = new Date(0, i).toLocaleString("es-MX", {
           month: "short",
         });
 
@@ -7477,7 +7501,6 @@ const SeccionReportes = () => {
         if (typeof dateStr === "string" && dateStr.includes("-")) {
           const datePart = dateStr.split("T")[0];
           const [year, month, day] = datePart.split("-").map(Number);
-          // Usar el mes directamente (1-12)
           return month;
         }
         return null;
@@ -7524,39 +7547,19 @@ const SeccionReportes = () => {
       // Filter to show relevant range
       const filterDataByRange = (data, selectedYear) => {
         const currentYear = new Date().getFullYear();
-        const currentMonth = new Date().getMonth() + 1; // Convertir de 0-11 a 1-12 (1=Ene, 12=Dic)
+        const currentMonth = new Date().getMonth() + 1;
 
-        console.log("=== filterDataByRange ===");
-        console.log("currentYear:", currentYear);
-        console.log("currentMonth:", currentMonth);
-        console.log("selectedYear:", selectedYear);
-        console.log("Es año actual?", selectedYear === currentYear);
-
-        // Filtrar el null del índice 0
         const validData = data.filter((item) => item !== null);
 
-        // Si es el año actual, mostrar desde enero (1) hasta el mes actual
         if (selectedYear === currentYear) {
-          console.log("Usando slice(1,", currentMonth + 1, ")");
           return validData.slice(1, currentMonth + 1);
         }
 
-        // Si es un año pasado, mostrar todo el año (enero a diciembre = 12 meses)
-        console.log("Año pasado - Usando slice(1, 13)");
         return validData.slice(1, 13);
       };
 
       const filteredIngresos = filterDataByRange(monthlyIngresos, selectedYear);
       const filteredEgresos = filterDataByRange(monthlyEgresos, selectedYear);
-
-      console.log("Año seleccionado:", selectedYear);
-      console.log("Año actual:", new Date().getFullYear());
-      console.log("Mes actual:", new Date().getMonth() + 1);
-      console.log("Ingresos filtrados:", filteredIngresos.length, "meses");
-      console.log(
-        "Etiquetas:",
-        filteredIngresos.map((d) => d.label)
-      );
 
       setIngresosData(filteredIngresos);
       setEgresosData(filteredEgresos);
@@ -7565,25 +7568,24 @@ const SeccionReportes = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     if (loading) return;
     setLoading(true);
     await fetchData(year);
-  };
+  }, [loading, year, fetchData]);
 
-  useEffect(() => {
-    setLoading(true);
-    fetchData(year);
-  }, [year]);
-
+  // Solo useFocusEffect, no useEffect duplicado
   useFocusEffect(
     useCallback(() => {
-      fetchAvailableYears(); // Cargar años disponibles
-      setLoading(true);
-      fetchData(year);
-    }, [year])
+      const loadData = async () => {
+        await fetchAvailableYears();
+        setLoading(true);
+        await fetchData(year);
+      };
+      loadData();
+    }, [year]) // Solo year como dependencia
   );
 
   const totalIngresos = useMemo(
@@ -7595,47 +7597,143 @@ const SeccionReportes = () => {
     [egresosData]
   );
 
-  const ChartCard = ({ title, total, data, unit = "" }) => (
-    <View className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex-1 min-w-[300px] mb-4">
-      <View className="flex-row justify-between items-baseline mb-4">
-        <Text className="text-lg font-bold text-slate-800">{title}</Text>
-        <Text className="text-xl font-extrabold text-indigo-600">
-          {unit === "$"
-            ? currencyFormatter.format(total)
-            : `${total} ${title.toLowerCase()}`}
-        </Text>
-      </View>
-      {loading ? (
-        <View className="h-60 justify-center items-center">
-          <ActivityIndicator color="#6F09EA" />
+  // Calcular balance (Ingresos - Egresos)
+  const balance = useMemo(
+    () => totalIngresos - totalEgresos,
+    [totalIngresos, totalEgresos]
+  );
+
+  // Calcular balance del mes actual
+  const balanceMesActual = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1; // 1-12
+
+    // Solo calcular si estamos viendo el año actual
+    if (year !== currentYear) return null;
+
+    // El último elemento del array es el mes actual
+    const lastIndex = ingresosData.length - 1;
+    if (lastIndex < 0) return 0;
+
+    const ingresosMes = ingresosData[lastIndex]?.value || 0;
+    const egresosMes = egresosData[lastIndex]?.value || 0;
+
+    return ingresosMes - egresosMes;
+  }, [ingresosData, egresosData, year]);
+
+  // Calcular balance del mes seleccionado
+  const balanceMesSeleccionado = useMemo(() => {
+    const ingresosMes = ingresosData[selectedMonth - 1]?.value || 0;
+    const egresosMes = egresosData[selectedMonth - 1]?.value || 0;
+    return ingresosMes - egresosMes;
+  }, [ingresosData, egresosData, selectedMonth]);
+
+  // Calcular totales del mes seleccionado para mostrar en las gráficas
+  const totalIngresosMesSeleccionado = useMemo(() => {
+    return ingresosData[selectedMonth - 1]?.value || 0;
+  }, [ingresosData, selectedMonth]);
+
+  const totalEgresosMesSeleccionado = useMemo(() => {
+    return egresosData[selectedMonth - 1]?.value || 0;
+  }, [egresosData, selectedMonth]);
+
+  // Verificar si estamos en el mes y año actual
+  const isCurrentMonthAndYear = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    return year === currentYear && selectedMonth === currentMonth;
+  }, [year, selectedMonth]);
+
+  // Calcular totales del mes actual para mostrar en las gráficas
+  const totalIngresosMesActual = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    if (year !== currentYear) return null;
+
+    const lastIndex = ingresosData.length - 1;
+    return lastIndex >= 0 ? ingresosData[lastIndex]?.value || 0 : 0;
+  }, [ingresosData, year]);
+
+  const totalEgresosMesActual = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    if (year !== currentYear) return null;
+
+    const lastIndex = egresosData.length - 1;
+    return lastIndex >= 0 ? egresosData[lastIndex]?.value || 0 : 0;
+  }, [egresosData, year]);
+
+  const ChartCard = React.memo(
+    ({
+      title,
+      total,
+      data,
+      unit = "",
+      isPortrait,
+      loading,
+      totalMesActual,
+      monthName,
+      isCurrentMonth,
+    }) => (
+      <View
+        className={`bg-white p-4 items-center rounded-xl shadow-sm border border-slate-200 mb-4 overflow-hidden ${
+          isPortrait ? "w-full" : "flex-1 min-w-[300px]"
+        }`}
+      >
+        <View className="w-full mb-4">
+          <View className="flex-row justify-between items-baseline">
+            <Text className="text-lg font-bold text-slate-800">{title}</Text>
+            <Text className="text-xl font-extrabold text-indigo-600">
+              {totalMesActual !== null && totalMesActual !== undefined
+                ? unit === "$"
+                  ? currencyFormatter.format(totalMesActual)
+                  : `${totalMesActual}`
+                : unit === "$"
+                  ? currencyFormatter.format(total)
+                  : `${total} ${title.toLowerCase()}`}
+            </Text>
+          </View>
+          {totalMesActual !== null &&
+            totalMesActual !== undefined &&
+            monthName && (
+              <Text className="text-xs text-slate-500 mt-1">
+                {monthName}
+                {isCurrentMonth && " (Mes Actual)"}
+              </Text>
+            )}
         </View>
-      ) : (
-        <LineChart
-          data={data}
-          spacing={30}
-          thickness={3}
-          hideRules
-          hideYAxisText
-          xAxisThickness={0}
-          yAxisThickness={0}
-          xAxisLabelTextStyle={{ color: "#9ca3af", fontSize: 10 }}
-          noOfSections={4}
-          color="#6F09EA"
-          startFillColor="#a78bfa"
-          endFillColor="#ffffff"
-          startOpacity={0.4}
-          endOpacity={0.1}
-          areaChart
-          dataPointsColor="#6F09EA"
-          dataPointsRadius={4}
-          textColor="#64748b"
-          textFontSize={11}
-          textShiftY={-10}
-          textShiftX={-15}
-          showValuesAsDataPointsText
-        />
-      )}
-    </View>
+        {loading ? (
+          <View className="h-60 justify-center items-center">
+            <ActivityIndicator color="#6F09EA" />
+          </View>
+        ) : (
+          <View style={{ marginLeft: isPortrait ? 45 : 43 }}>
+            <LineChart
+              data={data}
+              spacing={isPortrait ? 55 : 43}
+              thickness={3}
+              hideRules
+              hideYAxisText
+              xAxisThickness={0}
+              yAxisThickness={0}
+              xAxisLabelTextStyle={{ color: "#9ca3af", fontSize: 10 }}
+              noOfSections={4}
+              color="#6F09EA"
+              startFillColor="#a78bfa"
+              endFillColor="#ffffff"
+              startOpacity={0.4}
+              endOpacity={0.1}
+              areaChart
+              dataPointsColor="#6F09EA"
+              dataPointsRadius={4}
+              textColor="#64748b"
+              textFontSize={11}
+              textShiftY={-10}
+              textShiftX={-15}
+              showValuesAsDataPointsText
+            />
+          </View>
+        )}
+      </View>
+    )
   );
 
   return (
@@ -7649,20 +7747,147 @@ const SeccionReportes = () => {
         />
       }
     >
-      <View className="flex-row justify-between items-center mb-6">
-        <Text className="text-2xl font-bold text-slate-800">Reporte Anual</Text>
-        <View className="w-40">
-          <Dropdown
-            style={[styles.dropdownIngresos, loadingYears && { opacity: 0.5 }]}
-            containerStyle={loadingYears && { opacity: 0.5 }}
-            data={availableYears}
-            labelField="label"
-            valueField="value"
-            placeholder={loadingYears ? "Cargando..." : "Seleccionar año"}
-            value={year}
-            onChange={(item) => setYear(item.value)}
-            disable={loadingYears}
-          />
+      <View className="mb-6">
+        {/* Header compacto con título, selectores y botón */}
+        <View className="flex-row justify-between items-center gap-3 mb-4">
+          <Text className="text-2xl font-bold text-slate-800">
+            Reporte Anual
+          </Text>
+
+          <View className="flex-row gap-2 items-center">
+            {/* Selector de Mes */}
+            <View style={{ width: 120 }}>
+              <Dropdown
+                style={styles.dropdownIngresos}
+                data={monthOptions}
+                labelField="label"
+                valueField="value"
+                placeholder="Mes"
+                value={selectedMonth}
+                onChange={(item) => setSelectedMonth(item.value)}
+              />
+            </View>
+            {/* Selector de Año */}
+            <View style={{ width: 100 }}>
+              <Dropdown
+                style={[
+                  styles.dropdownIngresos,
+                  loadingYears && { opacity: 0.5 },
+                ]}
+                containerStyle={loadingYears && { opacity: 0.5 }}
+                data={availableYears}
+                labelField="label"
+                valueField="value"
+                placeholder={loadingYears ? "Año" : "Año"}
+                value={year}
+                onChange={(item) => setYear(item.value)}
+                disable={loadingYears}
+              />
+            </View>
+
+            {/* Botón Hoy */}
+            <TouchableOpacity
+              onPress={() => {
+                const currentYear = new Date().getFullYear();
+                const currentMonth = new Date().getMonth() + 1;
+                setYear(currentYear);
+                setSelectedMonth(currentMonth);
+              }}
+              className="bg-indigo-600 px-3 py-2 rounded-lg"
+              disabled={isCurrentMonthAndYear}
+              style={{ opacity: isCurrentMonthAndYear ? 0.5 : 1 }}
+            >
+              <Text className="text-white font-semibold text-sm">Hoy</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Balance Cards */}
+        <View className={`gap-3 ${isPortrait ? "flex-col" : "flex-row"}`}>
+          {loading ? (
+            // Skeleton mientras carga
+            <>
+              <View className="flex-1 rounded-xl p-4 border border-slate-200 bg-slate-50">
+                <Text className="text-sm text-slate-400 mb-1">
+                  Balance Total {year}
+                </Text>
+                <View className="flex-row items-center gap-2">
+                  <ActivityIndicator size="small" color="#64748b" />
+                  <Text className="text-2xl font-extrabold text-slate-300">
+                    Cargando...
+                  </Text>
+                </View>
+              </View>
+
+              {year === new Date().getFullYear() && (
+                <View className="flex-1 rounded-xl p-4 border border-slate-200 bg-slate-50">
+                  <Text className="text-sm text-slate-400 mb-1">
+                    Balance{" "}
+                    {new Date()
+                      .toLocaleString("es-MX", { month: "long" })
+                      .charAt(0)
+                      .toUpperCase() +
+                      new Date()
+                        .toLocaleString("es-MX", { month: "long" })
+                        .slice(1)}
+                  </Text>
+                  <View className="flex-row items-center gap-2">
+                    <ActivityIndicator size="small" color="#64748b" />
+                    <Text className="text-2xl font-extrabold text-slate-300">
+                      Cargando...
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </>
+          ) : (
+            // Datos cargados
+            <>
+              {/* Balance Total */}
+              <View
+                className={`flex-1 rounded-xl p-4 border ${
+                  balance >= 0
+                    ? "bg-green-50 border-green-200"
+                    : "bg-red-50 border-red-200"
+                }`}
+              >
+                <Text className="text-sm text-slate-600 mb-1">
+                  Balance Total {year}
+                </Text>
+                <Text
+                  className={`text-3xl font-extrabold ${
+                    balance >= 0 ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {currencyFormatter.format(balance)}
+                </Text>
+              </View>
+
+              {/* Balance Mes Seleccionado */}
+              <View
+                className={`flex-1 rounded-xl p-4 border ${
+                  balanceMesSeleccionado >= 0
+                    ? "bg-blue-50 border-blue-200"
+                    : "bg-orange-50 border-orange-200"
+                }`}
+              >
+                <Text className="text-sm text-slate-600 mb-1">
+                  Balance{" "}
+                  {monthOptions.find((m) => m.value === selectedMonth)?.label}
+                  {isCurrentMonthAndYear && " (Mes Actual)"}
+                </Text>
+                <Text
+                  className={`text-3xl font-extrabold ${
+                    balanceMesSeleccionado >= 0
+                      ? "text-blue-600"
+                      : "text-orange-600"
+                  }`}
+                >
+                  {currencyFormatter.format(balanceMesSeleccionado)}
+                </Text>
+              </View>
+            </>
+          )}
         </View>
       </View>
 
@@ -7675,19 +7900,37 @@ const SeccionReportes = () => {
         </View>
       ) : (
         <View
-          className={`flex-1 flex-wrap justify-center items-center flex-row gap-6`}
+          className={`flex-1 gap-6 ${
+            isPortrait
+              ? "flex-col justify-center items-stretch"
+              : "flex-row flex-wrap justify-center items-center"
+          }`}
         >
           <ChartCard
             title="Ingresos"
             total={totalIngresos}
             data={ingresosData}
             unit="$"
+            isPortrait={isPortrait}
+            loading={loading}
+            totalMesActual={totalIngresosMesSeleccionado}
+            monthName={
+              monthOptions.find((m) => m.value === selectedMonth)?.label
+            }
+            isCurrentMonth={isCurrentMonthAndYear}
           />
           <ChartCard
             title="Egresos"
             total={totalEgresos}
             data={egresosData}
             unit="$"
+            isPortrait={isPortrait}
+            loading={loading}
+            totalMesActual={totalEgresosMesSeleccionado}
+            monthName={
+              monthOptions.find((m) => m.value === selectedMonth)?.label
+            }
+            isCurrentMonth={isCurrentMonthAndYear}
           />
         </View>
       )}
