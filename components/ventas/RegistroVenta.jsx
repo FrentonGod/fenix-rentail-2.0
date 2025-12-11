@@ -32,6 +32,7 @@ import Svg, { Path } from "react-native-svg";
 
 import * as Print from "expo-print";
 import { shareAsync } from "expo-sharing";
+import * as FileSystem from "expo-file-system";
 
 import Logo from "../../assets/MQerK_logo.jpg";
 
@@ -1672,8 +1673,21 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       html: htmlWithFolio,
       width: 200,
     });
-    console.log("File has been saved to:", uri);
-    await shareAsync(uri, { UTI: ".pdf", mimeType: "application/pdf" });
+
+    // Renombrar el archivo con un nombre descriptivo
+    const ticketFileName = `Ticket-MQerKAcademy-${folio}.pdf`;
+    const newUri = `${FileSystem.cacheDirectory}${ticketFileName}`;
+    await FileSystem.moveAsync({
+      from: uri,
+      to: newUri,
+    });
+
+    console.log("File has been saved to:", newUri);
+    await shareAsync(newUri, {
+      UTI: ".pdf",
+      mimeType: "application/pdf",
+      dialogTitle: ticketFileName,
+    });
   };
   return (
     <SafeAreaView className="flex-1 bg-slate-50">

@@ -47,6 +47,7 @@ import Slider from "@react-native-community/slider";
 import { Calendar, LocaleConfig } from "react-native-calendars";
 import * as Print from "expo-print";
 import { shareAsync } from "expo-sharing";
+import * as FileSystem from "expo-file-system";
 
 import { useFocusEffect } from "@react-navigation/native";
 import {
@@ -6793,8 +6794,20 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
         width: 200,
       });
 
-      console.log("Ticket PDF generado en:", uri);
-      await shareAsync(uri, { UTI: ".pdf", mimeType: "application/pdf" });
+      // Renombrar el archivo con un nombre descriptivo
+      const ticketFileName = `Ticket-MQerKAcademy-${folio || "SN"}.pdf`;
+      const newUri = `${FileSystem.cacheDirectory}${ticketFileName}`;
+      await FileSystem.moveAsync({
+        from: uri,
+        to: newUri,
+      });
+
+      console.log("Ticket PDF generado en:", newUri);
+      await shareAsync(newUri, {
+        UTI: ".pdf",
+        mimeType: "application/pdf",
+        dialogTitle: ticketFileName,
+      });
     } catch (error) {
       console.error("Error al reimprimir ticket:", error);
       Alert.alert("Error", "No se pudo reimprimir el ticket: " + error.message);
@@ -7736,6 +7749,657 @@ const SeccionReportes = () => {
     )
   );
 
+  // Función para generar PDF del reporte
+  const generateReportPDF = async () => {
+    try {
+      // Siempre usar el año y mes actual para el reporte
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1; // 1-12
+      const currentMonthName = monthOptions.find(
+        (m) => m.value === currentMonth
+      )?.label;
+
+      const currentDate = new Date().toLocaleDateString("es-MX", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+      // Obtener datos del año actual
+      const startDate = `${currentYear}-01-01`;
+      const endDate = `${currentYear}-12-31`;
+
+      // Fetch data para el año actual
+      const { data: transacciones } = await supabase
+        .from("transacciones")
+        .select("fecha_transaction, anticipo")
+        .gte("fecha_transaction", startDate)
+        .lte("fecha_transaction", endDate);
+
+      const { data: ingresos } = await supabase
+        .from("ingresos")
+        .select("fecha_ingreso, monto_ingreso")
+        .gte("fecha_ingreso", startDate)
+        .lte("fecha_ingreso", endDate);
+
+      const { data: egresos } = await supabase
+        .from("egresos")
+        .select("fecha_egreso, monto_egreso, estado")
+        .gte("fecha_egreso", startDate)
+        .lte("fecha_egreso", endDate)
+        .eq("estado", "pagado");
+
+      // Procesar datos por mes
+      const monthlyIngresos = Array.from({ length: 13 }, (_, i) => ({
+        label: i === 0 ? "" : monthOptions[i - 1]?.label || "",
+        value: 0,
+      }));
+
+      const monthlyEgresos = Array.from({ length: 13 }, (_, i) => ({
+        label: i === 0 ? "" : monthOptions[i - 1]?.label || "",
+        value: 0,
+      }));
+
+      // Procesar transacciones (anticipos)
+      transacciones?.forEach((item) => {
+        const month = parseInt(item.fecha_transaction.split("-")[1]);
+        if (month >= 1 && month <= 12) {
+          monthlyIngresos[month].value += item.anticipo || 0;
+        }
+      });
+
+      // Procesar ingresos
+      ingresos?.forEach((item) => {
+        const month = parseInt(item.fecha_ingreso.split("-")[1]);
+        if (month >= 1 && month <= 12) {
+          monthlyIngresos[month].value += item.monto_ingreso || 0;
+        }
+      });
+
+      // Procesar egresos
+      egresos?.forEach((item) => {
+        const month = parseInt(item.fecha_egreso.split("-")[1]);
+        if (month >= 1 && month <= 12) {
+          monthlyEgresos[month].value += item.monto_egreso || 0;
+        }
+      });
+
+      // Calcular totales hasta el mes actual
+      let totalIngresosAnual = 0;
+      let totalEgresosAnual = 0;
+
+      for (let i = 1; i <= currentMonth; i++) {
+        totalIngresosAnual += monthlyIngresos[i].value;
+        totalEgresosAnual += monthlyEgresos[i].value;
+      }
+
+      const balanceAnual = totalIngresosAnual - totalEgresosAnual;
+      const ingresosMesActual = monthlyIngresos[currentMonth].value;
+      const egresosMesActual = monthlyEgresos[currentMonth].value;
+      const balanceMesActual = ingresosMesActual - egresosMesActual;
+
+      // Generar tablas HTML solo hasta el mes actual
+      const ingresosTable = monthlyIngresos
+        .slice(1, currentMonth + 1)
+        .map((item) => {
+          return `
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${item.label}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">
+                ${currencyFormatter.format(item.value)}
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      const egresosTable = monthlyEgresos
+        .slice(1, currentMonth + 1)
+        .map((item) => {
+          return `
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${item.label}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">
+                ${currencyFormatter.format(item.value)}
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      // Función para generar gráfica SVG
+      const generateLineChartSVG = (data, color, label) => {
+        const width = 700;
+        const height = 250;
+        const padding = 40;
+        const chartWidth = width - padding * 2;
+        const chartHeight = height - padding * 2;
+
+        const maxValue = Math.max(...data, 1);
+        const stepX = chartWidth / (data.length - 1 || 1);
+
+        // Generar puntos de la línea
+        const points = data
+          .map((value, index) => {
+            const x = padding + index * stepX;
+            const y = height - padding - (value / maxValue) * chartHeight;
+            return `${x},${y}`;
+          })
+          .join(" ");
+
+        // Generar path para el área rellena
+        const areaPath = `
+          M ${padding},${height - padding}
+          L ${data
+            .map((value, index) => {
+              const x = padding + index * stepX;
+              const y = height - padding - (value / maxValue) * chartHeight;
+              return `${x},${y}`;
+            })
+            .join(" L ")}
+          L ${padding + (data.length - 1) * stepX},${height - padding}
+          Z
+        `;
+
+        return `
+          <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+            <!-- Fondo -->
+            <rect width="${width}" height="${height}" fill="#ffffff"/>
+            
+            <!-- Grid horizontal -->
+            ${[0, 0.25, 0.5, 0.75, 1]
+              .map(
+                (ratio) => `
+              <line 
+                x1="${padding}" 
+                y1="${height - padding - chartHeight * ratio}" 
+                x2="${width - padding}" 
+                y2="${height - padding - chartHeight * ratio}" 
+                stroke="#e2e8f0" 
+                stroke-width="1"
+              />
+              <text 
+                x="${padding - 10}" 
+                y="${height - padding - chartHeight * ratio + 5}" 
+                text-anchor="end" 
+                font-size="10" 
+                fill="#64748b"
+              >
+                $${Math.round(maxValue * ratio).toLocaleString()}
+              </text>
+            `
+              )
+              .join("")}
+            
+            <!-- Área rellena -->
+            <path 
+              d="${areaPath}" 
+              fill="${color}" 
+              fill-opacity="0.2"
+            />
+            
+            <!-- Línea -->
+            <polyline 
+              points="${points}" 
+              fill="none" 
+              stroke="${color}" 
+              stroke-width="3"
+            />
+            
+            <!-- Puntos -->
+            ${data
+              .map((value, index) => {
+                const x = padding + index * stepX;
+                const y = height - padding - (value / maxValue) * chartHeight;
+                return `
+                <circle cx="${x}" cy="${y}" r="4" fill="${color}"/>
+              `;
+              })
+              .join("")}
+            
+            <!-- Etiquetas del eje X -->
+            ${monthlyIngresos
+              .slice(1, currentMonth + 1)
+              .map((item, index) => {
+                const x = padding + index * stepX;
+                return `
+                <text 
+                  x="${x}" 
+                  y="${height - 10}" 
+                  text-anchor="middle" 
+                  font-size="10" 
+                  fill="#64748b"
+                >
+                  ${item.label.substring(0, 3)}
+                </text>
+              `;
+              })
+              .join("")}
+            
+            <!-- Título -->
+            <text 
+              x="${width / 2}" 
+              y="20" 
+              text-anchor="middle" 
+              font-size="14" 
+              font-weight="bold" 
+              fill="#1e293b"
+            >
+              ${label}
+            </text>
+          </svg>
+        `;
+      };
+
+      // Generar SVGs de las gráficas
+      const ingresosSVG = generateLineChartSVG(
+        monthlyIngresos.slice(1, currentMonth + 1).map((item) => item.value),
+        "#10b981",
+        "Ingresos Mensuales"
+      );
+
+      const egresosSVG = generateLineChartSVG(
+        monthlyEgresos.slice(1, currentMonth + 1).map((item) => item.value),
+        "#ef4444",
+        "Egresos Mensuales"
+      );
+
+      // Función para generar gráfica de pastel SVG
+      const generatePieChartSVG = (ingresos, egresos) => {
+        const width = 400;
+        const height = 400;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const radius = 120;
+
+        const total = ingresos + egresos;
+        if (total === 0) return "<svg></svg>"; // Evitar división por cero
+
+        const ingresosPercentage = (ingresos / total) * 100;
+        const egresosPercentage = (egresos / total) * 100;
+
+        // Calcular ángulos (en grados)
+        const ingresosAngle = (ingresos / total) * 360;
+
+        // Convertir a radianes para calcular las coordenadas
+        const ingresosRadians = (ingresosAngle * Math.PI) / 180;
+
+        // Calcular puntos del arco
+        const largeArcFlag = ingresosAngle > 180 ? 1 : 0;
+
+        // Punto final del arco de ingresos
+        const x1 = centerX + radius * Math.cos(-Math.PI / 2); // Inicio en la parte superior
+        const y1 = centerY + radius * Math.sin(-Math.PI / 2);
+
+        const x2 = centerX + radius * Math.cos(-Math.PI / 2 + ingresosRadians);
+        const y2 = centerY + radius * Math.sin(-Math.PI / 2 + ingresosRadians);
+
+        return `
+          <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+            <!-- Fondo -->
+            <rect width="${width}" height="${height}" fill="#ffffff"/>
+            
+            <!-- Título -->
+            <text 
+              x="${centerX}" 
+              y="30" 
+              text-anchor="middle" 
+              font-size="16" 
+              font-weight="bold" 
+              fill="#1e293b"
+            >
+              Distribución Anual
+            </text>
+            
+            <!-- Slice de Ingresos (verde) -->
+            <path
+              d="M ${centerX},${centerY}
+                 L ${x1},${y1}
+                 A ${radius},${radius} 0 ${largeArcFlag},1 ${x2},${y2}
+                 Z"
+              fill="#10b981"
+              stroke="#ffffff"
+              stroke-width="2"
+            />
+            
+            <!-- Slice de Egresos (rojo) - el resto del círculo -->
+            <path
+              d="M ${centerX},${centerY}
+                 L ${x2},${y2}
+                 A ${radius},${radius} 0 ${1 - largeArcFlag},1 ${x1},${y1}
+                 Z"
+              fill="#ef4444"
+              stroke="#ffffff"
+              stroke-width="2"
+            />
+            
+            <!-- Leyenda -->
+            <g transform="translate(${centerX - 80}, ${height - 80})">
+              <!-- Ingresos -->
+              <rect x="0" y="0" width="20" height="20" fill="#10b981"/>
+              <text x="25" y="15" font-size="12" fill="#1e293b">
+                Ingresos: ${ingresosPercentage.toFixed(1)}%
+              </text>
+              <text x="25" y="30" font-size="11" fill="#64748b">
+                ${currencyFormatter.format(ingresos)}
+              </text>
+              
+              <!-- Egresos -->
+              <rect x="0" y="40" width="20" height="20" fill="#ef4444"/>
+              <text x="25" y="55" font-size="12" fill="#1e293b">
+                Egresos: ${egresosPercentage.toFixed(1)}%
+              </text>
+              <text x="25" y="70" font-size="11" fill="#64748b">
+                ${currencyFormatter.format(egresos)}
+              </text>
+            </g>
+            
+            <!-- Círculo de fondo para el texto del balance -->
+            <circle 
+              cx="${centerX}" 
+              cy="${centerY}" 
+              r="60" 
+              fill="#ffffff" 
+              fill-opacity="0.75"
+              stroke="#e2e8f0"
+              stroke-width="2"
+            />
+            
+            <!-- Texto central con balance -->
+            <text 
+              x="${centerX}" 
+              y="${centerY - 10}" 
+              text-anchor="middle" 
+              font-size="14" 
+              font-weight="bold" 
+              fill="#64748b"
+            >
+              Balance
+            </text>
+            <text 
+              x="${centerX}" 
+              y="${centerY + 15}" 
+              text-anchor="middle" 
+              font-size="18" 
+              font-weight="bold" 
+              fill="${balanceAnual >= 0 ? "#10b981" : "#ef4444"}"
+            >
+              ${currencyFormatter.format(balanceAnual)}
+            </text>
+          </svg>
+        `;
+      };
+
+      // Generar gráfica de pastel
+      const pieChartSVG = generatePieChartSVG(
+        totalIngresosAnual,
+        totalEgresosAnual
+      );
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 20px;
+              color: #1e293b;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+              border-bottom: 3px solid #6F09EA;
+              padding-bottom: 15px;
+            }
+            .header h1 {
+              color: #6F09EA;
+              margin: 0 0 5px 0;
+              font-size: 28px;
+            }
+            .header p {
+              margin: 3px 0;
+              color: #64748b;
+              font-size: 12px;
+            }
+            .balance-section {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 25px;
+              gap: 15px;
+            }
+            .balance-card {
+              flex: 1;
+              padding: 15px;
+              border-radius: 8px;
+              border: 2px solid;
+            }
+            .balance-card.positive {
+              background-color: #f0fdf4;
+              border-color: #86efac;
+            }
+            .balance-card.negative {
+              background-color: #fef2f2;
+              border-color: #fca5a5;
+            }
+            .balance-card h3 {
+              margin: 0 0 8px 0;
+              font-size: 14px;
+              color: #64748b;
+            }
+            .balance-card .amount {
+              font-size: 24px;
+              font-weight: bold;
+              margin: 0;
+            }
+            .balance-card.positive .amount {
+              color: #16a34a;
+            }
+            .balance-card.negative .amount {
+              color: #dc2626;
+            }
+            .section {
+              margin-bottom: 25px;
+            }
+            .section h2 {
+              color: #6F09EA;
+              font-size: 18px;
+              margin-bottom: 10px;
+              border-bottom: 2px solid #e2e8f0;
+              padding-bottom: 5px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 10px;
+            }
+            th {
+              background-color: #f1f5f9;
+              padding: 10px;
+              text-align: left;
+              font-size: 12px;
+              color: #475569;
+              border-bottom: 2px solid #cbd5e1;
+            }
+            td {
+              font-size: 12px;
+              color: #1e293b;
+            }
+            .footer {
+              margin-top: 30px;
+              text-align: center;
+              font-size: 10px;
+              color: #94a3b8;
+              border-top: 1px solid #e2e8f0;
+              padding-top: 15px;
+            }
+            .summary {
+              background-color: #f8fafc;
+              padding: 15px;
+              border-radius: 8px;
+              margin-bottom: 20px;
+            }
+            .summary-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 5px 0;
+              font-size: 14px;
+            }
+            .summary-row.total {
+              font-weight: bold;
+              font-size: 16px;
+              border-top: 2px solid #cbd5e1;
+              padding-top: 10px;
+              margin-top: 5px;
+            }
+            .chart-container {
+              margin: 20px 0;
+              padding: 15px;
+              background-color: #ffffff;
+              border-radius: 8px;
+              border: 1px solid #e2e8f0;
+            }
+            .chart-container canvas {
+              max-height: 300px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <p style="margin: 0; font-size: 18px; font-weight: bold; color: #6F09EA;">MQerKAcademy</p>
+            <p style="margin: 0; font-size: 12px; color: #64748b; margin-bottom: 10px;">Sistema Fenix Retail</p>
+            <h1>Reporte Financiero ${currentYear}</h1>
+            <p>Generado el ${currentDate}</p>
+            <p>Período: Enero - ${currentMonthName} ${currentYear}</p>
+          </div>
+          
+          <div class="balance-section">
+            <div class="balance-card ${balanceAnual >= 0 ? "positive" : "negative"}">
+              <h3>Balance Total ${currentYear}</h3>
+              <p class="amount">${currencyFormatter.format(balanceAnual)}</p>
+            </div>
+            <div class="balance-card ${balanceMesActual >= 0 ? "positive" : "negative"}">
+              <h3>Balance ${currentMonthName}</h3>
+              <p class="amount">${currencyFormatter.format(balanceMesActual)}</p>
+            </div>
+          </div>
+          
+          <div class="summary">
+            <div class="summary-row">
+              <span>Total Ingresos ${currentYear}:</span>
+              <span>${currencyFormatter.format(totalIngresosAnual)}</span>
+            </div>
+            <div class="summary-row">
+              <span>Total Egresos ${currentYear}:</span>
+              <span>${currencyFormatter.format(totalEgresosAnual)}</span>
+            </div>
+            <div class="summary-row total">
+              <span>Balance Anual:</span>
+              <span style="color: ${balanceAnual >= 0 ? "#16a34a" : "#dc2626"}">
+                ${currencyFormatter.format(balanceAnual)}
+              </span>
+            </div>
+          </div>
+          
+          <div class="summary">
+            <div class="summary-row">
+              <span>Ingresos ${currentMonthName}:</span>
+              <span>${currencyFormatter.format(ingresosMesActual)}</span>
+            </div>
+            <div class="summary-row">
+              <span>Egresos ${currentMonthName}:</span>
+              <span>${currencyFormatter.format(egresosMesActual)}</span>
+            </div>
+            <div class="summary-row total">
+              <span>Balance ${currentMonthName}:</span>
+              <span style="color: ${balanceMesActual >= 0 ? "#16a34a" : "#dc2626"}">
+                ${currencyFormatter.format(balanceMesActual)}
+              </span>
+            </div>
+          </div>
+          
+          <!-- Gráficas -->
+          <div class="section">
+            <h2>Gráficas Comparativas</h2>
+            <div class="chart-container">
+              ${ingresosSVG}
+            </div>
+            <div class="chart-container">
+              ${egresosSVG}
+            </div>
+            <div class="chart-container" style="display: flex; justify-content: center;">
+              ${pieChartSVG}
+            </div>
+          </div>
+          
+          <div class="section">
+            <h2>Desglose de Ingresos ${currentYear}</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Mes</th>
+                  <th style="text-align: right;">Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${ingresosTable}
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="section">
+            <h2>Desglose de Egresos ${currentYear}</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Mes</th>
+                  <th style="text-align: right;">Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${egresosTable}
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="footer">
+            <p style="font-weight: bold; color: #6F09EA; margin-bottom: 5px;">MQerKAcademy</p>
+            <p>Reporte generado automáticamente por Fenix Retail</p>
+            <p>© ${new Date().getFullYear()} MQerKAcademy - Todos los derechos reservados</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      // Generar nombre del archivo PDF
+      const yearShort = currentYear.toString().slice(-2); // Últimos 2 dígitos del año
+      const monthNameShort = currentMonthName.substring(0, 3); // Primeras 3 letras del mes
+      const pdfFileName = `Reporte-FenixRetail_Ene-${monthNameShort}-${yearShort}.pdf`;
+
+      const { uri } = await Print.printToFileAsync({
+        html: html,
+      });
+
+      // Renombrar el archivo
+      const newUri = `${FileSystem.cacheDirectory}${pdfFileName}`;
+      await FileSystem.moveAsync({
+        from: uri,
+        to: newUri,
+      });
+
+      console.log("Reporte PDF generado en:", newUri);
+      await shareAsync(newUri, {
+        UTI: ".pdf",
+        mimeType: "application/pdf",
+        dialogTitle: pdfFileName,
+      });
+    } catch (error) {
+      console.error("Error al generar reporte PDF:", error);
+      Alert.alert("Error", "No se pudo generar el reporte: " + error.message);
+    }
+  };
+
   return (
     <ScrollView
       className={`flex-1 p-4 bg-slate-50`}
@@ -7756,7 +8420,7 @@ const SeccionReportes = () => {
 
           <View className="flex-row gap-2 items-center">
             {/* Selector de Mes */}
-            <View style={{ width: 120 }}>
+            <View style={{ width: 130 }}>
               <Dropdown
                 style={styles.dropdownIngresos}
                 data={monthOptions}
@@ -7784,6 +8448,34 @@ const SeccionReportes = () => {
                 disable={loadingYears}
               />
             </View>
+
+            {/* Botón PDF */}
+            <TouchableOpacity
+              onPress={generateReportPDF}
+              className="bg-green-600 px-3 py-2 rounded-lg flex-row items-center gap-2"
+              disabled={loading}
+              style={{ opacity: loading ? 0.5 : 1 }}
+            >
+              <Svg height="16" width="16" viewBox="0 0 512 512">
+                <Path
+                  fill="#ffffff"
+                  d="M378.413,0H208.297h-13.182L185.8,9.314L57.02,138.102l-9.314,9.314v13.176v265.514c0,47.36,38.528,85.895,85.896,85.895h244.811c47.353,0,85.881-38.535,85.881-85.895V85.896C464.294,38.528,425.766,0,378.413,0z M432.497,426.105c0,29.877-24.214,54.091-54.084,54.091H133.602c-29.884,0-54.098-24.214-54.098-54.091V160.591h83.716c24.885,0,45.077-20.178,45.077-45.07V31.804h170.116c29.87,0,54.084,24.214,54.084,54.092V426.105z"
+                />
+                <Path
+                  fill="#ffffff"
+                  d="M171.947,252.785h-28.529c-5.432,0-8.686,3.533-8.686,8.825v73.754c0,6.388,4.204,10.599,10.041,10.599c5.711,0,9.914-4.21,9.914-10.599v-22.406c0-0.545,0.279-0.817,0.824-0.817h16.436c20.095,0,32.188-12.226,32.188-29.612C204.136,264.871,192.182,252.785,171.947,252.785z M170.719,294.888h-15.208c-0.545,0-0.824-0.272-0.824-0.81v-23.23c0-0.545,0.279-0.816,0.824-0.816h15.208c8.42,0,13.447,5.027,13.447,12.498C184.167,290,179.139,294.888,170.719,294.888z"
+                />
+                <Path
+                  fill="#ffffff"
+                  d="M250.191,252.785h-21.868c-5.432,0-8.686,3.533-8.686,8.825v74.843c0,5.3,3.253,8.693,8.686,8.693h21.868c19.69,0,31.923-6.249,36.81-21.324c1.76-5.3,2.723-11.681,2.723-24.857c0-13.175-0.964-19.557-2.723-24.856C282.113,259.034,269.881,252.785,250.191,252.785z M267.856,316.896c-2.318,7.331-8.965,10.459-18.21,10.459h-9.23c-0.545,0-0.824-0.272-0.824-0.816v-55.146c0-0.545,0.279-0.817,0.824-0.817h9.23c9.245,0,15.892,3.128,18.21,10.46c0.95,3.128,1.62,8.56,1.62,17.93C269.476,308.336,268.805,313.768,267.856,316.896z"
+                />
+                <Path
+                  fill="#ffffff"
+                  d="M361.167,252.785h-44.812c-5.432,0-8.7,3.533-8.7,8.825v73.754c0,6.388,4.218,10.599,10.055,10.599c5.697,0,9.914-4.21,9.914-10.599v-26.351c0-0.538,0.265-0.81,0.81-0.81h26.086c5.837,0,9.23-3.532,9.23-8.56c0-5.028-3.393-8.553-9.23-8.553h-26.086c-0.545,0-0.81-0.272-0.81-0.817v-19.425c0-0.545,0.265-0.816,0.81-0.816h32.733c5.572,0,9.245-3.666,9.245-8.553C370.411,256.45,366.738,252.785,361.167,252.785z"
+                />
+              </Svg>
+              <Text className="text-white font-semibold text-sm">Reporte</Text>
+            </TouchableOpacity>
 
             {/* Botón Hoy */}
             <TouchableOpacity
@@ -7843,26 +8535,6 @@ const SeccionReportes = () => {
           ) : (
             // Datos cargados
             <>
-              {/* Balance Total */}
-              <View
-                className={`flex-1 rounded-xl p-4 border ${
-                  balance >= 0
-                    ? "bg-green-50 border-green-200"
-                    : "bg-red-50 border-red-200"
-                }`}
-              >
-                <Text className="text-sm text-slate-600 mb-1">
-                  Balance Total {year}
-                </Text>
-                <Text
-                  className={`text-3xl font-extrabold ${
-                    balance >= 0 ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {currencyFormatter.format(balance)}
-                </Text>
-              </View>
-
               {/* Balance Mes Seleccionado */}
               <View
                 className={`flex-1 rounded-xl p-4 border ${
@@ -7884,6 +8556,25 @@ const SeccionReportes = () => {
                   }`}
                 >
                   {currencyFormatter.format(balanceMesSeleccionado)}
+                </Text>
+              </View>
+              {/* Balance Total */}
+              <View
+                className={`flex-1 rounded-xl p-4 border ${
+                  balance >= 0
+                    ? "bg-green-50 border-green-200"
+                    : "bg-red-50 border-red-200"
+                }`}
+              >
+                <Text className="text-sm text-slate-600 mb-1">
+                  Balance Total {year}
+                </Text>
+                <Text
+                  className={`text-3xl font-extrabold ${
+                    balance >= 0 ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  {currencyFormatter.format(balance)}
                 </Text>
               </View>
             </>
@@ -7963,14 +8654,12 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
   useEffect(() => {
     if (catalogoLayout && tarifarioLayout) {
       const targetLayout = catalogos ? tarifarioLayout : catalogoLayout;
-      // El ancho base es el del primer botón (Catálogo)
       const baseWidth = catalogoLayout.width;
-      // El factor de escala es el ancho del botón destino dividido por el ancho base
       const scaleFactor = targetLayout.width / baseWidth;
 
       Animated.spring(slideAnim, {
         toValue: targetLayout.x,
-        useNativeDriver: true, // Volvemos a usar el driver nativo para fluidez
+        useNativeDriver: true,
         bounciness: 4,
       }).start();
 
@@ -7988,21 +8677,18 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
       const sequence = Animated.sequence([
         Animated.delay(500),
         Animated.timing(hintAnim, {
-          // Aparece
           toValue: 1,
           duration: 500,
           useNativeDriver: true,
         }),
         Animated.delay(800),
         Animated.timing(hintAnim, {
-          // Desaparece
           toValue: 0,
           duration: 500,
           useNativeDriver: true,
         }),
       ]);
       sequence.start();
-      // Limpia la animación si el usuario sale de la pantalla antes de que termine
       return () => sequence.stop();
     }, [])
   );
@@ -8035,118 +8721,233 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
   const imagesToShow = catalogos ? tarifarioImages : catalogoImages;
 
   return (
-    <View className={`flex-1 bg-slate-50`}>
-      <View className={`items-center flex-row justify-center p-2`}>
-        <View
-          className={`p-1 justify-center items-center flex-row relative bg-gray-300 rounded-lg gap-x-2`}
-        >
-          {catalogoLayout && tarifarioLayout && (
-            <Animated.View
-              style={{
-                position: "absolute",
-                left: 0,
-                top: 3.2,
-                width: catalogoLayout?.width || 0, // Ancho base
-                height: "100%",
-                backgroundColor: "white",
-                borderRadius: 5,
-                elevation: 3,
-                shadowColor: "#000",
-                shadowOpacity: 0.1,
-                shadowRadius: 5,
-                shadowOffset: { width: 0, height: 2 },
-                transform: [{ translateX: slideAnim }, { scaleX: scaleAnim }],
-                transformOrigin: "left", // Asegura que la escala se aplique desde la izquierda
-              }}
-            />
-          )}
+    <View className="flex-1 bg-gradient-to-b from-slate-100 to-slate-50">
+      {/* Header mejorado con cards separadas */}
+      <View className="p-4 bg-white/80 backdrop-blur-lg border-b border-slate-200">
+        <View className="flex-row gap-3 justify-center">
+          {/* Botón Catálogo */}
           <Pressable
-            onLayout={(e) => setCatalogoLayout(e.nativeEvent.layout)}
-            className={`p-2 justify-center items-center rounded`}
             onPress={() => setCatalogos(false)}
+            style={{
+              flex: 1,
+              maxWidth: 180,
+            }}
+            android_ripple={{
+              color: !catalogos
+                ? "rgba(255,255,255,0.3)"
+                : "rgba(111,9,234,0.1)",
+              borderless: false,
+              radius: 16,
+            }}
           >
-            <Text
-              className={`uppercase font-semibold ${!catalogos ? "text-slate-800" : "text-slate-600"}`}
-            >
-              Catálogo
-            </Text>
-            <Svg
-              height="24px"
-              viewBox="0 -960 960 960"
-              width="24px"
-              fill={!catalogos ? "#010101" : "#64748b"}
-            >
-              <Path d="M560-564v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-600q-38 0-73 9.5T560-564Zm0 220v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-380q-38 0-73 9t-67 27Zm0-110v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-490q-38 0-73 9.5T560-454ZM260-320q47 0 91.5 10.5T440-278v-394q-41-24-87-36t-93-12q-36 0-71.5 7T120-692v396q35-12 69.5-18t70.5-6Zm260 42q44-21 88.5-31.5T700-320q36 0 70.5 6t69.5 18v-396q-33-14-68.5-21t-71.5-7q-47 0-93 12t-87 36v394Zm-40 118q-48-38-104-59t-116-21q-42 0-82.5 11T100-198q-21 11-40.5-1T40-234v-482q0-11 5.5-21T62-752q46-24 96-36t102-12q58 0 113.5 15T480-740q51-30 106.5-45T700-800q52 0 102 12t96 36q11 5 16.5 15t5.5 21v482q0 23-19.5 35t-40.5 1q-37-20-77.5-31T700-240q-60 0-116 21t-104 59ZM280-494Z" />
-            </Svg>
+            {({ pressed }) => (
+              <View
+                style={{
+                  backgroundColor: !catalogos ? "#6F09EA" : "white",
+                  borderRadius: 16,
+                  padding: 16,
+                  shadowColor: !catalogos ? "#6F09EA" : "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: !catalogos ? 0.3 : 0.1,
+                  shadowRadius: !catalogos ? 12 : 4,
+                  elevation: !catalogos ? 8 : 2,
+                  borderWidth: !catalogos ? 0 : 2,
+                  borderColor: !catalogos ? "transparent" : "#e2e8f0",
+                  transform: [{ scale: !catalogos ? 1.02 : 1 }],
+                  opacity: pressed ? 0.7 : 1,
+                }}
+              >
+                <View className="items-center gap-2">
+                  <View
+                    style={{
+                      backgroundColor: !catalogos
+                        ? "rgba(255,255,255,0.2)"
+                        : "#f1f5f9",
+                      borderRadius: 12,
+                      padding: 8,
+                    }}
+                  >
+                    <Svg
+                      height="28"
+                      viewBox="0 -960 960 960"
+                      width="28"
+                      fill={!catalogos ? "#ffffff" : "#6F09EA"}
+                    >
+                      <Path d="M560-564v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-600q-38 0-73 9.5T560-564Zm0 220v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-380q-38 0-73 9t-67 27Zm0-110v-68q33-14 67.5-21t72.5-7q26 0 51 4t49 10v64q-24-9-48.5-13.5T700-490q-38 0-73 9.5T560-454ZM260-320q47 0 91.5 10.5T440-278v-394q-41-24-87-36t-93-12q-36 0-71.5 7T120-692v396q35-12 69.5-18t70.5-6Zm260 42q44-21 88.5-31.5T700-320q36 0 70.5 6t69.5 18v-396q-33-14-68.5-21t-71.5-7q-47 0-93 12t-87 36v394Zm-40 118q-48-38-104-59t-116-21q-42 0-82.5 11T100-198q-21 11-40.5-1T40-234v-482q0-11 5.5-21T62-752q46-24 96-36t102-12q58 0 113.5 15T480-740q51-30 106.5-45T700-800q52 0 102 12t96 36q11 5 16.5 15t5.5 21v482q0 23-19.5 35t-40.5 1q-37-20-77.5-31T700-240q-60 0-116 21t-104 59ZM280-494Z" />
+                    </Svg>
+                  </View>
+                  <Text
+                    style={{
+                      color: !catalogos ? "#ffffff" : "#475569",
+                      fontSize: 15,
+                      fontWeight: "700",
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    CATÁLOGO
+                  </Text>
+                  {!catalogos && (
+                    <View
+                      style={{
+                        width: 40,
+                        height: 3,
+                        backgroundColor: "white",
+                        borderRadius: 2,
+                        marginTop: 4,
+                      }}
+                    />
+                  )}
+                </View>
+              </View>
+            )}
           </Pressable>
+
+          {/* Botón Tarifario */}
           <Pressable
-            onLayout={(e) => setTarifarioLayout(e.nativeEvent.layout)}
-            className={`p-2 justify-center items-center rounded`}
             onPress={() => setCatalogos(true)}
+            style={{
+              flex: 1,
+              maxWidth: 180,
+            }}
+            android_ripple={{
+              color: catalogos
+                ? "rgba(255,255,255,0.3)"
+                : "rgba(111,9,234,0.1)",
+              borderless: false,
+              radius: 16,
+            }}
           >
-            <Text
-              className={`uppercase font-semibold ${catalogos ? "text-slate-800" : "text-slate-600"}`}
-            >
-              Tarifario
-            </Text>
-            <Svg
-              height="24px"
-              viewBox="0 -960 960 960"
-              width="24px"
-              fill={catalogos ? "#010101" : "#64748b"}
-            >
-              <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
-            </Svg>
+            {({ pressed }) => (
+              <View
+                style={{
+                  backgroundColor: catalogos ? "#6F09EA" : "white",
+                  borderRadius: 16,
+                  padding: 16,
+                  shadowColor: catalogos ? "#6F09EA" : "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: catalogos ? 0.3 : 0.1,
+                  shadowRadius: catalogos ? 12 : 4,
+                  elevation: catalogos ? 8 : 2,
+                  borderWidth: catalogos ? 0 : 2,
+                  borderColor: catalogos ? "transparent" : "#e2e8f0",
+                  transform: [{ scale: catalogos ? 1.02 : 1 }],
+                  opacity: pressed ? 0.7 : 1,
+                }}
+              >
+                <View className="items-center gap-2">
+                  <View
+                    style={{
+                      backgroundColor: catalogos
+                        ? "rgba(255,255,255,0.2)"
+                        : "#f1f5f9",
+                      borderRadius: 12,
+                      padding: 8,
+                    }}
+                  >
+                    <Svg
+                      height="28"
+                      viewBox="0 -960 960 960"
+                      width="28"
+                      fill={catalogos ? "#ffffff" : "#6F09EA"}
+                    >
+                      <Path d="M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z" />
+                    </Svg>
+                  </View>
+                  <Text
+                    style={{
+                      color: catalogos ? "#ffffff" : "#475569",
+                      fontSize: 15,
+                      fontWeight: "700",
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    TARIFARIO
+                  </Text>
+                  {catalogos && (
+                    <View
+                      style={{
+                        width: 40,
+                        height: 3,
+                        backgroundColor: "white",
+                        borderRadius: 2,
+                        marginTop: 4,
+                      }}
+                    />
+                  )}
+                </View>
+              </View>
+            )}
           </Pressable>
         </View>
       </View>
 
-      <Tab.Navigator
-        key={catalogos ? "tarifario" : "catalogo"} // Clave para forzar el reseteo del estado del navegador
-        tabBarPosition="bottom"
-        tabBar={(props) => <MinimalistTabBar {...props} />}
-      >
-        {imagesToShow.map((imageSource, index) => (
-          <Tab.Screen
-            className={`bg-slate-50`}
-            key={index}
-            name={`Página ${index + 1}`}
-          >
-            {() => (
-              <Pressable
-                onPress={handleDoubleTap}
-                style={styles.carouselContainer}
-              >
-                <Image
-                  source={imageSource}
-                  style={{ width: "100%", height: "100%" }}
-                  resizeMode="contain"
-                />
-              </Pressable>
-            )}
-          </Tab.Screen>
-        ))}
-      </Tab.Navigator>
+      {/* Contenedor de imágenes con efecto libro */}
+      <View className="flex-1 p-4">
+        <Tab.Navigator
+          key={catalogos ? "tarifario" : "catalogo"}
+          tabBarPosition="bottom"
+          tabBar={(props) => <MinimalistTabBar {...props} />}
+        >
+          {imagesToShow.map((imageSource, index) => (
+            <Tab.Screen key={index} name={`Página ${index + 1}`}>
+              {() => (
+                <Pressable
+                  onPress={handleDoubleTap}
+                  className="flex-1 items-center justify-center"
+                >
+                  <View
+                    style={{
+                      width: "95%",
+                      height: "95%",
+                      backgroundColor: "white",
+                      borderRadius: 16,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 8 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 16,
+                      elevation: 10,
+                      overflow: "hidden",
+                      borderWidth: 1,
+                      borderColor: "#e2e8f0",
+                    }}
+                  >
+                    <Image
+                      source={imageSource}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                      }}
+                      resizeMode="contain"
+                    />
+                  </View>
+                </Pressable>
+              )}
+            </Tab.Screen>
+          ))}
+        </Tab.Navigator>
+      </View>
 
-      {/* Hint animado para el doble toque */}
+      {/* Hint animado mejorado */}
       <Animated.View
         style={{
           position: "absolute",
           top: "50%",
           left: "50%",
           transform: [
-            { translateX: -100 }, // Mitad del ancho aprox.
-            { translateY: -30 }, // Mitad del alto aprox.
+            { translateX: -120 },
+            { translateY: -35 },
             { scale: hintAnim },
           ],
           opacity: hintAnim,
         }}
-        className="bg-black/70 rounded-full p-4 flex-row items-center gap-x-3"
+        className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-4 flex-row items-center gap-x-3 shadow-2xl"
         pointerEvents="none"
       >
-        <Svg height="24" viewBox="0 0 24 24" width="24" fill="white">
-          <Path d="M18.5 10.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5S17 8.17 17 9s.67 1.5 1.5 1.5zm-5 0c.83 0 1.5-.67 1.5-1.5S14.33 7.5 13.5 7.5 12 8.17 12 9s.67 1.5 1.5 1.5zm-5 0c.83 0 1.5-.67 1.5-1.5S9.33 7.5 8.5 7.5 7 8.17 7 9s.67 1.5 1.5 1.5zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
-        </Svg>
+        <View className="bg-white/20 rounded-full p-2">
+          <Svg height="24" viewBox="0 0 24 24" width="24" fill="white">
+            <Path d="M18.5 10.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5S17 8.17 17 9s.67 1.5 1.5 1.5zm-5 0c.83 0 1.5-.67 1.5-1.5S14.33 7.5 13.5 7.5 12 8.17 12 9s.67 1.5 1.5 1.5zm-5 0c.83 0 1.5-.67 1.5-1.5S9.33 7.5 8.5 7.5 7 8.17 7 9s.67 1.5 1.5 1.5zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
+          </Svg>
+        </View>
         <Text className="text-white font-bold text-base">
           Doble toque para cambiar
         </Text>
