@@ -64,6 +64,7 @@ supabase/*
 #############################################
 screens/detalles.txt
 assets/Catalogo
+asset/Ubicacion
 info-proyecto.txt
 .vscode
 .idea

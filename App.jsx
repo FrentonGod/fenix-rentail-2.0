@@ -61,7 +61,6 @@ import { createMaterialTopTabNavigator } from "@react-navigation/material-top-ta
 
 import HeaderAdmin from "./components/HeaderAdmin";
 import PagoTarjetaStripe from "./components/pagos/PagoTarjetaStripe";
-import MapViewWrapper from "./components/MapViewWrapper";
 import { supabase } from "./lib/supabase";
 import { useAuthContext } from "./hooks/use-auth-context";
 import RegistroAsesor from "./components/asesores/RegistroAsesor";
@@ -2187,140 +2186,405 @@ const ScreenPagos = ({ navigation }) => {
     >
       <Tab.Screen name="Transferencia SPEI / Depósito">
         {() => (
-          <View
-            className={`flex-1 p-2 flex-col justify-evenly items-center bg-slate-50`}
-          >
-            <View
-              id="contenedor-datos"
-              className={`flex bg-[#eff6ff] min-w-[600] rounded-lg p-2`}
-            >
-              <Text
-                className={`text-[#193ca8] font-extrabold pb-4 text-center`}
+          <View className="flex-1 p-6 flex-col justify-start items-center bg-gradient-to-br from-slate-50 to-slate-100">
+            {/* Header con gradiente */}
+            <View className="w-full max-w-[800px] mb-6">
+              <View
+                style={{
+                  background:
+                    "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                  borderRadius: 20,
+                  padding: 24,
+                  shadowColor: "#3b82f6",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 16,
+                  elevation: 12,
+                }}
+                className="bg-blue-600"
               >
-                Datos bancarios
-              </Text>
-              <View className={`flex flex-row justify-between`}>
-                <View className={`flex-col justify-between`}>
-                  <View className={`flex justify-center items-start`}>
-                    <Text className={`text-[#255ed8] font-semibold`}>
-                      Banco
-                    </Text>
-                    <Text className={`font-bold text-xl`}>
-                      {datosBancarios.banco}
-                    </Text>
-                  </View>
-                  <View>
-                    <Text className={`text-[#255ed8] font-semibold`}>
-                      Beneficiario
-                    </Text>
-                    <Text className={`font-bold text-xl`}>
-                      {datosBancarios.beneficiario}
-                    </Text>
-                  </View>
-                </View>
-                <View className={`flex-col justify-between`}>
-                  <View className={`flex justify-center items-start`}>
-                    <Text className={`text-[#255ed8] font-semibold`}>
-                      Número de cuenta
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => copiarDatos(datosBancarios.cuenta)}
+                <View className="flex-row items-center gap-3">
+                  <View className="bg-white/20 rounded-full p-3">
+                    <Svg
+                      height="28"
+                      viewBox="0 -960 960 960"
+                      width="28"
+                      fill="white"
                     >
-                      <Text className={`text-start font-bold text-xl`}>
-                        {datosBancarios.cuenta}
-                      </Text>
-                    </TouchableOpacity>
+                      <Path d="M560-440q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35ZM280-320q-33 0-56.5-23.5T200-400v-320q0-33 23.5-56.5T280-800h560q33 0 56.5 23.5T920-720v320q0 33-23.5 56.5T840-320H280Zm80-80h400q0-33 23.5-56.5T840-480v-160q-33 0-56.5-23.5T760-720H360q0 33-23.5 56.5T280-640v160q33 0 56.5 23.5T360-400Zm440 240H120q-33 0-56.5-23.5T40-240v-440h80v440h680v80ZM280-400v-320 320Z" />
+                    </Svg>
                   </View>
-                  <View>
-                    <Text className={`text-[#255ed8] font-semibold`}>
-                      Clabe
+                  <View className="flex-1">
+                    <Text className="text-white text-2xl font-bold">
+                      Datos Bancarios
                     </Text>
-                    <TouchableOpacity
-                      onPress={() => copiarDatos(datosBancarios.clabe)}
-                    >
-                      <Text className={`font-bold text-xl`}>
-                        {datosBancarios.clabe}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            </View>
-            <View className={`flex gap-y-2`}>
-              <View className={`flex-row items-center gap-x-3`}>
-                <Svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  height="24px"
-                  viewBox="0 -960 960 960"
-                  width="24px"
-                  fill="#1f2635"
-                >
-                  <Path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h168q13-36 43.5-58t68.5-22q38 0 68.5 22t43.5 58h168q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm80-80h280v-80H280v80Zm0-160h400v-80H280v80Zm0-160h400v-80H280v80Zm200-190q13 0 21.5-8.5T510-820q0-13-8.5-21.5T480-850q-13 0-21.5 8.5T450-820q0 13 8.5 21.5T480-790ZM200-200v-560 560Z" />
-                </Svg>
-                <Text className={`text-[#1f2635] font-bold`}>
-                  Instrucciones
-                </Text>
-              </View>
-              <View className={`gap-y-2`}>
-                <View className={`flex-row items-baseline gap-x-1`}>
-                  <View className={`rounded-full px-1.5 bg-[#297efa]`}>
-                    <Text className={`text-white font-bold`}>1</Text>
-                  </View>
-                  <Text className={`text-[#45474e]`}>
-                    Realiza una transferencia SPEI o depósito al número de
-                    cuenta/CLABE.
-                  </Text>
-                </View>
-                <View className={`flex-row items-baseline gap-x-1`}>
-                  <View className={`rounded-full px-1.5 bg-[#297efa]`}>
-                    <Text className={`text-white font-bold`}>2</Text>
-                  </View>
-                  <Text className={`text-[#45474e]`}>
-                    Asegúrate de incluir tu nombre completo en la referencia o
-                    concepto de pago.
-                  </Text>
-                </View>
-                <View className={`flex-row items-baseline gap-x-1`}>
-                  <View className={`rounded-full px-1.5 bg-[#297efa]`}>
-                    <Text className={`text-white font-bold`}>3</Text>
-                  </View>
-                  <Text className={`text-[#45474e]`}>
-                    Sube tu comprobante de transferencia para validación rápida.
-                  </Text>
-                </View>
-                <View className={`self-center`}>
-                  <Ripple
-                    className={`bg-blue-500 p-2 rounded mt-2`}
-                    onPress={handleRedirectToVentas}
-                  >
-                    <Text className={`text-center text-white`}>
-                      Registrar venta
+                    <Text className="text-white/80 text-sm mt-1">
+                      Realiza tu transferencia de forma segura
                     </Text>
-                  </Ripple>
+                  </View>
                 </View>
               </View>
             </View>
 
+            {/* Grid de datos bancarios */}
+            <View className="w-full max-w-[800px] mb-6">
+              <View className="flex-row gap-4 mb-4">
+                {/* Card Banco */}
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: "white",
+                    borderRadius: 16,
+                    padding: 20,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 12,
+                    elevation: 6,
+                    borderTopWidth: 4,
+                    borderTopColor: "#3b82f6",
+                  }}
+                >
+                  <View className="flex-row items-center gap-2 mb-3">
+                    <Svg
+                      height="20"
+                      viewBox="0 -960 960 960"
+                      width="20"
+                      fill="#3b82f6"
+                    >
+                      <Path d="M160-120v-480l320-240 320 240v480H560v-280H400v280H160Z" />
+                    </Svg>
+                    <Text className="text-slate-500 text-sm font-semibold uppercase">
+                      Banco
+                    </Text>
+                  </View>
+                  <Text className="text-slate-800 text-xl font-bold">
+                    {datosBancarios.banco}
+                  </Text>
+                </View>
+
+                {/* Card Beneficiario */}
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: "white",
+                    borderRadius: 16,
+                    padding: 20,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 12,
+                    elevation: 6,
+                    borderTopWidth: 4,
+                    borderTopColor: "#10b981",
+                  }}
+                >
+                  <View className="flex-row items-center gap-2 mb-3">
+                    <Svg
+                      height="20"
+                      viewBox="0 -960 960 960"
+                      width="20"
+                      fill="#10b981"
+                    >
+                      <Path d="M480-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM160-160v-112q0-34 17.5-62.5T224-378q62-31 126-46.5T480-440q66 0 130 15.5T736-378q29 15 46.5 43.5T800-272v112H160Z" />
+                    </Svg>
+                    <Text className="text-slate-500 text-sm font-semibold uppercase">
+                      Beneficiario
+                    </Text>
+                  </View>
+                  <Text className="text-slate-800 text-xl font-bold">
+                    {datosBancarios.beneficiario}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="flex-row gap-4">
+                {/* Card Número de Cuenta */}
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: "white",
+                    borderRadius: 16,
+                    padding: 20,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 12,
+                    elevation: 6,
+                    borderTopWidth: 4,
+                    borderTopColor: "#8b5cf6",
+                  }}
+                >
+                  <View className="flex-row items-center justify-between mb-3">
+                    <View className="flex-row items-center gap-2">
+                      <Svg
+                        height="20"
+                        viewBox="0 -960 960 960"
+                        width="20"
+                        fill="#8b5cf6"
+                      >
+                        <Path d="M200-280v-280h80v280h-80Zm240 0v-280h80v280h-80ZM80-120v-80h800v80H80Zm600-160v-280h80v280h-80ZM80-640v-80l400-200 400 200v80H80Zm178-80h444-444Zm0 0h444L480-830 258-720Z" />
+                      </Svg>
+                      <Text className="text-slate-500 text-sm font-semibold uppercase">
+                        Número de Cuenta
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => copiarDatos(datosBancarios.cuenta)}
+                      style={{
+                        backgroundColor: "#f3f4f6",
+                        borderRadius: 8,
+                        padding: 8,
+                      }}
+                    >
+                      <Svg
+                        height="18"
+                        viewBox="0 -960 960 960"
+                        width="18"
+                        fill="#6b7280"
+                      >
+                        <Path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z" />
+                      </Svg>
+                    </TouchableOpacity>
+                  </View>
+                  <Text className="text-slate-800 text-2xl font-bold tracking-wider">
+                    {datosBancarios.cuenta}
+                  </Text>
+                  <Text className="text-slate-400 text-xs mt-2">
+                    Toca el icono para copiar
+                  </Text>
+                </View>
+
+                {/* Card CLABE */}
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: "white",
+                    borderRadius: 16,
+                    padding: 20,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 12,
+                    elevation: 6,
+                    borderTopWidth: 4,
+                    borderTopColor: "#f59e0b",
+                  }}
+                >
+                  <View className="flex-row items-center justify-between mb-3">
+                    <View className="flex-row items-center gap-2">
+                      <Svg
+                        height="20"
+                        viewBox="0 -960 960 960"
+                        width="20"
+                        fill="#f59e0b"
+                      >
+                        <Path d="M440-280H280q-83 0-141.5-58.5T80-480q0-83 58.5-141.5T280-680h160v80H280q-50 0-85 35t-35 85q0 50 35 85t85 35h160v80ZM320-440v-80h320v80H320Zm200 160v-80h160q50 0 85-35t35-85q0-50-35-85t-85-35H520v-80h160q83 0 141.5 58.5T880-480q0 83-58.5 141.5T680-280H520Z" />
+                      </Svg>
+                      <Text className="text-slate-500 text-sm font-semibold uppercase">
+                        CLABE
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => copiarDatos(datosBancarios.clabe)}
+                      style={{
+                        backgroundColor: "#f3f4f6",
+                        borderRadius: 8,
+                        padding: 8,
+                      }}
+                    >
+                      <Svg
+                        height="18"
+                        viewBox="0 -960 960 960"
+                        width="18"
+                        fill="#6b7280"
+                      >
+                        <Path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z" />
+                      </Svg>
+                    </TouchableOpacity>
+                  </View>
+                  <Text className="text-slate-800 text-2xl font-bold tracking-wider">
+                    {datosBancarios.clabe}
+                  </Text>
+                  <Text className="text-slate-400 text-xs mt-2">
+                    Toca el icono para copiar
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Instrucciones */}
+            <View className="w-full max-w-[800px]">
+              <View
+                style={{
+                  backgroundColor: "white",
+                  borderRadius: 16,
+                  padding: 24,
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 12,
+                  elevation: 6,
+                }}
+              >
+                <View className="flex-row items-center gap-3 mb-6">
+                  <View className="bg-blue-100 rounded-full p-3">
+                    <Svg
+                      height="24"
+                      viewBox="0 -960 960 960"
+                      width="24"
+                      fill="#3b82f6"
+                    >
+                      <Path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h168q13-36 43.5-58t68.5-22q38 0 68.5 22t43.5 58h168q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm80-80h280v-80H280v80Zm0-160h400v-80H280v80Zm0-160h400v-80H280v80Zm200-190q13 0 21.5-8.5T510-820q0-13-8.5-21.5T480-850q-13 0-21.5 8.5T450-820q0 13 8.5 21.5T480-790ZM200-200v-560 560Z" />
+                    </Svg>
+                  </View>
+                  <Text className="text-slate-800 text-xl font-bold">
+                    Instrucciones de Pago
+                  </Text>
+                </View>
+
+                <View className="gap-4 mb-6">
+                  {/* Paso 1 */}
+                  <View className="flex-row items-start gap-4 bg-blue-50 p-4 rounded-xl">
+                    <View
+                      style={{
+                        backgroundColor: "#3b82f6",
+                        borderRadius: 20,
+                        width: 32,
+                        height: 32,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text className="text-white font-bold text-base">1</Text>
+                    </View>
+                    <Text className="text-slate-700 flex-1 text-base leading-6 pt-1">
+                      Realiza una transferencia SPEI o depósito al número de
+                      cuenta/CLABE
+                    </Text>
+                  </View>
+
+                  {/* Paso 2 */}
+                  <View className="flex-row items-start gap-4 bg-blue-50 p-4 rounded-xl">
+                    <View
+                      style={{
+                        backgroundColor: "#3b82f6",
+                        borderRadius: 20,
+                        width: 32,
+                        height: 32,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text className="text-white font-bold text-base">2</Text>
+                    </View>
+                    <Text className="text-slate-700 flex-1 text-base leading-6 pt-1">
+                      Asegúrate de incluir tu nombre completo en la referencia o
+                      concepto de pago
+                    </Text>
+                  </View>
+
+                  {/* Paso 3 */}
+                  <View className="flex-row items-start gap-4 bg-blue-50 p-4 rounded-xl">
+                    <View
+                      style={{
+                        backgroundColor: "#3b82f6",
+                        borderRadius: 20,
+                        width: 32,
+                        height: 32,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text className="text-white font-bold text-base">3</Text>
+                    </View>
+                    <Text className="text-slate-700 flex-1 text-base leading-6 pt-1">
+                      Sube tu comprobante de transferencia para validación
+                      rápida
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Botón de acción */}
+                <Pressable
+                  onPress={handleRedirectToVentas}
+                  style={({ pressed }) => ({
+                    backgroundColor: "#3b82f6",
+                    borderRadius: 12,
+                    padding: 16,
+                    opacity: pressed ? 0.8 : 1,
+                    shadowColor: "#3b82f6",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                    elevation: 6,
+                  })}
+                >
+                  <View className="flex-row items-center justify-center gap-2">
+                    <Svg
+                      height="20"
+                      viewBox="0 -960 960 960"
+                      width="20"
+                      fill="white"
+                    >
+                      <Path d="M440-280H280q-83 0-141.5-58.5T80-480q0-83 58.5-141.5T280-680h160v80H280q-50 0-85 35t-35 85q0 50 35 85t85 35h160v80ZM320-440v-80h320v80H320Zm200 160v-80h160q50 0 85-35t35-85q0-50-35-85t-85-35H520v-80h160q83 0 141.5 58.5T880-480q0 83-58.5 141.5T680-280H520Z" />
+                    </Svg>
+                    <Text className="text-white font-bold text-base">
+                      Registrar Venta
+                    </Text>
+                  </View>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Toast de copiado */}
             <Animated.View
               style={{
                 opacity: fadeAnim,
-                backgroundColor: "rgba(75, 85, 99, 0.6);",
-                padding: 10,
-                borderRadius: 10,
+                backgroundColor: "#10b981",
+                padding: 16,
+                borderRadius: 12,
                 position: "absolute",
                 bottom: 40,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+                elevation: 8,
               }}
             >
-              <Text className={`text-white/80`}>Copiado correctamente</Text>
+              <Svg height="20" viewBox="0 -960 960 960" width="20" fill="white">
+                <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+              </Svg>
+              <Text className="text-white font-semibold">
+                Copiado correctamente
+              </Text>
             </Animated.View>
 
+            {/* Modal de carga */}
             <Modal transparent visible={isRedirecting} animationType="fade">
               <View className="flex-1 justify-center items-center bg-black/60">
-                <View className="bg-white rounded-lg p-6 flex-row items-center gap-x-4">
-                  <ActivityIndicator size="small" color="#6F09EA" />
-                  <Text className="text-slate-700 font-medium">
-                    Cargando...
-                  </Text>
+                <View
+                  style={{
+                    backgroundColor: "white",
+                    borderRadius: 16,
+                    padding: 24,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 16,
+                    elevation: 12,
+                  }}
+                >
+                  <View className="flex-row items-center gap-4">
+                    <ActivityIndicator size="large" color="#6F09EA" />
+                    <Text className="text-slate-700 font-semibold text-base">
+                      Cargando...
+                    </Text>
+                  </View>
                 </View>
               </View>
             </Modal>
@@ -2331,89 +2595,411 @@ const ScreenPagos = ({ navigation }) => {
         {() => (
           <ScrollView
             contentContainerStyle={{
-              flexDirection: `column`,
+              flexDirection: "column",
               alignItems: "center",
+              padding: 24,
             }}
-            className={`bg-slate-50 rounded-lg p-10 gap-y-8`}
+            className="bg-gradient-to-br from-slate-50 to-slate-100"
           >
-            <View
-              className={`flex min-w-[600] max-w-[800] bg-[#f0fdf4] rounded-lg p-3 justify-center`}
-            >
-              <Text className={`font-bold text-[#0b642e] text-lg`}>
-                📍 Punto de pago
-              </Text>
-              <View className={`flex-col items-center`}>
+            {/* Header con gradiente */}
+            <View className="w-full max-w-[900px] mb-6">
+              <View
+                style={{
+                  background:
+                    "linear-gradient(135deg, #6F09EA 0%, #8B5CF6 100%)",
+                  borderRadius: 20,
+                  padding: 24,
+                  shadowColor: "#6F09EA",
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 16,
+                  elevation: 12,
+                }}
+                className="bg-purple-600"
+              >
+                <View className="flex-row items-center gap-3 mb-2">
+                  <View className="bg-white/20 rounded-full p-3">
+                    <Svg
+                      height="28"
+                      viewBox="0 -960 960 960"
+                      width="28"
+                      fill="white"
+                    >
+                      <Path d="M480-480q33 0 56.5-23.5T560-560q0-33-23.5-56.5T480-640q-33 0-56.5 23.5T400-560q0 33 23.5 56.5T480-480Zm0 294q122-112 181-203.5T720-552q0-109-69.5-178.5T480-800q-101 0-170.5 69.5T240-552q0 71 59 162.5T480-186Zm0 106Q319-217 239.5-334.5T160-552q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 100-79.5 217.5T480-80Zm0-480Z" />
+                    </Svg>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-white text-2xl font-bold">
+                      Punto de Pago MQerKAcademy
+                    </Text>
+                    <Text className="text-white/80 text-sm mt-1">
+                      Visítanos en nuestra ubicación oficial
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* Contenedor principal con dos columnas */}
+            <View className="w-full max-w-[900px] flex-row gap-4 mb-6">
+              {/* Columna izquierda - Información de contacto */}
+              <View className="flex-1 gap-4">
+                {/* Card de Dirección */}
                 <View
-                  className={`flex-row w-full justify-between px-2 items-center`}
+                  style={{
+                    backgroundColor: "white",
+                    borderRadius: 16,
+                    padding: 20,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 12,
+                    elevation: 6,
+                    borderLeftWidth: 4,
+                    borderLeftColor: "#6F09EA",
+                  }}
                 >
-                  <View className={`flex-col justify-center`}>
-                    <View className={`flex`}>
-                      <Text
-                        className={`font-semibold text-[#3da36c] uppercase`}
+                  <View className="flex-row items-center gap-3 mb-3">
+                    <View className="bg-purple-100 rounded-full p-2">
+                      <Svg
+                        height="24"
+                        viewBox="0 -960 960 960"
+                        width="24"
+                        fill="#6F09EA"
                       >
-                        Dirección
-                      </Text>
-                      <Text className={`text-lg text-[#3e54d6] max-w-60`}>
-                        📍 Calle Juárez entre Av. Independencia y 5 de Mayo,
-                        C.P. 68300. En altos de COMPUMAX, Tuxtepec, Oaxaca
-                      </Text>
+                        <Path d="M480-480q33 0 56.5-23.5T560-560q0-33-23.5-56.5T480-640q-33 0-56.5 23.5T400-560q0 33 23.5 56.5T480-480Zm0 294q122-112 181-203.5T720-552q0-109-69.5-178.5T480-800q-101 0-170.5 69.5T240-552q0 71 59 162.5T480-186Zm0 106Q319-217 239.5-334.5T160-552q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 100-79.5 217.5T480-80Zm0-480Z" />
+                      </Svg>
                     </View>
-                    <View>
-                      <Text
-                        className={`font-semibold text-[#3da36c] uppercase`}
+                    <Text className="text-slate-800 text-lg font-bold">
+                      Dirección
+                    </Text>
+                  </View>
+                  <Text className="text-slate-600 text-base leading-6">
+                    Calle Juárez entre Av. Independencia y 5 de Mayo
+                  </Text>
+                  <Text className="text-slate-600 text-base leading-6">
+                    En altos de COMPUMAX
+                  </Text>
+                  <Text className="text-slate-600 text-base leading-6">
+                    Tuxtepec, Oaxaca • C.P. 68300
+                  </Text>
+                </View>
+
+                {/* Card de Horario */}
+                <View
+                  style={{
+                    backgroundColor: "white",
+                    borderRadius: 16,
+                    padding: 20,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 12,
+                    elevation: 6,
+                    borderLeftWidth: 4,
+                    borderLeftColor: "#10b981",
+                  }}
+                >
+                  <View className="flex-row items-center gap-3 mb-3">
+                    <View className="bg-green-100 rounded-full p-2">
+                      <Svg
+                        height="24"
+                        viewBox="0 -960 960 960"
+                        width="24"
+                        fill="#10b981"
                       >
-                        Horario
-                      </Text>
-                      <Text className={`text-lg`}>
-                        Lunes a Viernes, 9:00 a 17:00 h
-                      </Text>
+                        <Path d="m612-292 56-56-148-148v-184h-80v216l172 172ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-400Zm0 320q133 0 226.5-93.5T800-480q0-133-93.5-226.5T480-800q-133 0-226.5 93.5T160-480q0 133 93.5 226.5T480-160Z" />
+                      </Svg>
                     </View>
-                    <View>
-                      <Text
-                        className={`font-semibold text-[#3da36c] uppercase`}
+                    <Text className="text-slate-800 text-lg font-bold">
+                      Horario
+                    </Text>
+                  </View>
+                  <Text className="text-slate-600 text-base">
+                    Lunes a Viernes
+                  </Text>
+                  <Text className="text-green-600 text-lg font-semibold">
+                    9:00 AM - 5:00 PM
+                  </Text>
+                </View>
+
+                {/* Card de Contacto */}
+                <View
+                  style={{
+                    backgroundColor: "white",
+                    borderRadius: 16,
+                    padding: 20,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 12,
+                    elevation: 6,
+                    borderLeftWidth: 4,
+                    borderLeftColor: "#3b82f6",
+                  }}
+                >
+                  <View className="flex-row items-center gap-3 mb-3">
+                    <View className="bg-blue-100 rounded-full p-2">
+                      <Svg
+                        height="24"
+                        viewBox="0 -960 960 960"
+                        width="24"
+                        fill="#3b82f6"
                       >
-                        Contacto
+                        <Path d="M798-120q-125 0-247-54.5T329-329Q229-429 174.5-551T120-798q0-18 12-30t30-12h162q14 0 25 9.5t13 22.5l26 140q2 16-1 27t-11 19l-97 98q20 37 47.5 71.5T387-386q31 31 65 57.5t72 48.5l94-94q9-9 23.5-13.5T670-390l138 28q14 4 23 14.5t9 23.5v162q0 18-12 30t-30 12ZM241-600l66-66-17-94h-89q5 41 14 81t26 79Zm358 358q39 17 79.5 27t81.5 13v-88l-94-19-67 67ZM241-600Zm358 358Z" />
+                      </Svg>
+                    </View>
+                    <Text className="text-slate-800 text-lg font-bold">
+                      Contacto
+                    </Text>
+                  </View>
+                  <Text className="text-blue-600 text-xl font-semibold">
+                    287 151 5760
+                  </Text>
+                </View>
+              </View>
+
+              {/* Columna derecha - Documentación */}
+              <View className="flex-1">
+                <View
+                  style={{
+                    backgroundColor: "white",
+                    borderRadius: 16,
+                    padding: 24,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 12,
+                    elevation: 6,
+                  }}
+                >
+                  <View className="flex-row items-center gap-3 mb-6">
+                    <View
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                        borderRadius: 12,
+                        padding: 12,
+                      }}
+                      className="bg-green-500"
+                    >
+                      <Svg
+                        height="28"
+                        viewBox="0 -960 960 960"
+                        width="28"
+                        fill="white"
+                      >
+                        <Path d="M319-250h322v-60H319v60Zm0-170h322v-60H319v60ZM220-80q-24 0-42-18t-18-42v-680q0-24 18-42t42-18h361l219 219v521q0 24-18 42t-42 18H220Zm331-554v-186H220v680h520v-494H551ZM220-820v186-186 680-680Z" />
+                      </Svg>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-slate-800 text-xl font-bold">
+                        Documentación Requerida
                       </Text>
-                      <Text className={`text-lg`}>Tel: 287 151 5760</Text>
+                      <Text className="text-slate-500 text-sm">
+                        Para procesar tu pago
+                      </Text>
                     </View>
                   </View>
-                  <View
-                    className={`flex bg-[#fdfffe] vertical:max-w-[350] overflow-hidden gap-y-6 rounded-lg shadow p-4`}
-                  >
-                    <View className={`flex-row items-center gap-x-2`}>
-                      <Text className={`bg-[#e5f9ed] rounded-full p-2`}>
-                        📌
-                      </Text>
-                      <Text
-                        className={`text-[#1f5035] text-xl font-bold uppercase`}
-                      >
-                        Documentación
+
+                  <View className="gap-4">
+                    {/* Item 1 */}
+                    <View className="flex-row items-start gap-3 bg-slate-50 p-4 rounded-xl">
+                      <View className="bg-green-500 rounded-full p-1 mt-0.5">
+                        <Svg
+                          height="16"
+                          viewBox="0 -960 960 960"
+                          width="16"
+                          fill="white"
+                        >
+                          <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+                        </Svg>
+                      </View>
+                      <Text className="text-slate-700 flex-1 text-base leading-6">
+                        Documento de identificación oficial (INE, pasaporte)
                       </Text>
                     </View>
-                    <View className={`gap-y-3`}>
-                      <View className={`items-baseline flex-row`}>
-                        <Text className={`text-[#17bd71]`}>•</Text>
-                        <Text className={`text-[#448160]`}>
-                          Revisar documento de identificación (INE, pasaporte)
-                        </Text>
+
+                    {/* Item 2 */}
+                    <View className="flex-row items-start gap-3 bg-slate-50 p-4 rounded-xl">
+                      <View className="bg-green-500 rounded-full p-1 mt-0.5">
+                        <Svg
+                          height="16"
+                          viewBox="0 -960 960 960"
+                          width="16"
+                          fill="white"
+                        >
+                          <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+                        </Svg>
                       </View>
-                      <View className={`items-baseline flex-row`}>
-                        <Text className={`text-[#17bd71]`}>•</Text>
-                        <Text className={`text-[#448160]`}>
-                          Verificar comprobante de domicilio
-                        </Text>
+                      <Text className="text-slate-700 flex-1 text-base leading-6">
+                        Comprobante de domicilio reciente
+                      </Text>
+                    </View>
+
+                    {/* Item 3 */}
+                    <View className="flex-row items-start gap-3 bg-slate-50 p-4 rounded-xl">
+                      <View className="bg-green-500 rounded-full p-1 mt-0.5">
+                        <Svg
+                          height="16"
+                          viewBox="0 -960 960 960"
+                          width="16"
+                          fill="white"
+                        >
+                          <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+                        </Svg>
                       </View>
-                      <View className={`items-baseline flex-row`}>
-                        <Text className={`text-[#17bd71]`}>•</Text>
-                        <Text className={`text-[#448160]`}>
-                          Informar sobre los descuentos disponibles
-                        </Text>
-                      </View>
+                      <Text className="text-slate-700 flex-1 text-base leading-6">
+                        Consultar sobre descuentos y promociones disponibles
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Banner informativo */}
+                  <View
+                    style={{
+                      backgroundColor: "#eff6ff",
+                      borderRadius: 12,
+                      padding: 16,
+                      marginTop: 20,
+                      borderWidth: 1,
+                      borderColor: "#bfdbfe",
+                    }}
+                  >
+                    <View className="flex-row items-center gap-2">
+                      <Svg
+                        height="20"
+                        viewBox="0 -960 960 960"
+                        width="20"
+                        fill="#3b82f6"
+                      >
+                        <Path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z" />
+                      </Svg>
+                      <Text className="text-blue-700 text-sm font-medium flex-1">
+                        Nuestro personal te asistirá en todo el proceso
+                      </Text>
                     </View>
                   </View>
                 </View>
-                <View className={`items-center justify-center p-4`}>
-                  <MapViewWrapper width={600} height={450} />
+              </View>
+            </View>
+
+            {/* Sección de imágenes de ubicación */}
+            <View className="w-full max-w-[900px]">
+              <View className="mb-4">
+                <View className="flex-row items-center gap-2 mb-2">
+                  <Svg
+                    height="24"
+                    viewBox="0 -960 960 960"
+                    width="24"
+                    fill="#6F09EA"
+                  >
+                    <Path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h360v80H200v560h560v-360h80v360q0 33-23.5 56.5T760-120H200Zm120-160 56-56-64-64h168v-80H312l64-64-56-56-160 160 160 160Zm344-320v-120H544v-80h120v-120h80v120h120v80H744v120h-80Z" />
+                  </Svg>
+                  <Text className="text-slate-800 text-xl font-bold">
+                    Cómo Llegar
+                  </Text>
+                </View>
+                <Text className="text-slate-600 text-sm mb-4">
+                  Encuentra nuestra ubicación fácilmente
+                </Text>
+              </View>
+
+              <View className="flex-row gap-4">
+                {/* Imagen de Localización */}
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: "white",
+                    borderRadius: 16,
+                    padding: 12,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 12,
+                    elevation: 8,
+                  }}
+                >
+                  <View className="flex-row items-center gap-2 mb-3">
+                    <View className="bg-blue-100 rounded-full p-2">
+                      <Svg
+                        height="20"
+                        viewBox="0 -960 960 960"
+                        width="20"
+                        fill="#3b82f6"
+                      >
+                        <Path d="M480-480q33 0 56.5-23.5T560-560q0-33-23.5-56.5T480-640q-33 0-56.5 23.5T400-560q0 33 23.5 56.5T480-480Zm0 294q122-112 181-203.5T720-552q0-109-69.5-178.5T480-800q-101 0-170.5 69.5T240-552q0 71 59 162.5T480-186Zm0 106Q319-217 239.5-334.5T160-552q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 100-79.5 217.5T480-80Zm0-480Z" />
+                      </Svg>
+                    </View>
+                    <Text className="text-slate-800 font-bold">
+                      Mapa de Ubicación
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      borderRadius: 12,
+                      overflow: "hidden",
+                      borderWidth: 2,
+                      borderColor: "#e2e8f0",
+                    }}
+                  >
+                    <Image
+                      source={require("./assets/Ubicacion/Localizacion-MQerKAcademy.jpg")}
+                      style={{
+                        width: "100%",
+                        height: 300,
+                      }}
+                      resizeMode="cover"
+                    />
+                  </View>
+                </View>
+
+                {/* Imagen de Foto Referencia */}
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: "white",
+                    borderRadius: 16,
+                    padding: 12,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 12,
+                    elevation: 8,
+                  }}
+                >
+                  <View className="flex-row items-center gap-2 mb-3">
+                    <View className="bg-purple-100 rounded-full p-2">
+                      <Svg
+                        height="20"
+                        viewBox="0 -960 960 960"
+                        width="20"
+                        fill="#6F09EA"
+                      >
+                        <Path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Z" />
+                      </Svg>
+                    </View>
+                    <Text className="text-slate-800 font-bold">
+                      Foto de Referencia
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      borderRadius: 12,
+                      overflow: "hidden",
+                      borderWidth: 2,
+                      borderColor: "#e2e8f0",
+                    }}
+                  >
+                    <Image
+                      source={require("./assets/Ubicacion/Foto-Referencia_MQerKAcademy.jpeg")}
+                      style={{
+                        width: "100%",
+                        height: 300,
+                      }}
+                      resizeMode="cover"
+                    />
+                  </View>
                 </View>
               </View>
             </View>
@@ -8637,6 +9223,10 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
   const lastTapTimeRef = useRef(null);
   const hintAnim = useRef(new Animated.Value(0)).current;
 
+  // Detección de orientación
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+
   const handleDoubleTap = () => {
     const now = Date.now();
     const DOUBLE_PRESS_DELAY = 300; // ms
@@ -8882,7 +9472,7 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
       </View>
 
       {/* Contenedor de imágenes con efecto libro */}
-      <View className="flex-1 p-4">
+      <View style={{ flex: 1, padding: isLandscape ? 8 : 16 }}>
         <Tab.Navigator
           key={catalogos ? "tarifario" : "catalogo"}
           tabBarPosition="bottom"
@@ -8897,8 +9487,8 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
                 >
                   <View
                     style={{
-                      width: "95%",
-                      height: "95%",
+                      width: isLandscape ? "98%" : "95%",
+                      height: isLandscape ? "98%" : "95%",
                       backgroundColor: "white",
                       borderRadius: 16,
                       shadowColor: "#000",
