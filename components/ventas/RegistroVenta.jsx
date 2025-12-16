@@ -33,6 +33,7 @@ import Svg, { Path } from "react-native-svg";
 import * as Print from "expo-print";
 import { shareAsync } from "expo-sharing";
 import * as FileSystem from "expo-file-system";
+import * as MediaLibrary from "expo-media-library";
 
 import Logo from "../../assets/MQerK_logo.jpg";
 
@@ -487,6 +488,9 @@ export default function RegistroVenta({ navigation, onFormClose }) {
   // Estado para controlar si se muestra el input de dirección personalizada
   const [showCustomDireccion, setShowCustomDireccion] = useState(false);
 
+  // Estado para controlar si se muestra el input de grupo personalizado
+  const [showCustomGrupo, setShowCustomGrupo] = useState(false);
+
   // Estado para controlar si se está registrando un nuevo alumno
   const [isNewStudent, setIsNewStudent] = useState(false);
 
@@ -560,6 +564,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
             setIncentivoEnPorcentaje(false);
             set_incentivo_active(false);
             setShowCustomDireccion(false);
+            setShowCustomGrupo(false); // Resetea el input de grupo personalizado
             setIsDescripcionManual(false); // Resetea el control de la descripción
             setDefineFechaLimite(false); // Resetea el checklist de la fecha
             // Resetea también los estados "en vivo"
@@ -600,6 +605,54 @@ export default function RegistroVenta({ navigation, onFormClose }) {
     }
   }, [descripcionAutomatica, isDescripcionManual]);
 
+  // Función para cargar grupos desde la base de datos
+  const fetchGrupos = async () => {
+    const { data, error } = await supabase
+      .from("grupos")
+      .select("id_grupo, grupo")
+      .order("id_grupo", { ascending: true });
+
+    if (!error && data) {
+      const gruposData = data.map((g) => ({
+        label: g.grupo,
+        value: g.grupo,
+        id_grupo: g.id_grupo, // Guardamos el ID del grupo
+      }));
+
+      // Ordenar alfabéticamente A-Z, pero con Sabatino y Dominical al final
+      gruposData.sort((a, b) => {
+        const gruposAlFinal = ["Sabatino", "Dominical"];
+        const aEsEspecial = gruposAlFinal.some((g) =>
+          a.label.toLowerCase().includes(g.toLowerCase())
+        );
+        const bEsEspecial = gruposAlFinal.some((g) =>
+          b.label.toLowerCase().includes(g.toLowerCase())
+        );
+
+        // Si ambos son especiales, ordenar alfabéticamente entre ellos
+        if (aEsEspecial && bEsEspecial) {
+          return a.label.localeCompare(b.label, "es", { sensitivity: "base" });
+        }
+        // Si solo 'a' es especial, va después
+        if (aEsEspecial) return 1;
+        // Si solo 'b' es especial, va después
+        if (bEsEspecial) return -1;
+        // Si ninguno es especial, ordenar alfabéticamente
+        return a.label.localeCompare(b.label, "es", { sensitivity: "base" });
+      });
+
+      // Agregar la opción "Otro" al final
+      gruposData.push({
+        label: "Otro",
+        value: "Otro",
+        id_grupo: null,
+      });
+
+      setGruposDB(gruposData);
+    }
+    setLoadingGrupos(false);
+  };
+
   useEffect(() => {
     const fetchCursos = async () => {
       const { data, error } = await supabase.from("cursos").select("*");
@@ -632,24 +685,6 @@ export default function RegistroVenta({ navigation, onFormClose }) {
         );
       }
       setLoadingEstudiantes(false);
-    };
-
-    const fetchGrupos = async () => {
-      const { data, error } = await supabase
-        .from("grupos")
-        .select("id_grupo, grupo")
-        .order("id_grupo", { ascending: true });
-
-      if (!error && data) {
-        setGruposDB(
-          data.map((g) => ({
-            label: g.grupo,
-            value: g.grupo,
-            id_grupo: g.id_grupo, // Guardamos el ID del grupo
-          }))
-        );
-      }
-      setLoadingGrupos(false);
     };
 
     fetchCursos();
@@ -1205,6 +1240,25 @@ export default function RegistroVenta({ navigation, onFormClose }) {
     setIsSaving(true);
 
     try {
+      // 0. Si hay un grupo personalizado (grupo_id es null pero grupo tiene valor), guardarlo primero
+      let finalGrupoId = form.grupo_id;
+      if (!form.grupo_id && form.grupo && form.grupo.trim() !== "") {
+        const nuevoGrupoId = await saveCustomGrupo(form.grupo.trim());
+
+        if (nuevoGrupoId) {
+          finalGrupoId = nuevoGrupoId;
+          // Actualizar el formulario con el nuevo ID del grupo
+          setForm((prev) => ({
+            ...prev,
+            grupo_id: nuevoGrupoId,
+          }));
+        } else {
+          // Si no se pudo guardar el grupo, detener el proceso
+          setIsSaving(false);
+          return;
+        }
+      }
+
       // 1. Calcular el monto del incentivo
       let montoIncentivo = 0;
       if (form.incentivo_premium > 0) {
@@ -1315,7 +1369,8 @@ export default function RegistroVenta({ navigation, onFormClose }) {
         anticipo: form.anticipo,
         pendiente: totalFinal,
         total: totalConIncentivo,
-        fecha_transaction: today.toISOString(),
+        // Formato YYYY-MM-DD para tipo date
+        fecha_transaction: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`,
         alumno_id: finalIdAlumno,
       };
 
@@ -1500,7 +1555,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       ${
         form.fecha_limite_pago
           ? `
-        <div style="display: flex; margin: -1.25rem 0; justify-content: space-between; align-items: center; font-size: 0.75rem; line-height: 1rem;">
+        <div style="display: flex; margin: 0.25rem 0 0 0; justify-content: space-between; align-items: center; font-size: 0.75rem; line-height: 1rem;">
           <p>Fecha de pago:</p>
           <p>${form.fecha_limite_pago}</p>
         </div>
@@ -1639,7 +1694,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       ${
         form.fecha_limite_pago
           ? `
-        <div style="display: flex; margin: -1.25rem 0; justify-content: space-between; align-items: center; font-size: 0.75rem; line-height: 1rem;">
+        <div style="display: flex; margin: 0.25rem 0 0 0; justify-content: space-between; align-items: center; font-size: 0.75rem; line-height: 1rem;">
           <p>Fecha de pago:</p>
           <p>${form.fecha_limite_pago}</p>
         </div>
@@ -1676,19 +1731,139 @@ export default function RegistroVenta({ navigation, onFormClose }) {
 
     // Renombrar el archivo con un nombre descriptivo
     const ticketFileName = `Ticket-MQerKAcademy-${folio}.pdf`;
-    const newUri = `${FileSystem.cacheDirectory}${ticketFileName}`;
-    await FileSystem.moveAsync({
-      from: uri,
-      to: newUri,
-    });
 
-    console.log("File has been saved to:", newUri);
-    await shareAsync(newUri, {
-      UTI: ".pdf",
-      mimeType: "application/pdf",
-      dialogTitle: ticketFileName,
-    });
+    // Solicitar permisos de almacenamiento
+    const { status } = await MediaLibrary.requestPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permisos necesarios",
+        "Se necesitan permisos de almacenamiento para guardar el ticket."
+      );
+      // Aún así compartir el archivo desde cache
+      await shareAsync(uri, {
+        UTI: ".pdf",
+        mimeType: "application/pdf",
+        dialogTitle: ticketFileName,
+      });
+      return;
+    }
+
+    // Guardar en almacenamiento del dispositivo
+    try {
+      // Primero mover a una ubicación temporal con el nombre correcto
+      const tempUri = `${FileSystem.cacheDirectory}${ticketFileName}`;
+      await FileSystem.moveAsync({
+        from: uri,
+        to: tempUri,
+      });
+
+      // Crear el asset en la librería de medios
+      const asset = await MediaLibrary.createAssetAsync(tempUri);
+
+      // Obtener o crear el álbum "Fenix-Retail"
+      let album = await MediaLibrary.getAlbumAsync("Fenix-Retail");
+      if (album == null) {
+        // Si no existe, crear el álbum
+        album = await MediaLibrary.createAlbumAsync(
+          "Fenix-Retail",
+          asset,
+          false
+        );
+        console.log("Álbum Fenix-Retail creado en Pictures/Fenix-Retail");
+      } else {
+        // Si existe, agregar el asset al álbum
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+        console.log("Archivo agregado a Pictures/Fenix-Retail");
+      }
+
+      console.log(
+        "Archivo guardado en: Pictures/Fenix-Retail/",
+        ticketFileName
+      );
+
+      // Compartir el archivo
+      await shareAsync(tempUri, {
+        UTI: ".pdf",
+        mimeType: "application/pdf",
+        dialogTitle: ticketFileName,
+      });
+    } catch (error) {
+      console.error("Error guardando archivo:", error);
+      Alert.alert(
+        "Error",
+        "No se pudo guardar el archivo en Fenix-Retail. Se compartirá desde caché."
+      );
+      await shareAsync(uri, {
+        UTI: ".pdf",
+        mimeType: "application/pdf",
+        dialogTitle: ticketFileName,
+      });
+    }
   };
+
+  // Función para guardar un grupo personalizado en la base de datos
+  const saveCustomGrupo = async (grupoNombre) => {
+    try {
+      // Verificar si el grupo ya existe
+      const { data: existingGrupo, error: checkError } = await supabase
+        .from("grupos")
+        .select("id_grupo, grupo")
+        .eq("grupo", grupoNombre)
+        .single();
+
+      if (checkError && checkError.code !== "PGRST116") {
+        // PGRST116 es el código cuando no se encuentra ningún registro
+        throw checkError;
+      }
+
+      if (existingGrupo) {
+        // El grupo ya existe, usar su ID
+        console.log("Grupo existente encontrado:", existingGrupo);
+        return existingGrupo.id_grupo;
+      }
+
+      // El grupo no existe, crearlo
+      console.log("Creando nuevo grupo:", grupoNombre);
+
+      // Obtener la fecha actual en formato DD/MM/YYYY
+      const today = new Date();
+      const day = String(today.getDate()).padStart(2, "0");
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const year = today.getFullYear();
+      const fechaCreacion = `${day}/${month}/${year}`;
+
+      const { data: newGrupo, error: insertError } = await supabase
+        .from("grupos")
+        .insert([
+          {
+            grupo: grupoNombre,
+            desc_grupo: `Grupo creado el ${fechaCreacion}`, // Descripción con fecha
+          },
+        ])
+        .select("id_grupo")
+        .single();
+
+      if (insertError) {
+        console.error("Error insertando grupo:", insertError);
+        throw insertError;
+      }
+
+      console.log("Nuevo grupo creado:", newGrupo);
+
+      // Actualizar la lista de grupos para incluir el nuevo
+      fetchGrupos();
+
+      return newGrupo.id_grupo;
+    } catch (error) {
+      console.error("Error guardando grupo personalizado:", error);
+      Alert.alert(
+        "Error",
+        `No se pudo guardar el grupo personalizado: ${error.message}`
+      );
+      return null;
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       <View className="flex-1">
@@ -1802,7 +1977,10 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                           ...prev,
                           id_alumno: item.value,
                           nombre_cliente: item.label,
-                          grupo: item.grupo || prev.grupo, // Pre-llenar grupo si existe
+                          // Solo actualizar grupo si NO se había seleccionado "Otro" previamente
+                          grupo: showCustomGrupo
+                            ? prev.grupo
+                            : item.grupo || prev.grupo,
                           direccion: item.direccion || prev.direccion, // Pre-llenar dirección si existe
                         }));
                       }}
@@ -1889,14 +2067,24 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                         placeholder={
                           loadingGrupos ? "Cargando..." : "Selecciona un grupo"
                         }
-                        value={form.grupo}
-                        onChange={(item) =>
-                          setForm({
-                            ...form,
-                            grupo: item.value,
-                            grupo_id: item.id_grupo, // Guardamos el ID del grupo en el estado
-                          })
-                        }
+                        value={showCustomGrupo ? "Otro" : form.grupo}
+                        onChange={(item) => {
+                          if (item.value === "Otro") {
+                            setShowCustomGrupo(true);
+                            setForm({
+                              ...form,
+                              grupo: "",
+                              grupo_id: null,
+                            });
+                          } else {
+                            setShowCustomGrupo(false);
+                            setForm({
+                              ...form,
+                              grupo: item.value,
+                              grupo_id: item.id_grupo, // Guardamos el ID del grupo en el estado
+                            });
+                          }
+                        }}
                         dropdownPosition="auto"
                         renderRightIcon={() => (
                           <Svg
@@ -1912,6 +2100,20 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                         selectedTextStyle={styles.dropdownSelectedText}
                         itemTextStyle={styles.dropdownItemText}
                       />
+                      {showCustomGrupo && (
+                        <TextInput
+                          style={[styles.input, { marginTop: 10 }]}
+                          value={form.grupo}
+                          onChangeText={(newText) => {
+                            const processedText = newText
+                              .replace(/\s\s+/g, " ")
+                              .replace(/([^\w\sÁÉÍÓÚÜÑáéíóúüñ])\1+/g, "$1");
+                            setForm({ ...form, grupo: processedText });
+                          }}
+                          placeholder="Escribe el nombre del grupo"
+                          autoFocus={true}
+                        />
+                      )}
                     </LabeledInput>
                   </View>
                   <View style={{ flex: 1, marginLeft: 8 }}>

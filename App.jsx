@@ -48,6 +48,7 @@ import { Calendar, LocaleConfig } from "react-native-calendars";
 import * as Print from "expo-print";
 import { shareAsync } from "expo-sharing";
 import * as FileSystem from "expo-file-system";
+import * as MediaLibrary from "expo-media-library";
 
 import { useFocusEffect } from "@react-navigation/native";
 import {
@@ -459,7 +460,7 @@ const TablaVentasPendientes = ({
   onRowClick, // Nueva prop
   selectedYear, // Año seleccionado para filtrar
 }) => {
-  const [sortKey, setSortKey] = useState("fecha_transaction");
+  const [sortKey, setSortKey] = useState("id_transaction");
   const [sortDir, setSortDir] = useState("desc");
 
   const currencyFormatter = new Intl.NumberFormat("es-MX", {
@@ -472,37 +473,219 @@ const TablaVentasPendientes = ({
     const arr = data.filter((r) => {
       // Filtrar por año si está definido
       if (selectedYear && r.fecha_transaction) {
-        const transactionYear = new Date(r.fecha_transaction).getFullYear();
+        // Parsear año directamente del string para evitar timezone offsets
+        const dateStr = r.fecha_transaction.split("T")[0]; // "YYYY-MM-DD"
+        const [yearStr] = dateStr.split("-");
+        const transactionYear = parseInt(yearStr, 10);
         if (transactionYear !== selectedYear) return false;
       }
 
       if (!q) return true;
-      return (
-        String(r.nombre_estudiante).toLowerCase().includes(q) ||
-        String(r.curso_asignado).toLowerCase().includes(q) ||
-        String(r.grupo).toLowerCase().includes(q)
-      );
+
+      // Búsqueda por nombre del alumno
+      if (
+        String(r.nombre_alumno || "")
+          .toLowerCase()
+          .includes(q)
+      )
+        return true;
+
+      // Búsqueda por nombre del curso
+      if (
+        String(r.nombre_curso || "")
+          .toLowerCase()
+          .includes(q)
+      )
+        return true;
+
+      // Búsqueda mejorada por grupo (matutino, vespertino, etc.)
+      const grupoStr = String(r.grupo || "").toLowerCase();
+      if (grupoStr.includes(q)) return true;
+
+      // Búsqueda por monto pendiente (número exacto o parcial)
+      if (String(r.monto_pendiente || "").includes(q)) return true;
+
+      // Búsqueda por fecha en múltiples formatos
+      if (r.fecha_transaction) {
+        const dateStr = r.fecha_transaction.split("T")[0]; // "YYYY-MM-DD"
+        const [year, month, day] = dateStr.split("-");
+
+        // Nombres de meses completos y abreviados
+        const monthNames = [
+          "enero",
+          "febrero",
+          "marzo",
+          "abril",
+          "mayo",
+          "junio",
+          "julio",
+          "agosto",
+          "septiembre",
+          "octubre",
+          "noviembre",
+          "diciembre",
+        ];
+        const monthNamesShort = [
+          "ene",
+          "feb",
+          "mar",
+          "abr",
+          "may",
+          "jun",
+          "jul",
+          "ago",
+          "sep",
+          "oct",
+          "nov",
+          "dic",
+        ];
+        const monthIndex = parseInt(month, 10) - 1;
+        const monthName = monthNames[monthIndex] || "";
+        const monthNameShort = monthNamesShort[monthIndex] || "";
+
+        // Formato ISO: "2024-12-15"
+        if (dateStr.includes(q)) return true;
+
+        // Formato DD/MM/YYYY: "15/12/2024"
+        const formatDDMMYYYY = `${day}/${month}/${year}`;
+        if (formatDDMMYYYY.includes(q)) return true;
+
+        // Formato DD-MM-YYYY: "15-12-2024"
+        const formatDDMMYYYY2 = `${day}-${month}-${year}`;
+        if (formatDDMMYYYY2.includes(q)) return true;
+
+        // Búsqueda por día, mes o año individual
+        if (day.includes(q) || month.includes(q) || year.includes(q))
+          return true;
+
+        // Búsqueda por nombre del mes
+        if (monthName.includes(q)) return true;
+
+        // Búsqueda por nombre del mes abreviado
+        if (monthNameShort.includes(q)) return true;
+
+        // Formatos naturales: "12 de diciembre", "12 diciembre", "12 dic", "12 de dic"
+        const dayNum = parseInt(day, 10); // Sin ceros a la izquierda
+
+        // "12 de diciembre", "12 de dic"
+        if (
+          q.includes(`${dayNum} de ${monthName}`) ||
+          q.includes(`${dayNum} de ${monthNameShort}`)
+        )
+          return true;
+
+        // "12 diciembre", "12 dic"
+        if (
+          q.includes(`${dayNum} ${monthName}`) ||
+          q.includes(`${dayNum} ${monthNameShort}`)
+        )
+          return true;
+
+        // "diciembre 12", "dic 12"
+        if (
+          q.includes(`${monthName} ${dayNum}`) ||
+          q.includes(`${monthNameShort} ${dayNum}`)
+        )
+          return true;
+
+        // Construir las variantes de fecha para comparar
+        const dateVariants = [
+          `${dayNum} de ${monthName}`, // "12 de diciembre"
+          `${dayNum} ${monthName}`, // "12 diciembre"
+          `${dayNum} de ${monthNameShort}`, // "12 de dic"
+          `${dayNum} ${monthNameShort}`, // "12 dic"
+          `${monthName} ${dayNum}`, // "diciembre 12"
+          `${monthNameShort} ${dayNum}`, // "dic 12"
+          `${day} de ${monthName}`, // "12 de diciembre" (con cero)
+          `${day} ${monthName}`, // "12 diciembre" (con cero)
+          `${day} de ${monthNameShort}`, // "12 de dic" (con cero)
+          `${day} ${monthNameShort}`, // "12 dic" (con cero)
+        ];
+
+        // Verificar si alguna variante coincide
+        if (dateVariants.some((variant) => variant.includes(q))) return true;
+      }
+
+      return false;
     });
     const sorted = [...arr].sort((a, b) => {
       let va = a[sortKey] ?? "";
       let vb = b[sortKey] ?? "";
       if (typeof va === "string") va = va.toLowerCase();
       if (typeof vb === "string") vb = vb.toLowerCase();
+
+      // Comparación principal por la columna seleccionada
       if (va < vb) return sortDir === "asc" ? -1 : 1;
       if (va > vb) return sortDir === "asc" ? 1 : -1;
-      return 0;
+
+      // Si estamos ordenando por monto_pendiente, usar fecha como criterio secundario
+      if (sortKey === "monto_pendiente") {
+        const fechaA = a.fecha_transaction ?? "";
+        const fechaB = b.fecha_transaction ?? "";
+
+        if (fechaA !== fechaB) {
+          // Ordenar por fecha según la dirección del sort principal
+          if (sortDir === "asc") {
+            return fechaA.localeCompare(fechaB); // Ascendente: fechas antiguas primero
+          } else {
+            return fechaB.localeCompare(fechaA); // Descendente: fechas recientes primero
+          }
+        }
+
+        // Si las fechas también son iguales, usar id_transaccion como tercer criterio
+        const idA = a.id_transaccion ?? 0;
+        const idB = b.id_transaccion ?? 0;
+        return sortDir === "asc" ? idA - idB : idB - idA;
+      }
+
+      // Para otras columnas, usar fecha como criterio secundario
+      const fechaA = a.fecha_transaction ?? "";
+      const fechaB = b.fecha_transaction ?? "";
+
+      if (fechaA !== fechaB) {
+        // Ordenar por fecha según la dirección del sort principal
+        if (sortDir === "asc") {
+          return fechaA.localeCompare(fechaB); // Ascendente: fechas antiguas primero
+        } else {
+          return fechaB.localeCompare(fechaA); // Descendente: fechas recientes primero
+        }
+      }
+
+      // Si las fechas también son iguales, usar id_transaccion como criterio terciario
+      const idA = a.id_transaccion ?? 0;
+      const idB = b.id_transaccion ?? 0;
+      // Ordenar por ID según la dirección del sort principal
+      return sortDir === "asc" ? idA - idB : idB - idA;
     });
     return sorted;
   }, [data, query, sortKey, sortDir, selectedYear]);
 
   // Agrupar por año o por mes según el filtro seleccionado
   const groupedData = useMemo(() => {
+    const MONTH_NAMES = [
+      "Enero",
+      "Febrero",
+      "Marzo",
+      "Abril",
+      "Mayo",
+      "Junio",
+      "Julio",
+      "Agosto",
+      "Septiembre",
+      "Octubre",
+      "Noviembre",
+      "Diciembre",
+    ];
+
     if (selectedYear === null) {
       // Agrupar por año cuando se selecciona "Todos"
       const groups = filtered.reduce((acc, alumno) => {
-        const year = alumno.fecha_transaction
-          ? new Date(alumno.fecha_transaction).getFullYear()
-          : "Sin fecha";
+        let year = "Sin fecha";
+        if (alumno.fecha_transaction) {
+          const dateStr = alumno.fecha_transaction.split("T")[0];
+          year = String(dateStr.split("-")[0]);
+        }
+
         if (!acc[year]) acc[year] = [];
         acc[year].push(alumno);
         return acc;
@@ -519,9 +702,13 @@ const TablaVentasPendientes = ({
       // Agrupar por mes cuando se selecciona un año específico
       const groups = filtered.reduce((acc, alumno) => {
         if (alumno.fecha_transaction) {
-          const fecha = new Date(alumno.fecha_transaction);
-          const mes = fecha.toLocaleDateString("es-MX", { month: "long" });
-          const mesNumero = fecha.getMonth();
+          const dateStr = alumno.fecha_transaction.split("T")[0]; // "YYYY-MM-DD"
+          const [year, month, day] = dateStr.split("-").map(Number);
+
+          const mesIndex = month - 1; // 0-indexed
+          const mes = MONTH_NAMES[mesIndex] || "Desconocido";
+          const mesNumero = mesIndex;
+
           const key = `${mesNumero}-${mes}`;
           if (!acc[key]) acc[key] = [];
           acc[key].push(alumno);
@@ -677,16 +864,31 @@ const TablaVentasPendientes = ({
                             <View style={{ flex: 1.5 }} className="p-3">
                               {alumno.fecha_transaction ? (
                                 (() => {
-                                  const fecha = new Date(
-                                    alumno.fecha_transaction
-                                  );
-                                  const diaMes = fecha.toLocaleDateString(
-                                    "es-MX",
-                                    {
-                                      day: "2-digit",
-                                      month: "short",
-                                    }
-                                  );
+                                  // Parsear string YYYY-MM-DD directamente
+                                  const dateStr =
+                                    alumno.fecha_transaction.split("T")[0];
+                                  const [year, month, day] = dateStr
+                                    .split("-")
+                                    .map(Number);
+
+                                  const monthsShort = [
+                                    "ene",
+                                    "feb",
+                                    "mar",
+                                    "abr",
+                                    "may",
+                                    "jun",
+                                    "jul",
+                                    "ago",
+                                    "sep",
+                                    "oct",
+                                    "nov",
+                                    "dic",
+                                  ];
+
+                                  const monthName =
+                                    monthsShort[month - 1] || "???";
+                                  const diaMes = `${day} ${monthName}`;
 
                                   return (
                                     <Text
@@ -782,15 +984,33 @@ const TablaVentasPendientes = ({
                       <View style={{ flex: 1.5 }} className="p-3">
                         {alumno.fecha_transaction ? (
                           (() => {
-                            const fecha = new Date(alumno.fecha_transaction);
-                            const añoActual = new Date().getFullYear();
-                            const añoTransaccion = fecha.getFullYear();
-                            const esAñoActual = añoTransaccion === añoActual;
+                            // Parsear string YYYY-MM-DD directamente
+                            const dateStr =
+                              alumno.fecha_transaction.split("T")[0];
+                            const [year, month, day] = dateStr
+                              .split("-")
+                              .map(Number);
 
-                            const diaMes = fecha.toLocaleDateString("es-MX", {
-                              day: "2-digit",
-                              month: "short",
-                            });
+                            const monthsShort = [
+                              "ene",
+                              "feb",
+                              "mar",
+                              "abr",
+                              "may",
+                              "jun",
+                              "jul",
+                              "ago",
+                              "sep",
+                              "oct",
+                              "nov",
+                              "dic",
+                            ];
+
+                            const monthName = monthsShort[month - 1] || "???";
+                            const diaMes = `${day} ${monthName}`;
+
+                            const añoActual = new Date().getFullYear();
+                            const esAñoActual = year === añoActual;
 
                             return (
                               <Text
@@ -963,18 +1183,26 @@ const StudentDetailsModal = ({
                         <Text className="font-semibold text-slate-800 text-base">
                           {curso.nombre}
                         </Text>
-                        {curso.fecha_transaction && (
-                          <Text className="text-slate-500 text-xs mt-0.5">
-                            Fecha de inscripción:{" "}
-                            {new Date(
-                              curso.fecha_transaction
-                            ).toLocaleDateString("es-MX", {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </Text>
-                        )}
+                        {curso.fecha_transaction &&
+                          (() => {
+                            // Parsear la fecha localmente para evitar problemas de timezone
+                            const [year, month, day] = curso.fecha_transaction
+                              .split("T")[0]
+                              .split("-")
+                              .map(Number);
+                            const localDate = new Date(year, month - 1, day);
+
+                            return (
+                              <Text className="text-slate-500 text-xs mt-0.5">
+                                Fecha de inscripción:{" "}
+                                {localDate.toLocaleDateString("es-MX", {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </Text>
+                            );
+                          })()}
                         {curso.pendiente > 0 ? (
                           <Text className="text-red-500 text-sm mt-1 font-medium">
                             Pendiente: $
@@ -1251,7 +1479,6 @@ const ScreenEstudiantes = ({ navigation }) => {
 
   const handleViewDetails = async (estudiante) => {
     setSelectedStudent(estudiante);
-    setDetailsModalVisible(true);
     setLoadingDetails(true);
 
     try {
@@ -1310,12 +1537,17 @@ const ScreenEstudiantes = ({ navigation }) => {
         pagadoTotal,
         cursos: Array.from(cursosMap.values()),
       });
+
+      // Solo abrir el modal si todo salió bien
+      setDetailsModalVisible(true);
     } catch (err) {
       console.error("Error fetching student details:", err);
       Alert.alert(
         "Error",
         "No se pudieron cargar los detalles del estudiante."
       );
+      // No abrir el modal si hay error
+      setDetailsModalVisible(false);
     } finally {
       setLoadingDetails(false);
     }
@@ -1607,11 +1839,146 @@ const TablaEstudiantes = ({
       if (showOnlyActive && !r.estatus_alumno) return false;
 
       if (!q) return true;
-      return (
-        String(r.nombre_estudiante).toLowerCase().includes(q) ||
-        String(r.curso_asignado).toLowerCase().includes(q) ||
-        String(r.grupo).toLowerCase().includes(q)
-      );
+
+      // Búsqueda por nombre del estudiante
+      if (
+        String(r.nombre_estudiante || "")
+          .toLowerCase()
+          .includes(q)
+      )
+        return true;
+
+      // Búsqueda por último curso adquirido
+      if (
+        String(r.curso_asignado || "")
+          .toLowerCase()
+          .includes(q)
+      )
+        return true;
+
+      // Búsqueda mejorada por grupo/turno (matutino, vespertino, etc.)
+      const grupoStr = String(r.grupo || "").toLowerCase();
+      if (grupoStr.includes(q)) return true;
+
+      // Búsqueda por estatus con sinónimos
+      const estatus = r.estatus_alumno;
+      const estatusSynonyms = {
+        // Sinónimos para ACTIVO (true)
+        activo: true,
+        activa: true,
+        active: true,
+        inscrito: true,
+        inscrita: true,
+        registrado: true,
+        registrada: true,
+        vigente: true,
+        habilitado: true,
+        habilitada: true,
+        disponible: true,
+        // Sinónimos para INACTIVO (false)
+        inactivo: false,
+        inactiva: false,
+        inactive: false,
+        borrado: false,
+        borrada: false,
+        eliminado: false,
+        eliminada: false,
+        dado_de_baja: false,
+        baja: false,
+        deshabilitado: false,
+        deshabilitada: false,
+        suspendido: false,
+        suspendida: false,
+      };
+
+      // Verificar si la búsqueda coincide con algún sinónimo
+      for (const [synonym, value] of Object.entries(estatusSynonyms)) {
+        if (synonym.includes(q) && estatus === value) {
+          return true;
+        }
+      }
+
+      // Búsqueda por fecha de inscripción en múltiples formatos
+      if (r.fecha_inscripcion) {
+        const dateStr = r.fecha_inscripcion.split("T")[0]; // "YYYY-MM-DD"
+        const [year, month, day] = dateStr.split("-");
+
+        // Nombres de meses completos y abreviados
+        const monthNames = [
+          "enero",
+          "febrero",
+          "marzo",
+          "abril",
+          "mayo",
+          "junio",
+          "julio",
+          "agosto",
+          "septiembre",
+          "octubre",
+          "noviembre",
+          "diciembre",
+        ];
+        const monthNamesShort = [
+          "ene",
+          "feb",
+          "mar",
+          "abr",
+          "may",
+          "jun",
+          "jul",
+          "ago",
+          "sep",
+          "oct",
+          "nov",
+          "dic",
+        ];
+        const monthIndex = parseInt(month, 10) - 1;
+        const monthName = monthNames[monthIndex] || "";
+        const monthNameShort = monthNamesShort[monthIndex] || "";
+
+        // Formato ISO: "2024-12-15"
+        if (dateStr.includes(q)) return true;
+
+        // Formato DD/MM/YYYY: "15/12/2024"
+        const formatDDMMYYYY = `${day}/${month}/${year}`;
+        if (formatDDMMYYYY.includes(q)) return true;
+
+        // Formato DD-MM-YYYY: "15-12-2024"
+        const formatDDMMYYYY2 = `${day}-${month}-${year}`;
+        if (formatDDMMYYYY2.includes(q)) return true;
+
+        // Búsqueda por día, mes o año individual
+        if (day.includes(q) || month.includes(q) || year.includes(q))
+          return true;
+
+        // Búsqueda por nombre del mes
+        if (monthName.includes(q)) return true;
+
+        // Búsqueda por nombre del mes abreviado
+        if (monthNameShort.includes(q)) return true;
+
+        // Formatos naturales: "12 de diciembre", "12 diciembre", "12 dic", "12 de dic"
+        const dayNum = parseInt(day, 10); // Sin ceros a la izquierda
+
+        // Construir las variantes de fecha para comparar
+        const dateVariants = [
+          `${dayNum} de ${monthName}`, // "12 de diciembre"
+          `${dayNum} ${monthName}`, // "12 diciembre"
+          `${dayNum} de ${monthNameShort}`, // "12 de dic"
+          `${dayNum} ${monthNameShort}`, // "12 dic"
+          `${monthName} ${dayNum}`, // "diciembre 12"
+          `${monthNameShort} ${dayNum}`, // "dic 12"
+          `${day} de ${monthName}`, // "12 de diciembre" (con cero)
+          `${day} ${monthName}`, // "12 diciembre" (con cero)
+          `${day} de ${monthNameShort}`, // "12 de dic" (con cero)
+          `${day} ${monthNameShort}`, // "12 dic" (con cero)
+        ];
+
+        // Verificar si alguna variante coincide
+        if (dateVariants.some((variant) => variant.includes(q))) return true;
+      }
+
+      return false;
     });
     const sorted = [...arr].sort((a, b) => {
       let va = a[sortKey] ?? "";
@@ -1970,11 +2337,53 @@ const TablaAsesores = ({
     const q = query.trim().toLowerCase();
     const arr = data.filter((r) => {
       if (!q) return true;
-      return (
-        String(r.nombre_asesor).toLowerCase().includes(q) ||
-        String(r.correo_asesor).toLowerCase().includes(q) ||
-        String(r.telefono_asesor).toLowerCase().includes(q)
-      );
+
+      // Búsqueda por nombre del asesor
+      if (
+        String(r.nombre_asesor || "")
+          .toLowerCase()
+          .includes(q)
+      )
+        return true;
+
+      // Búsqueda por correo electrónico
+      if (
+        String(r.correo_asesor || "")
+          .toLowerCase()
+          .includes(q)
+      )
+        return true;
+
+      // Búsqueda por teléfono (permite buscar con o sin formato)
+      const telefono = String(r.telefono_asesor || "").replace(/\D/g, ""); // Solo números
+      const qNumeros = q.replace(/\D/g, ""); // Solo números de la búsqueda
+      if (qNumeros && telefono.includes(qNumeros)) return true;
+
+      // Búsqueda por especialidad/materia
+      if (
+        String(r.especialidad_asesor || "")
+          .toLowerCase()
+          .includes(q)
+      )
+        return true;
+
+      // Búsqueda por dirección
+      if (
+        String(r.direccion_asesor || "")
+          .toLowerCase()
+          .includes(q)
+      )
+        return true;
+
+      // Búsqueda por cualquier campo adicional que pueda existir
+      if (
+        String(r.notas || "")
+          .toLowerCase()
+          .includes(q)
+      )
+        return true;
+
+      return false;
     });
     const sorted = [...arr].sort((a, b) => {
       let va = a[sortKey] ?? "";
@@ -2125,6 +2534,9 @@ const TablaAsesores = ({
 const ScreenPagos = ({ navigation }) => {
   const [copiado, setCopiado] = useState(false); //Esta es la funcion que necesito modificar
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const { width, height } = useWindowDimensions();
 
   const copiarDatos = async (e) => {
     await Clipboard.setStringAsync(e);
@@ -2593,417 +3005,491 @@ const ScreenPagos = ({ navigation }) => {
       </Tab.Screen>
       <Tab.Screen name="Efectivo">
         {() => (
-          <ScrollView
-            contentContainerStyle={{
-              flexDirection: "column",
-              alignItems: "center",
-              padding: 24,
-            }}
-            className="bg-gradient-to-br from-slate-50 to-slate-100"
-          >
-            {/* Header con gradiente */}
-            <View className="w-full max-w-[900px] mb-6">
-              <View
-                style={{
-                  background:
-                    "linear-gradient(135deg, #6F09EA 0%, #8B5CF6 100%)",
-                  borderRadius: 20,
-                  padding: 24,
-                  shadowColor: "#6F09EA",
-                  shadowOffset: { width: 0, height: 8 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 16,
-                  elevation: 12,
-                }}
-                className="bg-purple-600"
-              >
-                <View className="flex-row items-center gap-3 mb-2">
-                  <View className="bg-white/20 rounded-full p-3">
-                    <Svg
-                      height="28"
-                      viewBox="0 -960 960 960"
-                      width="28"
-                      fill="white"
-                    >
-                      <Path d="M480-480q33 0 56.5-23.5T560-560q0-33-23.5-56.5T480-640q-33 0-56.5 23.5T400-560q0 33 23.5 56.5T480-480Zm0 294q122-112 181-203.5T720-552q0-109-69.5-178.5T480-800q-101 0-170.5 69.5T240-552q0 71 59 162.5T480-186Zm0 106Q319-217 239.5-334.5T160-552q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 100-79.5 217.5T480-80Zm0-480Z" />
-                    </Svg>
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-white text-2xl font-bold">
-                      Punto de Pago MQerKAcademy
-                    </Text>
-                    <Text className="text-white/80 text-sm mt-1">
-                      Visítanos en nuestra ubicación oficial
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            {/* Contenedor principal con dos columnas */}
-            <View className="w-full max-w-[900px] flex-row gap-4 mb-6">
-              {/* Columna izquierda - Información de contacto */}
-              <View className="flex-1 gap-4">
-                {/* Card de Dirección */}
+          <>
+            <ScrollView
+              contentContainerStyle={{
+                flexDirection: "column",
+                alignItems: "center",
+                padding: 24,
+              }}
+              className="bg-gradient-to-br from-slate-50 to-slate-100"
+            >
+              {/* Header con gradiente */}
+              <View className="w-full max-w-[900px] mb-6">
                 <View
                   style={{
-                    backgroundColor: "white",
-                    borderRadius: 16,
-                    padding: 20,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 12,
-                    elevation: 6,
-                    borderLeftWidth: 4,
-                    borderLeftColor: "#6F09EA",
-                  }}
-                >
-                  <View className="flex-row items-center gap-3 mb-3">
-                    <View className="bg-purple-100 rounded-full p-2">
-                      <Svg
-                        height="24"
-                        viewBox="0 -960 960 960"
-                        width="24"
-                        fill="#6F09EA"
-                      >
-                        <Path d="M480-480q33 0 56.5-23.5T560-560q0-33-23.5-56.5T480-640q-33 0-56.5 23.5T400-560q0 33 23.5 56.5T480-480Zm0 294q122-112 181-203.5T720-552q0-109-69.5-178.5T480-800q-101 0-170.5 69.5T240-552q0 71 59 162.5T480-186Zm0 106Q319-217 239.5-334.5T160-552q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 100-79.5 217.5T480-80Zm0-480Z" />
-                      </Svg>
-                    </View>
-                    <Text className="text-slate-800 text-lg font-bold">
-                      Dirección
-                    </Text>
-                  </View>
-                  <Text className="text-slate-600 text-base leading-6">
-                    Calle Juárez entre Av. Independencia y 5 de Mayo
-                  </Text>
-                  <Text className="text-slate-600 text-base leading-6">
-                    En altos de COMPUMAX
-                  </Text>
-                  <Text className="text-slate-600 text-base leading-6">
-                    Tuxtepec, Oaxaca • C.P. 68300
-                  </Text>
-                </View>
-
-                {/* Card de Horario */}
-                <View
-                  style={{
-                    backgroundColor: "white",
-                    borderRadius: 16,
-                    padding: 20,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 12,
-                    elevation: 6,
-                    borderLeftWidth: 4,
-                    borderLeftColor: "#10b981",
-                  }}
-                >
-                  <View className="flex-row items-center gap-3 mb-3">
-                    <View className="bg-green-100 rounded-full p-2">
-                      <Svg
-                        height="24"
-                        viewBox="0 -960 960 960"
-                        width="24"
-                        fill="#10b981"
-                      >
-                        <Path d="m612-292 56-56-148-148v-184h-80v216l172 172ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-400Zm0 320q133 0 226.5-93.5T800-480q0-133-93.5-226.5T480-800q-133 0-226.5 93.5T160-480q0 133 93.5 226.5T480-160Z" />
-                      </Svg>
-                    </View>
-                    <Text className="text-slate-800 text-lg font-bold">
-                      Horario
-                    </Text>
-                  </View>
-                  <Text className="text-slate-600 text-base">
-                    Lunes a Viernes
-                  </Text>
-                  <Text className="text-green-600 text-lg font-semibold">
-                    9:00 AM - 5:00 PM
-                  </Text>
-                </View>
-
-                {/* Card de Contacto */}
-                <View
-                  style={{
-                    backgroundColor: "white",
-                    borderRadius: 16,
-                    padding: 20,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 12,
-                    elevation: 6,
-                    borderLeftWidth: 4,
-                    borderLeftColor: "#3b82f6",
-                  }}
-                >
-                  <View className="flex-row items-center gap-3 mb-3">
-                    <View className="bg-blue-100 rounded-full p-2">
-                      <Svg
-                        height="24"
-                        viewBox="0 -960 960 960"
-                        width="24"
-                        fill="#3b82f6"
-                      >
-                        <Path d="M798-120q-125 0-247-54.5T329-329Q229-429 174.5-551T120-798q0-18 12-30t30-12h162q14 0 25 9.5t13 22.5l26 140q2 16-1 27t-11 19l-97 98q20 37 47.5 71.5T387-386q31 31 65 57.5t72 48.5l94-94q9-9 23.5-13.5T670-390l138 28q14 4 23 14.5t9 23.5v162q0 18-12 30t-30 12ZM241-600l66-66-17-94h-89q5 41 14 81t26 79Zm358 358q39 17 79.5 27t81.5 13v-88l-94-19-67 67ZM241-600Zm358 358Z" />
-                      </Svg>
-                    </View>
-                    <Text className="text-slate-800 text-lg font-bold">
-                      Contacto
-                    </Text>
-                  </View>
-                  <Text className="text-blue-600 text-xl font-semibold">
-                    287 151 5760
-                  </Text>
-                </View>
-              </View>
-
-              {/* Columna derecha - Documentación */}
-              <View className="flex-1">
-                <View
-                  style={{
-                    backgroundColor: "white",
-                    borderRadius: 16,
+                    background:
+                      "linear-gradient(135deg, #6F09EA 0%, #8B5CF6 100%)",
+                    borderRadius: 20,
                     padding: 24,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 12,
-                    elevation: 6,
+                    shadowColor: "#6F09EA",
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 16,
+                    elevation: 12,
                   }}
+                  className="bg-purple-600"
                 >
-                  <View className="flex-row items-center gap-3 mb-6">
-                    <View
-                      style={{
-                        background:
-                          "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                        borderRadius: 12,
-                        padding: 12,
-                      }}
-                      className="bg-green-500"
-                    >
+                  <View className="flex-row items-center gap-3 mb-2">
+                    <View className="bg-white/20 rounded-full p-3">
                       <Svg
                         height="28"
                         viewBox="0 -960 960 960"
                         width="28"
                         fill="white"
                       >
-                        <Path d="M319-250h322v-60H319v60Zm0-170h322v-60H319v60ZM220-80q-24 0-42-18t-18-42v-680q0-24 18-42t42-18h361l219 219v521q0 24-18 42t-42 18H220Zm331-554v-186H220v680h520v-494H551ZM220-820v186-186 680-680Z" />
-                      </Svg>
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-slate-800 text-xl font-bold">
-                        Documentación Requerida
-                      </Text>
-                      <Text className="text-slate-500 text-sm">
-                        Para procesar tu pago
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View className="gap-4">
-                    {/* Item 1 */}
-                    <View className="flex-row items-start gap-3 bg-slate-50 p-4 rounded-xl">
-                      <View className="bg-green-500 rounded-full p-1 mt-0.5">
-                        <Svg
-                          height="16"
-                          viewBox="0 -960 960 960"
-                          width="16"
-                          fill="white"
-                        >
-                          <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
-                        </Svg>
-                      </View>
-                      <Text className="text-slate-700 flex-1 text-base leading-6">
-                        Documento de identificación oficial (INE, pasaporte)
-                      </Text>
-                    </View>
-
-                    {/* Item 2 */}
-                    <View className="flex-row items-start gap-3 bg-slate-50 p-4 rounded-xl">
-                      <View className="bg-green-500 rounded-full p-1 mt-0.5">
-                        <Svg
-                          height="16"
-                          viewBox="0 -960 960 960"
-                          width="16"
-                          fill="white"
-                        >
-                          <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
-                        </Svg>
-                      </View>
-                      <Text className="text-slate-700 flex-1 text-base leading-6">
-                        Comprobante de domicilio reciente
-                      </Text>
-                    </View>
-
-                    {/* Item 3 */}
-                    <View className="flex-row items-start gap-3 bg-slate-50 p-4 rounded-xl">
-                      <View className="bg-green-500 rounded-full p-1 mt-0.5">
-                        <Svg
-                          height="16"
-                          viewBox="0 -960 960 960"
-                          width="16"
-                          fill="white"
-                        >
-                          <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
-                        </Svg>
-                      </View>
-                      <Text className="text-slate-700 flex-1 text-base leading-6">
-                        Consultar sobre descuentos y promociones disponibles
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Banner informativo */}
-                  <View
-                    style={{
-                      backgroundColor: "#eff6ff",
-                      borderRadius: 12,
-                      padding: 16,
-                      marginTop: 20,
-                      borderWidth: 1,
-                      borderColor: "#bfdbfe",
-                    }}
-                  >
-                    <View className="flex-row items-center gap-2">
-                      <Svg
-                        height="20"
-                        viewBox="0 -960 960 960"
-                        width="20"
-                        fill="#3b82f6"
-                      >
-                        <Path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z" />
-                      </Svg>
-                      <Text className="text-blue-700 text-sm font-medium flex-1">
-                        Nuestro personal te asistirá en todo el proceso
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            {/* Sección de imágenes de ubicación */}
-            <View className="w-full max-w-[900px]">
-              <View className="mb-4">
-                <View className="flex-row items-center gap-2 mb-2">
-                  <Svg
-                    height="24"
-                    viewBox="0 -960 960 960"
-                    width="24"
-                    fill="#6F09EA"
-                  >
-                    <Path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h360v80H200v560h560v-360h80v360q0 33-23.5 56.5T760-120H200Zm120-160 56-56-64-64h168v-80H312l64-64-56-56-160 160 160 160Zm344-320v-120H544v-80h120v-120h80v120h120v80H744v120h-80Z" />
-                  </Svg>
-                  <Text className="text-slate-800 text-xl font-bold">
-                    Cómo Llegar
-                  </Text>
-                </View>
-                <Text className="text-slate-600 text-sm mb-4">
-                  Encuentra nuestra ubicación fácilmente
-                </Text>
-              </View>
-
-              <View className="flex-row gap-4">
-                {/* Imagen de Localización */}
-                <View
-                  style={{
-                    flex: 1,
-                    backgroundColor: "white",
-                    borderRadius: 16,
-                    padding: 12,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 6 },
-                    shadowOpacity: 0.15,
-                    shadowRadius: 12,
-                    elevation: 8,
-                  }}
-                >
-                  <View className="flex-row items-center gap-2 mb-3">
-                    <View className="bg-blue-100 rounded-full p-2">
-                      <Svg
-                        height="20"
-                        viewBox="0 -960 960 960"
-                        width="20"
-                        fill="#3b82f6"
-                      >
                         <Path d="M480-480q33 0 56.5-23.5T560-560q0-33-23.5-56.5T480-640q-33 0-56.5 23.5T400-560q0 33 23.5 56.5T480-480Zm0 294q122-112 181-203.5T720-552q0-109-69.5-178.5T480-800q-101 0-170.5 69.5T240-552q0 71 59 162.5T480-186Zm0 106Q319-217 239.5-334.5T160-552q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 100-79.5 217.5T480-80Zm0-480Z" />
                       </Svg>
                     </View>
-                    <Text className="text-slate-800 font-bold">
-                      Mapa de Ubicación
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      borderRadius: 12,
-                      overflow: "hidden",
-                      borderWidth: 2,
-                      borderColor: "#e2e8f0",
-                    }}
-                  >
-                    <Image
-                      source={require("./assets/Ubicacion/Localizacion-MQerKAcademy.jpg")}
-                      style={{
-                        width: "100%",
-                        height: 300,
-                      }}
-                      resizeMode="cover"
-                    />
-                  </View>
-                </View>
-
-                {/* Imagen de Foto Referencia */}
-                <View
-                  style={{
-                    flex: 1,
-                    backgroundColor: "white",
-                    borderRadius: 16,
-                    padding: 12,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 6 },
-                    shadowOpacity: 0.15,
-                    shadowRadius: 12,
-                    elevation: 8,
-                  }}
-                >
-                  <View className="flex-row items-center gap-2 mb-3">
-                    <View className="bg-purple-100 rounded-full p-2">
-                      <Svg
-                        height="20"
-                        viewBox="0 -960 960 960"
-                        width="20"
-                        fill="#6F09EA"
-                      >
-                        <Path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Z" />
-                      </Svg>
+                    <View className="flex-1">
+                      <Text className="text-white text-2xl font-bold">
+                        Punto de Pago MQerKAcademy
+                      </Text>
+                      <Text className="text-white/80 text-sm mt-1">
+                        Visítanos en nuestra ubicación oficial
+                      </Text>
                     </View>
-                    <Text className="text-slate-800 font-bold">
-                      Foto de Referencia
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      borderRadius: 12,
-                      overflow: "hidden",
-                      borderWidth: 2,
-                      borderColor: "#e2e8f0",
-                    }}
-                  >
-                    <Image
-                      source={require("./assets/Ubicacion/Foto-Referencia_MQerKAcademy.jpeg")}
-                      style={{
-                        width: "100%",
-                        height: 300,
-                      }}
-                      resizeMode="cover"
-                    />
                   </View>
                 </View>
               </View>
-            </View>
-          </ScrollView>
+
+              {/* Contenedor principal con dos columnas */}
+              <View className="w-full max-w-[900px] flex-row gap-4 mb-6">
+                {/* Columna izquierda - Información de contacto */}
+                <View className="flex-1 gap-4">
+                  {/* Card de Dirección */}
+                  <View
+                    style={{
+                      backgroundColor: "white",
+                      borderRadius: 16,
+                      padding: 20,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 12,
+                      elevation: 6,
+                      borderLeftWidth: 4,
+                      borderLeftColor: "#6F09EA",
+                    }}
+                  >
+                    <View className="flex-row items-center gap-3 mb-3">
+                      <View className="bg-purple-100 rounded-full p-2">
+                        <Svg
+                          height="24"
+                          viewBox="0 -960 960 960"
+                          width="24"
+                          fill="#6F09EA"
+                        >
+                          <Path d="M480-480q33 0 56.5-23.5T560-560q0-33-23.5-56.5T480-640q-33 0-56.5 23.5T400-560q0 33 23.5 56.5T480-480Zm0 294q122-112 181-203.5T720-552q0-109-69.5-178.5T480-800q-101 0-170.5 69.5T240-552q0 71 59 162.5T480-186Zm0 106Q319-217 239.5-334.5T160-552q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 100-79.5 217.5T480-80Zm0-480Z" />
+                        </Svg>
+                      </View>
+                      <Text className="text-slate-800 text-lg font-bold">
+                        Dirección
+                      </Text>
+                    </View>
+                    <Text className="text-slate-600 text-base leading-6">
+                      Calle Juárez entre Av. Independencia y 5 de Mayo
+                    </Text>
+                    <Text className="text-slate-600 text-base leading-6">
+                      En altos de COMPUMAX
+                    </Text>
+                    <Text className="text-slate-600 text-base leading-6">
+                      Tuxtepec, Oaxaca • C.P. 68300
+                    </Text>
+                  </View>
+
+                  {/* Card de Horario */}
+                  <View
+                    style={{
+                      backgroundColor: "white",
+                      borderRadius: 16,
+                      padding: 20,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 12,
+                      elevation: 6,
+                      borderLeftWidth: 4,
+                      borderLeftColor: "#10b981",
+                    }}
+                  >
+                    <View className="flex-row items-center gap-3 mb-3">
+                      <View className="bg-green-100 rounded-full p-2">
+                        <Svg
+                          height="24"
+                          viewBox="0 -960 960 960"
+                          width="24"
+                          fill="#10b981"
+                        >
+                          <Path d="m612-292 56-56-148-148v-184h-80v216l172 172ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-400Zm0 320q133 0 226.5-93.5T800-480q0-133-93.5-226.5T480-800q-133 0-226.5 93.5T160-480q0 133 93.5 226.5T480-160Z" />
+                        </Svg>
+                      </View>
+                      <Text className="text-slate-800 text-lg font-bold">
+                        Horario
+                      </Text>
+                    </View>
+                    <Text className="text-slate-600 text-base">
+                      Lunes a Sábado
+                    </Text>
+                    <Text className="text-green-600 text-lg font-semibold">
+                      9:00 AM - 7:00 PM
+                    </Text>
+                  </View>
+
+                  {/* Card de Contacto */}
+                  <View
+                    style={{
+                      backgroundColor: "white",
+                      borderRadius: 16,
+                      padding: 20,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 12,
+                      elevation: 6,
+                      borderLeftWidth: 4,
+                      borderLeftColor: "#3b82f6",
+                    }}
+                  >
+                    <View className="flex-row items-center gap-3 mb-3">
+                      <View className="bg-blue-100 rounded-full p-2">
+                        <Svg
+                          height="24"
+                          viewBox="0 -960 960 960"
+                          width="24"
+                          fill="#3b82f6"
+                        >
+                          <Path d="M798-120q-125 0-247-54.5T329-329Q229-429 174.5-551T120-798q0-18 12-30t30-12h162q14 0 25 9.5t13 22.5l26 140q2 16-1 27t-11 19l-97 98q20 37 47.5 71.5T387-386q31 31 65 57.5t72 48.5l94-94q9-9 23.5-13.5T670-390l138 28q14 4 23 14.5t9 23.5v162q0 18-12 30t-30 12ZM241-600l66-66-17-94h-89q5 41 14 81t26 79Zm358 358q39 17 79.5 27t81.5 13v-88l-94-19-67 67ZM241-600Zm358 358Z" />
+                        </Svg>
+                      </View>
+                      <Text className="text-slate-800 text-lg font-bold">
+                        Contacto
+                      </Text>
+                    </View>
+                    <Text className="text-blue-600 text-xl font-semibold">
+                      287 151 5760
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Columna derecha - Documentación */}
+                <View className="flex-1">
+                  <View
+                    style={{
+                      backgroundColor: "white",
+                      borderRadius: 16,
+                      padding: 24,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 12,
+                      elevation: 6,
+                    }}
+                  >
+                    <View className="flex-row items-center gap-3 mb-6">
+                      <View
+                        style={{
+                          background:
+                            "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                          borderRadius: 12,
+                          padding: 12,
+                        }}
+                        className="bg-green-500"
+                      >
+                        <Svg
+                          height="28"
+                          viewBox="0 -960 960 960"
+                          width="28"
+                          fill="white"
+                        >
+                          <Path d="M319-250h322v-60H319v60Zm0-170h322v-60H319v60ZM220-80q-24 0-42-18t-18-42v-680q0-24 18-42t42-18h361l219 219v521q0 24-18 42t-42 18H220Zm331-554v-186H220v680h520v-494H551ZM220-820v186-186 680-680Z" />
+                        </Svg>
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-slate-800 text-xl font-bold">
+                          Documentación Requerida
+                        </Text>
+                        <Text className="text-slate-500 text-sm">
+                          Para procesar tu pago
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View className="gap-4">
+                      {/* Item 1 */}
+                      <View className="flex-row items-start gap-3 bg-slate-50 p-4 rounded-xl">
+                        <View className="bg-green-500 rounded-full p-1 mt-0.5">
+                          <Svg
+                            height="16"
+                            viewBox="0 -960 960 960"
+                            width="16"
+                            fill="white"
+                          >
+                            <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+                          </Svg>
+                        </View>
+                        <Text className="text-slate-700 flex-1 text-base leading-6">
+                          Documento de identificación oficial (INE, pasaporte)
+                        </Text>
+                      </View>
+
+                      {/* Item 2 */}
+                      <View className="flex-row items-start gap-3 bg-slate-50 p-4 rounded-xl">
+                        <View className="bg-green-500 rounded-full p-1 mt-0.5">
+                          <Svg
+                            height="16"
+                            viewBox="0 -960 960 960"
+                            width="16"
+                            fill="white"
+                          >
+                            <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+                          </Svg>
+                        </View>
+                        <Text className="text-slate-700 flex-1 text-base leading-6">
+                          Comprobante de domicilio reciente
+                        </Text>
+                      </View>
+
+                      {/* Item 3 */}
+                      <View className="flex-row items-start gap-3 bg-slate-50 p-4 rounded-xl">
+                        <View className="bg-green-500 rounded-full p-1 mt-0.5">
+                          <Svg
+                            height="16"
+                            viewBox="0 -960 960 960"
+                            width="16"
+                            fill="white"
+                          >
+                            <Path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+                          </Svg>
+                        </View>
+                        <Text className="text-slate-700 flex-1 text-base leading-6">
+                          Consultar sobre descuentos y promociones disponibles
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Banner informativo */}
+                    <View
+                      style={{
+                        backgroundColor: "#eff6ff",
+                        borderRadius: 12,
+                        padding: 16,
+                        marginTop: 20,
+                        borderWidth: 1,
+                        borderColor: "#bfdbfe",
+                      }}
+                    >
+                      <View className="flex-row items-center gap-2">
+                        <Svg
+                          height="20"
+                          viewBox="0 -960 960 960"
+                          width="20"
+                          fill="#3b82f6"
+                        >
+                          <Path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z" />
+                        </Svg>
+                        <Text className="text-blue-700 text-sm font-medium flex-1">
+                          Nuestro personal te asistirá en todo el proceso
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Sección de imágenes de ubicación */}
+              <View className="w-full max-w-[900px]">
+                <View className="mb-4">
+                  <View className="flex-row items-center gap-2 mb-2">
+                    <Svg
+                      height="24"
+                      viewBox="0 -960 960 960"
+                      width="24"
+                      fill="#6F09EA"
+                    >
+                      <Path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h360v80H200v560h560v-360h80v360q0 33-23.5 56.5T760-120H200Zm120-160 56-56-64-64h168v-80H312l64-64-56-56-160 160 160 160Zm344-320v-120H544v-80h120v-120h80v120h120v80H744v120h-80Z" />
+                    </Svg>
+                    <Text className="text-slate-800 text-xl font-bold">
+                      Cómo Llegar
+                    </Text>
+                  </View>
+                  <Text className="text-slate-600 text-sm mb-4">
+                    Encuentra nuestra ubicación fácilmente
+                  </Text>
+                </View>
+
+                <View className="flex-row gap-4">
+                  {/* Imagen de Localización */}
+                  <View
+                    style={{
+                      flex: 1,
+                      backgroundColor: "white",
+                      borderRadius: 16,
+                      padding: 12,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 6 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 12,
+                      elevation: 8,
+                    }}
+                  >
+                    <View className="flex-row items-center gap-2 mb-3">
+                      <View className="bg-blue-100 rounded-full p-2">
+                        <Svg
+                          height="20"
+                          viewBox="0 -960 960 960"
+                          width="20"
+                          fill="#3b82f6"
+                        >
+                          <Path d="M480-480q33 0 56.5-23.5T560-560q0-33-23.5-56.5T480-640q-33 0-56.5 23.5T400-560q0 33 23.5 56.5T480-480Zm0 294q122-112 181-203.5T720-552q0-109-69.5-178.5T480-800q-101 0-170.5 69.5T240-552q0 71 59 162.5T480-186Zm0 106Q319-217 239.5-334.5T160-552q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 100-79.5 217.5T480-80Zm0-480Z" />
+                        </Svg>
+                      </View>
+                      <Text className="text-slate-800 font-bold">
+                        Mapa de Ubicación
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={() => {
+                        setSelectedImage(
+                          require("./assets/Ubicacion/Localizacion-MQerKAcademy.jpg")
+                        );
+                        setImageModalVisible(true);
+                      }}
+                      style={({ pressed }) => ({
+                        borderRadius: 12,
+                        overflow: "hidden",
+                        borderWidth: 2,
+                        borderColor: "#e2e8f0",
+                        opacity: pressed ? 0.8 : 1,
+                      })}
+                    >
+                      <Image
+                        source={require("./assets/Ubicacion/Localizacion-MQerKAcademy.jpg")}
+                        style={{
+                          width: "100%",
+                          height: 300,
+                        }}
+                        resizeMode="cover"
+                      />
+                    </Pressable>
+                  </View>
+
+                  {/* Imagen de Foto Referencia */}
+                  <View
+                    style={{
+                      flex: 1,
+                      backgroundColor: "white",
+                      borderRadius: 16,
+                      padding: 12,
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 6 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 12,
+                      elevation: 8,
+                    }}
+                  >
+                    <View className="flex-row items-center gap-2 mb-3">
+                      <View className="bg-purple-100 rounded-full p-2">
+                        <Svg
+                          height="20"
+                          viewBox="0 -960 960 960"
+                          width="20"
+                          fill="#6F09EA"
+                        >
+                          <Path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Z" />
+                        </Svg>
+                      </View>
+                      <Text className="text-slate-800 font-bold">
+                        Foto de Referencia
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={() => {
+                        setSelectedImage(
+                          require("./assets/Ubicacion/Foto-Referencia_MQerKAcademy.jpeg")
+                        );
+                        setImageModalVisible(true);
+                      }}
+                      style={({ pressed }) => ({
+                        borderRadius: 12,
+                        overflow: "hidden",
+                        borderWidth: 2,
+                        borderColor: "#e2e8f0",
+                        opacity: pressed ? 0.8 : 1,
+                      })}
+                    >
+                      <Image
+                        source={require("./assets/Ubicacion/Foto-Referencia_MQerKAcademy.jpeg")}
+                        style={{
+                          width: "100%",
+                          height: 300,
+                        }}
+                        resizeMode="cover"
+                      />
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+
+            {/* Modal de zoom para imágenes - Compatible con todas las plataformas */}
+            <Modal
+              visible={imageModalVisible}
+              transparent={true}
+              onRequestClose={() => setImageModalVisible(false)}
+              animationType="fade"
+            >
+              <Pressable
+                style={{
+                  flex: 1,
+                  backgroundColor: "rgba(0, 0, 0, 0.9)",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+                onPress={() => setImageModalVisible(false)}
+              >
+                <Pressable
+                  style={{
+                    width: "90%",
+                    height: "90%",
+                    position: "relative",
+                  }}
+                  onPress={(e) => e.stopPropagation()}
+                >
+                  {selectedImage && (
+                    <Image
+                      source={selectedImage}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                      }}
+                      resizeMode="contain"
+                    />
+                  )}
+                  <TouchableOpacity
+                    onPress={() => setImageModalVisible(false)}
+                    style={{
+                      position: "absolute",
+                      top: 20,
+                      right: 20,
+                      backgroundColor: "rgba(255, 255, 255, 0.2)",
+                      borderRadius: 20,
+                      padding: 10,
+                    }}
+                  >
+                    <Svg
+                      height="24"
+                      viewBox="0 -960 960 960"
+                      width="24"
+                      fill="white"
+                    >
+                      <Path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
+                    </Svg>
+                  </TouchableOpacity>
+                </Pressable>
+              </Pressable>
+            </Modal>
+          </>
         )}
       </Tab.Screen>
       <Tab.Screen name="Tarjeta de crédito / débito">
@@ -3952,6 +4438,22 @@ const TablaEgresos = ({ onEdit, refreshTrigger, dateFilter }) => {
 
   // Filtrar y agrupar datos
   const filteredAndGroupedData = useMemo(() => {
+    // Nombres de meses fijos para evitar problemas de timezone al generar nombres
+    const MONTH_NAMES = [
+      "Enero",
+      "Febrero",
+      "Marzo",
+      "Abril",
+      "Mayo",
+      "Junio",
+      "Julio",
+      "Agosto",
+      "Septiembre",
+      "Octubre",
+      "Noviembre",
+      "Diciembre",
+    ];
+
     // 1. Filtrar pendientes si es necesario
     let filtered = data;
     if (!showPending) {
@@ -3961,21 +4463,23 @@ const TablaEgresos = ({ onEdit, refreshTrigger, dateFilter }) => {
     // 2. Filtrar por fecha según dateFilter
     if (dateFilter) {
       const now = new Date();
-      const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth();
 
       filtered = filtered.filter((item) => {
         if (!item.fecha_egreso) return false;
+        // Parsear fecha explícitamente y usar mediodía para evitar cualquier shift a día anterior
         const [year, month, day] = item.fecha_egreso.split("-").map(Number);
-        const itemDate = new Date(year, month - 1, day);
+        const itemDate = new Date(year, month - 1, day, 12, 0, 0);
 
         if (dateFilter === "last_month") {
           const oneMonthAgo = new Date(now);
           oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+          oneMonthAgo.setHours(0, 0, 0, 0);
+          // Mostrar todo lo que sea posterior a hace 1 mes (incluye futuro)
           return itemDate >= oneMonthAgo;
         } else if (dateFilter === "3_months_ago") {
           const threeMonthsAgo = new Date(now);
           threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+          threeMonthsAgo.setHours(0, 0, 0, 0);
           return itemDate >= threeMonthsAgo;
         } else if (dateFilter.startsWith("year-")) {
           const filterYear = parseInt(dateFilter.split("-")[1]);
@@ -4017,65 +4521,51 @@ const TablaEgresos = ({ onEdit, refreshTrigger, dateFilter }) => {
       const pendientes = filtered.filter((item) => item.estado === "pendiente");
       const pagados = filtered.filter((item) => item.estado === "pagado");
 
-      // Determinar si necesitamos agregar el año a los pendientes
-      const needYearInPending = () => {
-        if (pendientes.length === 0) return false;
+      // Helper para agrupar
+      const agruparItems = (items, isPendiente) => {
+        const groups = {};
+        items.forEach((item) => {
+          if (!item.fecha_egreso) return;
+          const [year, month] = item.fecha_egreso.split("-");
+          const monthIndex = parseInt(month, 10) - 1;
+          const monthName = MONTH_NAMES[monthIndex] || "Desconocido";
 
-        const currentYear = new Date().getFullYear();
+          const suffix = isPendiente ? "-pendiente" : "";
+          // Clave: Año-MesIndex-NombreMes-Sufijo
+          const key = `${year}-${monthIndex}-${monthName}${suffix}`;
 
-        // Obtener el año de los pendientes
-        const pendienteYear = parseInt(
-          pendientes[0].fecha_egreso.split("-")[0]
-        );
-
-        // Solo agregar año si los pendientes son de un año diferente al actual
-        return pendienteYear !== currentYear;
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(item);
+        });
+        return groups;
       };
 
-      const addYearToPending = needYearInPending();
-
-      // Agrupar pendientes por mes
-      const pendientesGroups = {};
-      pendientes.forEach((item) => {
-        if (!item.fecha_egreso) return;
-        const [year, month] = item.fecha_egreso.split("-");
-        const monthNum = parseInt(month) - 1;
-        const monthName = new Date(year, monthNum).toLocaleDateString("es-MX", {
-          month: "long",
-        });
-        const displayName = addYearToPending
-          ? `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${year}`
-          : monthName.charAt(0).toUpperCase() + monthName.slice(1);
-        const key = `${monthNum}-${displayName}-pendiente`;
-        if (!pendientesGroups[key]) pendientesGroups[key] = [];
-        pendientesGroups[key].push(item);
-      });
-
-      // Agrupar pagados por mes
-      const pagadosGroups = {};
-      pagados.forEach((item) => {
-        if (!item.fecha_egreso) return;
-        const [year, month] = item.fecha_egreso.split("-");
-        const monthNum = parseInt(month) - 1;
-        const monthName = new Date(year, monthNum).toLocaleDateString("es-MX", {
-          month: "long",
-        });
-        const key = `${monthNum}-${monthName}`;
-        if (!pagadosGroups[key]) pagadosGroups[key] = [];
-        pagadosGroups[key].push(item);
-      });
+      const pendientesGroups = agruparItems(pendientes, true);
+      const pagadosGroups = agruparItems(pagados, false);
 
       // Ordenar grupos
       const sortedPendientes = Object.keys(pendientesGroups).sort((a, b) => {
-        const numA = parseInt(a.split("-")[0]);
-        const numB = parseInt(b.split("-")[0]);
-        return numA - numB; // Ascendente para pendientes (próximos primero)
+        const partsA = a.split("-");
+        const partsB = b.split("-");
+        const yearA = parseInt(partsA[0]);
+        const monthA = parseInt(partsA[1]);
+        const yearB = parseInt(partsB[0]);
+        const monthB = parseInt(partsB[1]);
+
+        if (yearA !== yearB) return yearA - yearB; // Ascendente para pendientes
+        return monthA - monthB; // Ascendente para pendientes
       });
 
       const sortedPagados = Object.keys(pagadosGroups).sort((a, b) => {
-        const numA = parseInt(a.split("-")[0]);
-        const numB = parseInt(b.split("-")[0]);
-        return numB - numA; // Descendente para pagados (más recientes primero)
+        const partsA = a.split("-");
+        const partsB = b.split("-");
+        const yearA = parseInt(partsA[0]);
+        const monthA = parseInt(partsA[1]);
+        const yearB = parseInt(partsB[0]);
+        const monthB = parseInt(partsB[1]);
+
+        if (yearA !== yearB) return yearB - yearA; // Descendente para pagados
+        return monthB - monthA; // Descendente para pagados
       });
 
       // Combinar: pendientes arriba, pagados abajo
@@ -4308,11 +4798,61 @@ const TablaEgresos = ({ onEdit, refreshTrigger, dateFilter }) => {
           ) : filteredAndGroupedData.keys &&
             filteredAndGroupedData.keys.length > 0 ? (
             filteredAndGroupedData.keys.map((key) => {
-              const displayLabel =
-                filteredAndGroupedData.type === "month"
-                  ? key.split("-")[1].charAt(0).toUpperCase() +
-                    key.split("-")[1].slice(1)
-                  : key;
+              let displayLabel = key;
+              if (filteredAndGroupedData.type === "month") {
+                const parts = key.split("-");
+                // parts: [year, monthIndex, monthName, suffix?]
+                // if suffix exists, parts length is >= 4, or suffix is appended to name?
+                // key structure: `${year}-${monthIndex}-${monthName}${suffix}`
+                // wait, if suffix is "-pendiente", split("-") will split it.
+                // let's parse carefully.
+
+                // Re-parsing logic:
+                // We know the format is: year-monthIndex-monthName...
+                if (parts.length >= 3) {
+                  const year = parts[0];
+                  // monthIndex is parts[1]
+                  // monthName might contain dashes? No, MONTH_NAMES are clean.
+                  // suffix is "-pendiente" -> parts[3] might be "pendiente"
+
+                  const isPendiente = key.includes("-pendiente");
+                  let name = parts[2];
+                  // If name got split because it contained dash (unlikely), handle it?
+                  // Actually, just taking parts[2] is roughly safe for now as month names are standard.
+                  // But wait, "pendiente" starts with "-".
+                  // key: 2024-11-Diciembre-pendiente
+                  // parts: ["2024", "11", "Diciembre", "pendiente"]
+
+                  if (isPendiente) {
+                    // remove "pendiente" from name check if needed, but parts[2] is just "Diciembre"
+                  }
+
+                  const currentYear = new Date().getFullYear().toString();
+                  displayLabel = name.charAt(0).toUpperCase() + name.slice(1);
+
+                  if (year !== currentYear) {
+                    displayLabel += ` ${year}`;
+                  }
+
+                  if (isPendiente) {
+                    displayLabel += " (Pendiente)";
+                  }
+                } else {
+                  // Fallback
+                  const partsLegacy = key.split("-");
+                  // could be old format or simple format
+                  // Try to get name
+                  if (partsLegacy.length >= 2) {
+                    // 11-Diciembre-pendiente or 11-Diciembre
+                    const isPendiente = key.includes("-pendiente");
+                    let name = partsLegacy[1].replace("-pendiente", "");
+                    displayLabel = name;
+                    if (isPendiente) {
+                      displayLabel += " (Pendiente)";
+                    }
+                  }
+                }
+              }
               const icon =
                 filteredAndGroupedData.type === "month"
                   ? "M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Zm0 200q17 0 28.5-11.5T520-320v-160q0-17-11.5-28.5T480-520q-17 0-28.5 11.5T440-480v160q0 17 11.5 28.5T480-280Zm0-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Z"
@@ -4372,10 +4912,22 @@ const TablaEgresos = ({ onEdit, refreshTrigger, dateFilter }) => {
                         {(() => {
                           const [year, month, day] =
                             egreso.fecha_egreso.split("-");
-                          const date = new Date(year, parseInt(month) - 1, day);
-                          const monthName = date.toLocaleDateString("es-MX", {
-                            month: "short",
-                          });
+                          const monthsShort = [
+                            "ene",
+                            "feb",
+                            "mar",
+                            "abr",
+                            "may",
+                            "jun",
+                            "jul",
+                            "ago",
+                            "sep",
+                            "oct",
+                            "nov",
+                            "dic",
+                          ];
+                          const monthName =
+                            monthsShort[parseInt(month, 10) - 1] || "???";
                           return `${day} ${monthName}`;
                         })()}
                       </Text>
@@ -4577,21 +5129,23 @@ const TablaIngresos = ({ onEdit, refreshTrigger, dateFilter }) => {
 
     if (dateFilter) {
       const now = new Date();
-      const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth();
 
       filtered = data.filter((item) => {
         if (!item.fecha_ingreso) return false;
         const [year, month, day] = item.fecha_ingreso.split("-").map(Number);
-        const itemDate = new Date(year, month - 1, day);
+        // Usar mediodía para evitar problemas de timestamp
+        const itemDate = new Date(year, month - 1, day, 12, 0, 0);
 
         if (dateFilter === "last_month") {
           const oneMonthAgo = new Date(now);
           oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+          oneMonthAgo.setHours(0, 0, 0, 0);
+          // Mostrar todo lo que sea posterior a hace 1 mes (incluye futuro)
           return itemDate >= oneMonthAgo;
         } else if (dateFilter === "3_months_ago") {
           const threeMonthsAgo = new Date(now);
           threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+          threeMonthsAgo.setHours(0, 0, 0, 0);
           return itemDate >= threeMonthsAgo;
         } else if (dateFilter.startsWith("year-")) {
           const filterYear = parseInt(dateFilter.split("-")[1]);
@@ -4622,24 +5176,46 @@ const TablaIngresos = ({ onEdit, refreshTrigger, dateFilter }) => {
       dateFilter?.startsWith("year-");
 
     if (shouldGroupByMonth) {
-      // Agrupar por mes
+      const MONTH_NAMES = [
+        "Enero",
+        "Febrero",
+        "Marzo",
+        "Abril",
+        "Mayo",
+        "Junio",
+        "Julio",
+        "Agosto",
+        "Septiembre",
+        "Octubre",
+        "Noviembre",
+        "Diciembre",
+      ];
+      // Agrupar por mes INCLUYENDO EL AÑO
       const groups = {};
       filtered.forEach((item) => {
         if (!item.fecha_ingreso) return;
         const [year, month] = item.fecha_ingreso.split("-");
-        const monthNum = parseInt(month) - 1;
-        const monthName = new Date(year, monthNum).toLocaleDateString("es-MX", {
-          month: "long",
-        });
-        const key = `${monthNum}-${monthName}`;
+        const monthNum = parseInt(month, 10) - 1;
+        const monthName = MONTH_NAMES[monthNum] || "Desconocido";
+        // Incluir año en la clave para evitar mezclar meses de diferentes años
+        const key = `${year}-${monthNum}-${monthName}`;
         if (!groups[key]) groups[key] = [];
         groups[key].push(item);
       });
 
+      // Ordenar por año y mes (descendente: más reciente primero)
       const sortedMonths = Object.keys(groups).sort((a, b) => {
-        const numA = parseInt(a.split("-")[0]);
-        const numB = parseInt(b.split("-")[0]);
-        return numB - numA;
+        const partsA = a.split("-");
+        const partsB = b.split("-");
+        const yearA = parseInt(partsA[0]);
+        const monthA = parseInt(partsA[1]);
+        const yearB = parseInt(partsB[0]);
+        const monthB = parseInt(partsB[1]);
+
+        // Primero comparar por año (descendente)
+        if (yearA !== yearB) return yearB - yearA;
+        // Luego por mes (descendente)
+        return monthB - monthA;
       });
 
       return { grouped: true, type: "month", keys: sortedMonths, data: groups };
@@ -4718,11 +5294,26 @@ const TablaIngresos = ({ onEdit, refreshTrigger, dateFilter }) => {
           ) : filteredAndGroupedData.keys &&
             filteredAndGroupedData.keys.length > 0 ? (
             filteredAndGroupedData.keys.map((key) => {
-              const displayLabel =
-                filteredAndGroupedData.type === "month"
-                  ? key.split("-")[1].charAt(0).toUpperCase() +
-                    key.split("-")[1].slice(1)
-                  : key;
+              let displayLabel = key;
+              if (filteredAndGroupedData.type === "month") {
+                const parts = key.split("-");
+                if (parts.length >= 3) {
+                  // key: "2024-11-Diciembre"
+                  const year = parts[0];
+                  const name = parts[2];
+                  const currentYear = new Date().getFullYear().toString();
+                  displayLabel = name.charAt(0).toUpperCase() + name.slice(1);
+                  if (year !== currentYear) {
+                    displayLabel += ` ${year}`;
+                  }
+                } else {
+                  // Fallback for old filtering style
+                  displayLabel = key.split("-")[1] || key;
+                  displayLabel =
+                    displayLabel.charAt(0).toUpperCase() +
+                    displayLabel.slice(1);
+                }
+              }
               const icon =
                 filteredAndGroupedData.type === "month"
                   ? "M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Zm0 200q17 0 28.5-11.5T520-320v-160q0-17-11.5-28.5T480-520q-17 0-28.5 11.5T440-480v160q0 17 11.5 28.5T480-280Zm0-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Z"
@@ -4784,12 +5375,25 @@ const TablaIngresos = ({ onEdit, refreshTrigger, dateFilter }) => {
                         className="p-3 text-slate-600"
                       >
                         {(() => {
-                          const [year, month, day] =
-                            ingreso.fecha_ingreso.split("-");
-                          const date = new Date(year, parseInt(month) - 1, day);
-                          const monthName = date.toLocaleDateString("es-MX", {
-                            month: "short",
-                          });
+                          const [year, month, day] = ingreso.fecha_ingreso
+                            .split("-")
+                            .map(Number);
+
+                          const monthsShort = [
+                            "ene",
+                            "feb",
+                            "mar",
+                            "abr",
+                            "may",
+                            "jun",
+                            "jul",
+                            "ago",
+                            "sep",
+                            "oct",
+                            "nov",
+                            "dic",
+                          ];
+                          const monthName = monthsShort[month - 1] || "???";
                           return `${day} ${monthName}`;
                         })()}
                       </Text>
@@ -4965,7 +5569,7 @@ const ScreenFinanzas = () => {
 
   const dateFilterOptions = [
     { label: "Último mes", value: "last_month" },
-    { label: "Hace 3 meses", value: "3_months_ago" },
+    { label: "Últimos 3 meses", value: "3_months_ago" },
     ...availableYears,
   ];
 
@@ -7203,197 +7807,75 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
         return;
       }
 
-      // Obtener los datos completos de la transacción con relaciones
-      const { data, error } = await supabase
-        .from("transacciones")
-        .select(
-          `
-          *,
-          alumnos!fk_transacciones_alumno (nombre_alumno, direccion_alumno, grupo),
-          cursos (nombre_curso)
-        `
-        )
-        .eq("id_transaccion", transaccion.id_transaccion)
-        .single();
-
-      if (error) {
-        console.error("Error obteniendo transacción:", error);
-        throw error;
-      }
-
-      if (!data) {
-        Alert.alert("Error", "No se encontró la transacción.");
-        return;
-      }
-
       // Generar el folio con el formato MQ-YEAR-ID (con padding de 4 dígitos)
-      // Parsear la fecha en zona horaria local
-      const fechaParts = data.fecha_transaction.split("T")[0].split("-");
+      const fechaParts = transaccion.fecha_transaction.split("T")[0].split("-");
       const year = parseInt(fechaParts[0], 10);
-      const paddedId = String(data.id_transaccion).padStart(4, "0");
+      const paddedId = String(transaccion.id_transaccion).padStart(4, "0");
       const folio = `MQ-${year}-${paddedId}`;
 
-      const currencyFormatter = new Intl.NumberFormat("es-MX", {
-        style: "currency",
-        currency: "MXN",
-      });
+      // Nombre del archivo que buscamos
+      const ticketFileName = `Ticket-MQerKAcademy-${folio}.pdf`;
 
-      // Usar la fecha y hora actual de la reimpresión
-      const today = new Date();
+      console.log("Buscando archivo:", ticketFileName);
 
-      // Generar descripción automática si no hay referencia
-      let descripcion = data.referencia;
-      if (!descripcion || descripcion.trim() === "") {
-        // Formatear la fecha de la transacción original
-        const [yearTx, monthTx, dayTx] = data.fecha_transaction
-          .split("T")[0]
-          .split("-");
-        const fechaTransaccion = new Date(
-          parseInt(yearTx, 10),
-          parseInt(monthTx, 10) - 1,
-          parseInt(dayTx, 10)
+      // Buscar el archivo en el álbum Fenix-Retail
+      try {
+        // Obtener permisos
+        const { status } = await MediaLibrary.requestPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert(
+            "Permisos necesarios",
+            "Se necesitan permisos para acceder a los archivos guardados."
+          );
+          return;
+        }
+
+        // En lugar de buscar por álbum, buscar directamente en todos los assets
+        // Esto es más confiable porque el álbum puede no estar indexado correctamente
+        console.log("Buscando en todos los assets...");
+
+        const { assets } = await MediaLibrary.getAssetsAsync({
+          first: 1000, // Obtener hasta 1000 archivos
+          mediaType: "unknown", // Para PDFs y otros archivos
+          sortBy: [[MediaLibrary.SortBy.creationTime, false]], // Más recientes primero
+        });
+
+
+        // Buscar el archivo por nombre
+        const foundAsset = assets.find(
+          (asset) => asset.filename === ticketFileName
         );
-        const fechaFormateada = `${String(fechaTransaccion.getDate()).padStart(2, "0")}/${String(fechaTransaccion.getMonth() + 1).padStart(2, "0")}/${fechaTransaccion.getFullYear()}`;
 
-        descripcion = `Compra del curso "${data.cursos?.nombre_curso || "No especificado"}", del día ${fechaFormateada} por ${data.alumnos?.nombre_alumno || "No especificado"}`;
+        if (foundAsset) {
+          console.log("Ticket encontrado:", foundAsset.uri);
+
+          // Compartir el archivo encontrado
+          await shareAsync(foundAsset.uri, {
+            UTI: ".pdf",
+            mimeType: "application/pdf",
+            dialogTitle: ticketFileName,
+          });
+        } else {
+          // Listar algunos archivos para debugging
+          const pdfFiles = assets
+            .filter(
+              (a) => a.filename && a.filename.toLowerCase().includes(".pdf")
+            )
+            .slice(0, 5)
+            .map((a) => a.filename);
+
+          Alert.alert(
+            "Archivo no encontrado",
+            `No se encontró el ticket ${folio}.`
+          );
+        }
+      } catch (error) {
+        console.error("Error buscando archivo:", error);
+        Alert.alert(
+          "Error",
+          `No se pudo acceder al archivo guardado.\n\n${error.message}`
+        );
       }
-
-      // Generar el HTML del ticket directamente
-      const html = `
-  <html>
-    <head>
-    <style></style>
-    </head>
-    <body style="width:181px; background-color: #ffffff; font-family: monospace; font-size: 0.75rem; line-height: 1rem; color: #000000;">
-      <div style="display: flex; height: 2rem; justify-content: center; position: relative;">
-        <h1 style="position: absolute; top: -0.6rem; letter-spacing: .025em; font-family: sans-serif; font-weight: 700; font-size: 12px; z-index: 1;">
-          MQerK
-        </h1>
-        <h2 style="position: absolute; bottom: 0rem; left: 4.375rem; letter-spacing: .3em; font-family: sans-serif; font-size: 10px; font-weight: 300; z-index: 1;">
-          Academy
-        </h2>
-        <div style="position: absolute; top: 0rem; right: 3.75rem; border-radius: 9999px; padding: 0.2rem; border-width: 1px; border-style: solid; border-color: #000000;"></div>
-        <p style="font-size: 0.01rem; position: absolute; top: -0.2rem; right: 3.85rem; font-weight: 700;">
-          R
-        </p>
-      </div>
-      <header>
-        <p style="margin: -1px 0px -1px 0px;">Asesores Especializados en la enseñanza de la Ciencia y Tecnología</p>
-        <p style="margin: -1px 0px -1px 0px;">C. Benito Juárez #25 Col. Centro</p>
-        <p style="margin: -1px 0px -1px 0px;">Tuxtepec, Oaxaca</p>
-        <p style="margin: -1px 0px -1px 0px;">C.P. 68300</p>
-        <p style="margin: -1px 0px -1px 0px;">Tel. 287-181-1231</p>
-        <p style="margin: -1px 0px -1px 0px;">RFC: GORK980908K61</p>
-        <p style="margin: -1px 0px -1px 0px;">${today.toLocaleString("es-MX")}</p>
-        <p style="margin: -1px 0px -1px 0px;">Folio: ${folio}</p>
-        <h4 style="font-size: 0.875rem; margin: -1px 0px -18px 0px; line-height: 1.25rem;">Comprobante de Venta (Reimpresión)</h4>
-      </header>
-
-      <article style="margin-bottom: -1rem;">
-        <h5 style="font-size: 0.75rem; line-height: 1rem; font-weight: 700; border-bottom: 1px solid #000;">
-          Cliente
-        </h5>
-        <p style="margin: -15px 0px 0px 0px;">${data.alumnos?.nombre_alumno || "No especificado"}</p>
-        <p style="margin: 0px 0px 0px 0px;">${data.alumnos?.direccion_alumno || "No especificado"}</p>
-        <p style="margin: 0px 0px 0px 0px;">${data.grupo_alumno || data.alumnos?.grupo || "No especificado"}</p>
-        <p style="margin: 0px 0px 0px 0px;">${descripcion}</p>
-      </article>
-
-      <div style="margin-bottom: -1rem;">
-        <h5 style="font-size: 0.75rem; line-height: 1rem; font-weight: 700; border-bottom: 1px solid #000; padding-bottom: 0.25rem; margin-bottom: 0.25rem;">
-          Detalles
-        </h5>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin: -0.75rem 0 0 0">
-          ${
-            data.cursos?.nombre_curso
-              ? `
-              <p style="flex-shrink: 1; margin-right: 0.5rem;">
-                1x ${data.cursos.nombre_curso}
-              </p>
-              <p>${currencyFormatter.format(data.monto || 0)}</p>
-            `
-              : `
-              <p>Curso(s) no especificado(s)</p>
-              <p>${currencyFormatter.format(0)}</p>
-            `
-          }
-        </div>
-      </div>
-
-      ${
-        (data.incentivo_premium || 0) > 0
-          ? `
-        <div style="margin: 0 0 -0.75rem 0; display: flex; justify-content: space-between; align-items: center;">
-          <p>Incentivo Premium:</p>
-          <p style="white-space: nowrap;">- ${currencyFormatter.format(data.incentivo_premium)}</p>
-        </div>
-      `
-          : ""
-      }
-
-      <div style="border-top: 1px dashed #000;"></div>
-
-      <div style="margin: -0.75rem 0;display: flex; justify-content: space-between; align-items: center;">
-        <p>Anticipo:</p>
-        <p>- ${currencyFormatter.format(data.anticipo || 0)}</p>
-      </div>
-
-      <div style="border-top: 1px dashed #000;"></div>
-
-      ${
-        (data.anticipo || 0) > 0 && data.cursos?.nombre_curso
-          ? `
-        <div style="display: flex; margin: -0.75rem 0; justify-content: space-between; align-items: center;">
-          <p style="font-weight: 700;">Pendiente:</p>
-          <p style="font-size: 1rem; line-height: 1.5rem; font-weight: 700;">
-            ${currencyFormatter.format((data.pendiente || 0) < 0 ? 0 : data.pendiente || 0)}
-          </p>
-        </div>
-      `
-          : ""
-      }
-
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.2rem;">
-        <p style="font-weight: 600;">Total a Pagar:</p>
-        <p style="font-weight: 600; font-size: 1rem; line-height: 1.5rem;">
-          ${currencyFormatter.format(data.total || 0)}
-        </p>
-      </div>
-      <div style="border-top: 1px solid; border-bottom: 1px solid;">
-        <p>Forma de pago: Efectivo</p>
-      </div>
-      <p style="font-weight: 700; text-align:center; margin: -0.05rem 0;">*CONSERVE ESTE COMPROBANTE*</p>
-      <p style="margin: -0.05rem 0;">PAGO REALIZADO CON EXITO</p>
-      <p style="margin: -0.05rem 0;">NO HAY DEVOLUCION DEL PAGO POR CUALQUIER SERVICIO PRESTADO EN NUESTRA INSTITUCIÓN</p>
-      <p style="margin: -0.05rem 0;">Dudas o quejas al:</p>
-      <p style="margin: -0.05rem 0;">287-181-1231</p>
-      <p style="margin: -0.05rem 0;">¡GRACIAS POR LA CONFIANZA!</p>
-      <p style="margin: -0.05rem 0;">Direccion: Lic. Kelvin Valentin Gómez Ramírez</p>
-    </div>
-    </body>
-    </html>
-  `;
-
-      // Generar el PDF
-      const { uri } = await Print.printToFileAsync({
-        html: html,
-        width: 200,
-      });
-
-      // Renombrar el archivo con un nombre descriptivo
-      const ticketFileName = `Ticket-MQerKAcademy-${folio || "SN"}.pdf`;
-      const newUri = `${FileSystem.cacheDirectory}${ticketFileName}`;
-      await FileSystem.moveAsync({
-        from: uri,
-        to: newUri,
-      });
-
-      console.log("Ticket PDF generado en:", newUri);
-      await shareAsync(newUri, {
-        UTI: ".pdf",
-        mimeType: "application/pdf",
-        dialogTitle: ticketFileName,
-      });
     } catch (error) {
       console.error("Error al reimprimir ticket:", error);
       Alert.alert("Error", "No se pudo reimprimir el ticket: " + error.message);
@@ -7939,6 +8421,7 @@ const SeccionReportes = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // 1-12
   const [ingresosData, setIngresosData] = useState([]);
   const [egresosData, setEgresosData] = useState([]);
+  const [estudiantesData, setEstudiantesData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [availableYears, setAvailableYears] = useState([]);
   const [loadingYears, setLoadingYears] = useState(false);
@@ -8079,6 +8562,16 @@ const SeccionReportes = () => {
 
       if (egresosError) console.error("Error fetching egresos:", egresosError);
 
+      // 4. Fetch Estudiantes registrados (tabla: alumnos, campo: fecha_inscripcion)
+      const { data: estudiantes, error: estudiantesError } = await supabase
+        .from("alumnos")
+        .select("fecha_inscripcion")
+        .gte("fecha_inscripcion", startDate)
+        .lte("fecha_inscripcion", endDate);
+
+      if (estudiantesError)
+        console.error("Error fetching estudiantes:", estudiantesError);
+
       const monthsTemplate = Array.from({ length: 13 }, (_, i) => {
         const label = new Date(0, i).toLocaleString("es-MX", {
           month: "short",
@@ -8093,6 +8586,7 @@ const SeccionReportes = () => {
 
       const monthlyIngresos = JSON.parse(JSON.stringify(monthsTemplate));
       const monthlyEgresos = JSON.parse(JSON.stringify(monthsTemplate));
+      const monthlyEstudiantes = JSON.parse(JSON.stringify(monthsTemplate));
 
       // Helper to parse date - Extraer mes directamente del string
       const getMonthFromDate = (dateStr) => {
@@ -8129,6 +8623,14 @@ const SeccionReportes = () => {
         }
       });
 
+      // Process Estudiantes (Contar registros por mes)
+      estudiantes?.forEach((item) => {
+        const monthIndex = getMonthFromDate(item.fecha_inscripcion);
+        if (monthIndex !== null) {
+          monthlyEstudiantes[monthIndex].value += 1; // Contar cada estudiante
+        }
+      });
+
       // Update dataPointText
       monthlyIngresos.forEach((item) => {
         if (item) {
@@ -8140,6 +8642,11 @@ const SeccionReportes = () => {
         if (item) {
           item.dataPointText =
             item.value > 0 ? item.value.toLocaleString("es-MX") : "";
+        }
+      });
+      monthlyEstudiantes.forEach((item) => {
+        if (item) {
+          item.dataPointText = item.value > 0 ? String(item.value) : "";
         }
       });
 
@@ -8159,9 +8666,14 @@ const SeccionReportes = () => {
 
       const filteredIngresos = filterDataByRange(monthlyIngresos, selectedYear);
       const filteredEgresos = filterDataByRange(monthlyEgresos, selectedYear);
+      const filteredEstudiantes = filterDataByRange(
+        monthlyEstudiantes,
+        selectedYear
+      );
 
       setIngresosData(filteredIngresos);
       setEgresosData(filteredEgresos);
+      setEstudiantesData(filteredEstudiantes);
     } catch (error) {
       console.error("Error in fetchData:", error);
     } finally {
@@ -8194,6 +8706,10 @@ const SeccionReportes = () => {
   const totalEgresos = useMemo(
     () => egresosData.reduce((sum, item) => sum + item.value, 0),
     [egresosData]
+  );
+  const totalEstudiantes = useMemo(
+    () => estudiantesData.reduce((sum, item) => sum + item.value, 0),
+    [estudiantesData]
   );
 
   // Calcular balance (Ingresos - Egresos)
@@ -8235,6 +8751,10 @@ const SeccionReportes = () => {
   const totalEgresosMesSeleccionado = useMemo(() => {
     return egresosData[selectedMonth - 1]?.value || 0;
   }, [egresosData, selectedMonth]);
+
+  const totalEstudiantesMesSeleccionado = useMemo(() => {
+    return estudiantesData[selectedMonth - 1]?.value || 0;
+  }, [estudiantesData, selectedMonth]);
 
   // Verificar si estamos en el mes y año actual
   const isCurrentMonthAndYear = useMemo(() => {
@@ -8375,6 +8895,13 @@ const SeccionReportes = () => {
         .lte("fecha_egreso", endDate)
         .eq("estado", "pagado");
 
+      // Fetch estudiantes registrados
+      const { data: estudiantes } = await supabase
+        .from("alumnos")
+        .select("fecha_inscripcion")
+        .gte("fecha_inscripcion", startDate)
+        .lte("fecha_inscripcion", endDate);
+
       // Procesar datos por mes
       const monthlyIngresos = Array.from({ length: 13 }, (_, i) => ({
         label: i === 0 ? "" : monthOptions[i - 1]?.label || "",
@@ -8382,6 +8909,11 @@ const SeccionReportes = () => {
       }));
 
       const monthlyEgresos = Array.from({ length: 13 }, (_, i) => ({
+        label: i === 0 ? "" : monthOptions[i - 1]?.label || "",
+        value: 0,
+      }));
+
+      const monthlyEstudiantes = Array.from({ length: 13 }, (_, i) => ({
         label: i === 0 ? "" : monthOptions[i - 1]?.label || "",
         value: 0,
       }));
@@ -8410,18 +8942,29 @@ const SeccionReportes = () => {
         }
       });
 
+      // Procesar estudiantes (contar)
+      estudiantes?.forEach((item) => {
+        const month = parseInt(item.fecha_inscripcion.split("-")[1]);
+        if (month >= 1 && month <= 12) {
+          monthlyEstudiantes[month].value += 1; // Contar cada estudiante
+        }
+      });
+
       // Calcular totales hasta el mes actual
       let totalIngresosAnual = 0;
       let totalEgresosAnual = 0;
+      let totalEstudiantesAnual = 0;
 
       for (let i = 1; i <= currentMonth; i++) {
         totalIngresosAnual += monthlyIngresos[i].value;
         totalEgresosAnual += monthlyEgresos[i].value;
+        totalEstudiantesAnual += monthlyEstudiantes[i].value;
       }
 
       const balanceAnual = totalIngresosAnual - totalEgresosAnual;
       const ingresosMesActual = monthlyIngresos[currentMonth].value;
       const egresosMesActual = monthlyEgresos[currentMonth].value;
+      const estudiantesMesActual = monthlyEstudiantes[currentMonth].value;
       const balanceMesActual = ingresosMesActual - egresosMesActual;
 
       // Generar tablas HTML solo hasta el mes actual
@@ -8447,6 +8990,20 @@ const SeccionReportes = () => {
               <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${item.label}</td>
               <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">
                 ${currencyFormatter.format(item.value)}
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      const estudiantesTable = monthlyEstudiantes
+        .slice(1, currentMonth + 1)
+        .map((item) => {
+          return `
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0;">${item.label}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right;">
+                ${item.value}
               </td>
             </tr>
           `;
@@ -8590,6 +9147,12 @@ const SeccionReportes = () => {
         "Egresos Mensuales"
       );
 
+      const estudiantesSVG = generateLineChartSVG(
+        monthlyEstudiantes.slice(1, currentMonth + 1).map((item) => item.value),
+        "#6F09EA",
+        "Estudiantes Registrados"
+      );
+
       // Función para generar gráfica de pastel SVG
       const generatePieChartSVG = (ingresos, egresos) => {
         const width = 400;
@@ -8722,6 +9285,180 @@ const SeccionReportes = () => {
         totalEgresosAnual
       );
 
+      // Función para generar gráfica de pastel de estudiantes por mes
+      const generateStudentsPieChartSVG = (monthlyData) => {
+        const width = 600;
+        const height = 450;
+        const centerX = width / 2;
+        const centerY = height / 2 - 20;
+        const radius = 120;
+
+        // Obtener datos hasta el mes actual
+        const dataWithLabels = monthlyData
+          .slice(1, currentMonth + 1)
+          .map((item, index) => ({
+            label: item.label,
+            value: item.value,
+            month: index + 1,
+          }))
+          .filter((item) => item.value > 0); // Solo meses con estudiantes
+
+        const total = dataWithLabels.reduce((sum, item) => sum + item.value, 0);
+
+        if (total === 0) {
+          return `
+            <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+              <rect width="${width}" height="${height}" fill="#ffffff"/>
+              <text 
+                x="${centerX}" 
+                y="${centerY}" 
+                text-anchor="middle" 
+                font-size="14" 
+                fill="#64748b"
+              >
+                No hay datos de estudiantes registrados
+              </text>
+            </svg>
+          `;
+        }
+
+        // Colores para cada mes
+        const colors = [
+          "#6366f1",
+          "#8b5cf6",
+          "#a855f7",
+          "#d946ef",
+          "#ec4899",
+          "#f43f5e",
+          "#ef4444",
+          "#f97316",
+          "#f59e0b",
+          "#eab308",
+          "#84cc16",
+          "#22c55e",
+        ];
+
+        let currentAngle = -Math.PI / 2; // Empezar desde arriba (-90 grados)
+        let paths = "";
+        let legends = "";
+
+        dataWithLabels.forEach((item, index) => {
+          const percentage = (item.value / total) * 100;
+          const sweepAngle = (item.value / total) * 2 * Math.PI; // Ángulo en radianes
+          const color = colors[index % colors.length];
+
+          // Caso especial: si es 100%, dibujar un círculo completo
+          if (percentage >= 99.9) {
+            paths += `
+              <circle
+                cx="${centerX}"
+                cy="${centerY}"
+                r="${radius}"
+                fill="${color}"
+                stroke="#ffffff"
+                stroke-width="2"
+              />
+            `;
+          } else {
+            // Punto inicial del arco
+            const x1 = centerX + radius * Math.cos(currentAngle);
+            const y1 = centerY + radius * Math.sin(currentAngle);
+
+            // Punto final del arco
+            const x2 = centerX + radius * Math.cos(currentAngle + sweepAngle);
+            const y2 = centerY + radius * Math.sin(currentAngle + sweepAngle);
+
+            // Flag para arcos grandes (más de 180 grados)
+            const largeArcFlag = sweepAngle > Math.PI ? 1 : 0;
+
+            // Crear path del segmento
+            paths += `
+              <path
+                d="M ${centerX},${centerY}
+                   L ${x1},${y1}
+                   A ${radius},${radius} 0 ${largeArcFlag},1 ${x2},${y2}
+                   Z"
+                fill="${color}"
+                stroke="#ffffff"
+                stroke-width="2"
+              />
+            `;
+          }
+
+          // Crear leyenda (dos columnas)
+          const legendX = index < 6 ? 50 : 320;
+          const legendY = 280 + (index % 6) * 25;
+
+          legends += `
+            <rect x="${legendX}" y="${legendY}" width="15" height="15" fill="${color}"/>
+            <text x="${legendX + 20}" y="${legendY + 12}" font-size="11" fill="#1e293b">
+              ${item.label}: ${item.value} (${percentage.toFixed(1)}%)
+            </text>
+          `;
+
+          currentAngle += sweepAngle;
+        });
+
+        return `
+          <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+            <!-- Fondo -->
+            <rect width="${width}" height="${height}" fill="#ffffff"/>
+            
+            <!-- Título -->
+            <text 
+              x="${centerX}" 
+              y="30" 
+              text-anchor="middle" 
+              font-size="16" 
+              font-weight="bold" 
+              fill="#1e293b"
+            >
+              Distribución de Estudiantes
+            </text>
+            
+            <!-- Segmentos del pastel -->
+            ${paths}
+            
+            <!-- Círculo central con total -->
+            <circle 
+              cx="${centerX}" 
+              cy="${centerY}" 
+              r="50" 
+              fill="#ffffff"
+              fill-opacity="0.75"
+              stroke="#e2e8f0"
+              stroke-width="2"
+            />
+            <text 
+              x="${centerX}" 
+              y="${centerY - 5}" 
+              text-anchor="middle" 
+              font-size="12" 
+              fill="#64748b"
+            >
+              Total
+            </text>
+            <text 
+              x="${centerX}" 
+              y="${centerY + 15}" 
+              text-anchor="middle" 
+              font-size="20" 
+              font-weight="bold" 
+              fill="#6F09EA"
+            >
+              ${total}
+            </text>
+            
+            <!-- Leyenda -->
+            ${legends}
+          </svg>
+        `;
+      };
+
+      // Generar gráfica de pastel de estudiantes
+      const studentsPieChartSVG =
+        generateStudentsPieChartSVG(monthlyEstudiantes);
+
       const html = `
         <!DOCTYPE html>
         <html>
@@ -8787,6 +9524,7 @@ const SeccionReportes = () => {
             }
             .section {
               margin-bottom: 25px;
+              page-break-inside: avoid;
             }
             .section h2 {
               color: #6F09EA;
@@ -8799,6 +9537,7 @@ const SeccionReportes = () => {
               width: 100%;
               border-collapse: collapse;
               margin-top: 10px;
+              page-break-inside: avoid;
             }
             th {
               background-color: #f1f5f9;
@@ -8845,6 +9584,7 @@ const SeccionReportes = () => {
               background-color: #ffffff;
               border-radius: 8px;
               border: 1px solid #e2e8f0;
+              page-break-inside: avoid;
             }
             .chart-container canvas {
               max-height: 300px;
@@ -8914,8 +9654,14 @@ const SeccionReportes = () => {
             <div class="chart-container">
               ${egresosSVG}
             </div>
+            <div class="chart-container">
+              ${estudiantesSVG}
+            </div>
             <div class="chart-container" style="display: flex; justify-content: center;">
               ${pieChartSVG}
+            </div>
+            <div class="chart-container" style="display: flex; justify-content: center;">
+              ${studentsPieChartSVG}
             </div>
           </div>
           
@@ -8947,6 +9693,27 @@ const SeccionReportes = () => {
                 ${egresosTable}
               </tbody>
             </table>
+          </div>
+          
+          <div class="section">
+            <h2>Estudiantes Registrados ${currentYear}</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Mes</th>
+                  <th style="text-align: right;">Cantidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${estudiantesTable}
+              </tbody>
+            </table>
+            <div style="margin-top: 15px; padding: 10px; background-color: #f1f5f9; border-radius: 6px;">
+              <div style="display: flex; justify-content: space-between; font-weight: bold; color: #6F09EA;">
+                <span>Total de Estudiantes Registrados:</span>
+                <span>${totalEstudiantesAnual}</span>
+              </div>
+            </div>
           </div>
           
           <div class="footer">
@@ -8987,127 +9754,103 @@ const SeccionReportes = () => {
   };
 
   return (
-    <ScrollView
-      className={`flex-1 p-4 bg-slate-50`}
-      refreshControl={
-        <RefreshControl
-          refreshing={loading}
-          onRefresh={handleRefresh}
-          tintColor="#6F09EA"
-        />
-      }
-    >
-      <View className="mb-6">
-        {/* Header compacto con título, selectores y botón */}
-        <View className="flex-row justify-between items-center gap-3 mb-4">
-          <Text className="text-2xl font-bold text-slate-800">
-            Reporte Anual
-          </Text>
+    <View className="flex-1 bg-slate-50">
+      <View className="p-4 pb-2">
+        <View>
+          {/* Header compacto con título, selectores y botón */}
+          <View className="flex-row justify-between items-center gap-3 mb-4">
+            <Text className="text-2xl font-bold text-slate-800">
+              Reporte Anual
+            </Text>
 
-          <View className="flex-row gap-2 items-center">
-            {/* Selector de Mes */}
-            <View style={{ width: 130 }}>
-              <Dropdown
-                style={styles.dropdownIngresos}
-                data={monthOptions}
-                labelField="label"
-                valueField="value"
-                placeholder="Mes"
-                value={selectedMonth}
-                onChange={(item) => setSelectedMonth(item.value)}
-              />
-            </View>
-            {/* Selector de Año */}
-            <View style={{ width: 100 }}>
-              <Dropdown
-                style={[
-                  styles.dropdownIngresos,
-                  loadingYears && { opacity: 0.5 },
-                ]}
-                containerStyle={loadingYears && { opacity: 0.5 }}
-                data={availableYears}
-                labelField="label"
-                valueField="value"
-                placeholder={loadingYears ? "Año" : "Año"}
-                value={year}
-                onChange={(item) => setYear(item.value)}
-                disable={loadingYears}
-              />
-            </View>
-
-            {/* Botón PDF */}
-            <TouchableOpacity
-              onPress={generateReportPDF}
-              className="bg-green-600 px-3 py-2 rounded-lg flex-row items-center gap-2"
-              disabled={loading}
-              style={{ opacity: loading ? 0.5 : 1 }}
-            >
-              <Svg height="16" width="16" viewBox="0 0 512 512">
-                <Path
-                  fill="#ffffff"
-                  d="M378.413,0H208.297h-13.182L185.8,9.314L57.02,138.102l-9.314,9.314v13.176v265.514c0,47.36,38.528,85.895,85.896,85.895h244.811c47.353,0,85.881-38.535,85.881-85.895V85.896C464.294,38.528,425.766,0,378.413,0z M432.497,426.105c0,29.877-24.214,54.091-54.084,54.091H133.602c-29.884,0-54.098-24.214-54.098-54.091V160.591h83.716c24.885,0,45.077-20.178,45.077-45.07V31.804h170.116c29.87,0,54.084,24.214,54.084,54.092V426.105z"
+            <View className="flex-row gap-2 items-center">
+              {/* Selector de Mes */}
+              <View style={{ width: 130 }}>
+                <Dropdown
+                  style={styles.dropdownIngresos}
+                  data={monthOptions}
+                  labelField="label"
+                  valueField="value"
+                  placeholder="Mes"
+                  value={selectedMonth}
+                  onChange={(item) => setSelectedMonth(item.value)}
                 />
-                <Path
-                  fill="#ffffff"
-                  d="M171.947,252.785h-28.529c-5.432,0-8.686,3.533-8.686,8.825v73.754c0,6.388,4.204,10.599,10.041,10.599c5.711,0,9.914-4.21,9.914-10.599v-22.406c0-0.545,0.279-0.817,0.824-0.817h16.436c20.095,0,32.188-12.226,32.188-29.612C204.136,264.871,192.182,252.785,171.947,252.785z M170.719,294.888h-15.208c-0.545,0-0.824-0.272-0.824-0.81v-23.23c0-0.545,0.279-0.816,0.824-0.816h15.208c8.42,0,13.447,5.027,13.447,12.498C184.167,290,179.139,294.888,170.719,294.888z"
+              </View>
+              {/* Selector de Año */}
+              <View style={{ width: 100 }}>
+                <Dropdown
+                  style={[
+                    styles.dropdownIngresos,
+                    loadingYears && { opacity: 0.5 },
+                  ]}
+                  containerStyle={loadingYears && { opacity: 0.5 }}
+                  data={availableYears}
+                  labelField="label"
+                  valueField="value"
+                  placeholder={loadingYears ? "Año" : "Año"}
+                  value={year}
+                  onChange={(item) => setYear(item.value)}
+                  disable={loadingYears}
                 />
-                <Path
-                  fill="#ffffff"
-                  d="M250.191,252.785h-21.868c-5.432,0-8.686,3.533-8.686,8.825v74.843c0,5.3,3.253,8.693,8.686,8.693h21.868c19.69,0,31.923-6.249,36.81-21.324c1.76-5.3,2.723-11.681,2.723-24.857c0-13.175-0.964-19.557-2.723-24.856C282.113,259.034,269.881,252.785,250.191,252.785z M267.856,316.896c-2.318,7.331-8.965,10.459-18.21,10.459h-9.23c-0.545,0-0.824-0.272-0.824-0.816v-55.146c0-0.545,0.279-0.817,0.824-0.817h9.23c9.245,0,15.892,3.128,18.21,10.46c0.95,3.128,1.62,8.56,1.62,17.93C269.476,308.336,268.805,313.768,267.856,316.896z"
-                />
-                <Path
-                  fill="#ffffff"
-                  d="M361.167,252.785h-44.812c-5.432,0-8.7,3.533-8.7,8.825v73.754c0,6.388,4.218,10.599,10.055,10.599c5.697,0,9.914-4.21,9.914-10.599v-26.351c0-0.538,0.265-0.81,0.81-0.81h26.086c5.837,0,9.23-3.532,9.23-8.56c0-5.028-3.393-8.553-9.23-8.553h-26.086c-0.545,0-0.81-0.272-0.81-0.817v-19.425c0-0.545,0.265-0.816,0.81-0.816h32.733c5.572,0,9.245-3.666,9.245-8.553C370.411,256.45,366.738,252.785,361.167,252.785z"
-                />
-              </Svg>
-              <Text className="text-white font-semibold text-sm">Reporte</Text>
-            </TouchableOpacity>
-
-            {/* Botón Hoy */}
-            <TouchableOpacity
-              onPress={() => {
-                const currentYear = new Date().getFullYear();
-                const currentMonth = new Date().getMonth() + 1;
-                setYear(currentYear);
-                setSelectedMonth(currentMonth);
-              }}
-              className="bg-indigo-600 px-3 py-2 rounded-lg"
-              disabled={isCurrentMonthAndYear}
-              style={{ opacity: isCurrentMonthAndYear ? 0.5 : 1 }}
-            >
-              <Text className="text-white font-semibold text-sm">Hoy</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Balance Cards */}
-        <View className={`gap-3 ${isPortrait ? "flex-col" : "flex-row"}`}>
-          {loading ? (
-            // Skeleton mientras carga
-            <>
-              <View className="flex-1 rounded-xl p-4 border border-slate-200 bg-slate-50">
-                <Text className="text-sm text-slate-400 mb-1">
-                  Balance Total {year}
-                </Text>
-                <View className="flex-row items-center gap-2">
-                  <ActivityIndicator size="small" color="#64748b" />
-                  <Text className="text-2xl font-extrabold text-slate-300">
-                    Cargando...
-                  </Text>
-                </View>
               </View>
 
-              {year === new Date().getFullYear() && (
-                <View className="flex-1 rounded-xl p-4 border border-slate-200 bg-slate-50">
+              {/* Botón PDF */}
+              <TouchableOpacity
+                onPress={generateReportPDF}
+                className="bg-green-600 px-3 py-2 rounded-lg flex-row items-center gap-2"
+                disabled={loading}
+                style={{ opacity: loading ? 0.5 : 1 }}
+              >
+                <Svg height="16" width="16" viewBox="0 0 512 512">
+                  <Path
+                    fill="#ffffff"
+                    d="M378.413,0H208.297h-13.182L185.8,9.314L57.02,138.102l-9.314,9.314v13.176v265.514c0,47.36,38.528,85.895,85.896,85.895h244.811c47.353,0,85.881-38.535,85.881-85.895V85.896C464.294,38.528,425.766,0,378.413,0z M432.497,426.105c0,29.877-24.214,54.091-54.084,54.091H133.602c-29.884,0-54.098-24.214-54.098-54.091V160.591h83.716c24.885,0,45.077-20.178,45.077-45.07V31.804h170.116c29.87,0,54.084,24.214,54.084,54.092V426.105z"
+                  />
+                  <Path
+                    fill="#ffffff"
+                    d="M171.947,252.785h-28.529c-5.432,0-8.686,3.533-8.686,8.825v73.754c0,6.388,4.204,10.599,10.041,10.599c5.711,0,9.914-4.21,9.914-10.599v-22.406c0-0.545,0.279-0.817,0.824-0.817h16.436c20.095,0,32.188-12.226,32.188-29.612C204.136,264.871,192.182,252.785,171.947,252.785z M170.719,294.888h-15.208c-0.545,0-0.824-0.272-0.824-0.81v-23.23c0-0.545,0.279-0.816,0.824-0.816h15.208c8.42,0,13.447,5.027,13.447,12.498C184.167,290,179.139,294.888,170.719,294.888z"
+                  />
+                  <Path
+                    fill="#ffffff"
+                    d="M250.191,252.785h-21.868c-5.432,0-8.686,3.533-8.686,8.825v74.843c0,5.3,3.253,8.693,8.686,8.693h21.868c19.69,0,31.923-6.249,36.81-21.324c1.76-5.3,2.723-11.681,2.723-24.857c0-13.175-0.964-19.557-2.723-24.856C282.113,259.034,269.881,252.785,250.191,252.785z M267.856,316.896c-2.318,7.331-8.965,10.459-18.21,10.459h-9.23c-0.545,0-0.824-0.272-0.824-0.816v-55.146c0-0.545,0.279-0.817,0.824-0.817h9.23c9.245,0,15.892,3.128,18.21,10.46c0.95,3.128,1.62,8.56,1.62,17.93C269.476,308.336,268.805,313.768,267.856,316.896z"
+                  />
+                  <Path
+                    fill="#ffffff"
+                    d="M361.167,252.785h-44.812c-5.432,0-8.7,3.533-8.7,8.825v73.754c0,6.388,4.218,10.599,10.055,10.599c5.697,0,9.914-4.21,9.914-10.599v-26.351c0-0.538,0.265-0.81,0.81-0.81h26.086c5.837,0,9.23-3.532,9.23-8.56c0-5.028-3.393-8.553-9.23-8.553h-26.086c-0.545,0-0.81-0.272-0.81-0.817v-19.425c0-0.545,0.265-0.816,0.81-0.816h32.733c5.572,0,9.245-3.666,9.245-8.553C370.411,256.45,366.738,252.785,361.167,252.785z"
+                  />
+                </Svg>
+                <Text className="text-white font-semibold text-sm">
+                  Reporte
+                </Text>
+              </TouchableOpacity>
+
+              {/* Botón Hoy */}
+              <TouchableOpacity
+                onPress={() => {
+                  const currentYear = new Date().getFullYear();
+                  const currentMonth = new Date().getMonth() + 1;
+                  setYear(currentYear);
+                  setSelectedMonth(currentMonth);
+                }}
+                className="bg-indigo-600 px-3 py-2 rounded-lg"
+                disabled={isCurrentMonthAndYear}
+                style={{ opacity: isCurrentMonthAndYear ? 0.5 : 1 }}
+              >
+                <Text className="text-white font-semibold text-sm">Hoy</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Balance Cards */}
+          <View className={`gap-3 ${isPortrait ? "flex-col" : "flex-row"}`}>
+            {loading ? (
+              // Skeleton mientras carga
+              <>
+                <View
+                  className={`${isPortrait ? "" : "flex-1"} rounded-xl p-4 border border-slate-200 bg-slate-50`}
+                >
                   <Text className="text-sm text-slate-400 mb-1">
-                    Balance{" "}
-                    {new Date()
-                      .toLocaleString("es-MX", { month: "long" })
-                      .charAt(0)
-                      .toUpperCase() +
-                      new Date()
-                        .toLocaleString("es-MX", { month: "long" })
-                        .slice(1)}
+                    Balance Total {year}
                   </Text>
                   <View className="flex-row items-center gap-2">
                     <ActivityIndicator size="small" color="#64748b" />
@@ -9116,102 +9859,209 @@ const SeccionReportes = () => {
                     </Text>
                   </View>
                 </View>
-              )}
-            </>
-          ) : (
-            // Datos cargados
-            <>
-              {/* Balance Mes Seleccionado */}
-              <View
-                className={`flex-1 rounded-xl p-4 border ${
-                  balanceMesSeleccionado >= 0
-                    ? "bg-blue-50 border-blue-200"
-                    : "bg-orange-50 border-orange-200"
-                }`}
-              >
-                <Text className="text-sm text-slate-600 mb-1">
-                  Balance{" "}
-                  {monthOptions.find((m) => m.value === selectedMonth)?.label}
-                  {isCurrentMonthAndYear && " (Mes Actual)"}
-                </Text>
-                <Text
-                  className={`text-3xl font-extrabold ${
+
+                {year === new Date().getFullYear() && (
+                  <View
+                    className={`${isPortrait ? "" : "flex-1"} rounded-xl p-4 border border-slate-200 bg-slate-50`}
+                  >
+                    <Text className="text-sm text-slate-400 mb-1">
+                      Balance{" "}
+                      {new Date()
+                        .toLocaleString("es-MX", { month: "long" })
+                        .charAt(0)
+                        .toUpperCase() +
+                        new Date()
+                          .toLocaleString("es-MX", { month: "long" })
+                          .slice(1)}
+                    </Text>
+                    <View className="flex-row items-center gap-2">
+                      <ActivityIndicator size="small" color="#64748b" />
+                      <Text className="text-2xl font-extrabold text-slate-300">
+                        Cargando...
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </>
+            ) : (
+              // Datos cargados
+              <>
+                {/* Balance Mes Seleccionado */}
+                <View
+                  className={`${isPortrait ? "" : "flex-1"} rounded-xl p-4 border ${
                     balanceMesSeleccionado >= 0
-                      ? "text-blue-600"
-                      : "text-orange-600"
+                      ? "bg-blue-50 border-blue-200"
+                      : "bg-orange-50 border-orange-200"
                   }`}
                 >
-                  {currencyFormatter.format(balanceMesSeleccionado)}
-                </Text>
-              </View>
-              {/* Balance Total */}
-              <View
-                className={`flex-1 rounded-xl p-4 border ${
-                  balance >= 0
-                    ? "bg-green-50 border-green-200"
-                    : "bg-red-50 border-red-200"
-                }`}
-              >
-                <Text className="text-sm text-slate-600 mb-1">
-                  Balance Total {year}
-                </Text>
-                <Text
-                  className={`text-3xl font-extrabold ${
-                    balance >= 0 ? "text-green-600" : "text-red-600"
+                  <Text className="text-sm text-slate-600 mb-1">
+                    Balance{" "}
+                    {monthOptions.find((m) => m.value === selectedMonth)?.label}
+                    {isCurrentMonthAndYear && " (Mes Actual)"}
+                  </Text>
+                  <Text
+                    className={`text-3xl font-extrabold ${
+                      balanceMesSeleccionado >= 0
+                        ? "text-blue-600"
+                        : "text-orange-600"
+                    }`}
+                  >
+                    {currencyFormatter.format(balanceMesSeleccionado)}
+                  </Text>
+                </View>
+                {/* Balance Total */}
+                <View
+                  className={`${isPortrait ? "" : "flex-1"} rounded-xl p-4 border ${
+                    balance >= 0
+                      ? "bg-green-50 border-green-200"
+                      : "bg-red-50 border-red-200"
                   }`}
                 >
-                  {currencyFormatter.format(balance)}
-                </Text>
-              </View>
-            </>
-          )}
+                  <Text className="text-sm text-slate-600 mb-1">
+                    Balance Total {year}
+                  </Text>
+                  <Text
+                    className={`text-3xl font-extrabold ${
+                      balance >= 0 ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {currencyFormatter.format(balance)}
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
         </View>
       </View>
 
+      {/* Tab Navigator fuera del ScrollView */}
       {loading ? (
-        <View className="flex-1 justify-center items-center py-20">
+        <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#6F09EA" />
           <Text className="text-slate-500 mt-4 text-base">
             Cargando reportes...
           </Text>
         </View>
       ) : (
-        <View
-          className={`flex-1 gap-6 ${
-            isPortrait
-              ? "flex-col justify-center items-stretch"
-              : "flex-row flex-wrap justify-center items-center"
-          }`}
+        <Tab.Navigator
+          screenOptions={{
+            tabBarActiveTintColor: "#6F09EA",
+            tabBarInactiveTintColor: "#64748b",
+            tabBarLabelStyle: {
+              fontSize: 14,
+              fontWeight: "bold",
+              textTransform: "uppercase",
+            },
+            tabBarStyle: {
+              backgroundColor: "#ffffff",
+              borderTopWidth: 2,
+              borderTopColor: "#e2e8f0",
+            },
+            tabBarIndicatorStyle: {
+              backgroundColor: "#6F09EA",
+              height: 3,
+            },
+          }}
         >
-          <ChartCard
-            title="Ingresos"
-            total={totalIngresos}
-            data={ingresosData}
-            unit="$"
-            isPortrait={isPortrait}
-            loading={loading}
-            totalMesActual={totalIngresosMesSeleccionado}
-            monthName={
-              monthOptions.find((m) => m.value === selectedMonth)?.label
-            }
-            isCurrentMonth={isCurrentMonthAndYear}
-          />
-          <ChartCard
-            title="Egresos"
-            total={totalEgresos}
-            data={egresosData}
-            unit="$"
-            isPortrait={isPortrait}
-            loading={loading}
-            totalMesActual={totalEgresosMesSeleccionado}
-            monthName={
-              monthOptions.find((m) => m.value === selectedMonth)?.label
-            }
-            isCurrentMonth={isCurrentMonthAndYear}
-          />
-        </View>
+          {/* Tab de Finanzas */}
+          <Tab.Screen name="Finanzas">
+            {() => (
+              <ScrollView
+                className="flex-1 bg-white"
+                contentContainerStyle={{ paddingInline: 16, paddingBlock: 6 }}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={loading}
+                    onRefresh={handleRefresh}
+                    tintColor="#6F09EA"
+                  />
+                }
+              >
+                <View
+                  className={`${
+                    isPortrait
+                      ? "flex-col justify-center items-stretch gap-0"
+                      : "flex-row flex-wrap justify-center items-center gap-6"
+                  }`}
+                >
+                  <ChartCard
+                    title="Ingresos"
+                    total={totalIngresos}
+                    data={ingresosData}
+                    unit="$"
+                    isPortrait={isPortrait}
+                    loading={loading}
+                    totalMesActual={totalIngresosMesSeleccionado}
+                    monthName={
+                      monthOptions.find((m) => m.value === selectedMonth)?.label
+                    }
+                    isCurrentMonth={isCurrentMonthAndYear}
+                  />
+                  <ChartCard
+                    title="Egresos"
+                    total={totalEgresos}
+                    data={egresosData}
+                    unit="$"
+                    isPortrait={isPortrait}
+                    loading={loading}
+                    totalMesActual={totalEgresosMesSeleccionado}
+                    monthName={
+                      monthOptions.find((m) => m.value === selectedMonth)?.label
+                    }
+                    isCurrentMonth={isCurrentMonthAndYear}
+                  />
+                </View>
+              </ScrollView>
+            )}
+          </Tab.Screen>
+
+          {/* Tab de Estudiantes */}
+          <Tab.Screen name="Estudiantes">
+            {() => (
+              <ScrollView
+                className="flex-1 bg-white"
+                contentContainerStyle={{ paddingInline: 16, paddingBlock: 6 }}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={loading}
+                    onRefresh={handleRefresh}
+                    tintColor="#6F09EA"
+                  />
+                }
+              >
+                <View
+                  className={`${
+                    isPortrait
+                      ? "flex-col justify-center items-stretch gap-0"
+                      : "flex-row flex-wrap justify-center items-center gap-6"
+                  }`}
+                >
+                  <View
+                    className={isPortrait ? "w-full" : ""}
+                    style={!isPortrait ? { maxWidth: 550, width: "100%" } : {}}
+                  >
+                    <ChartCard
+                      title="Estudiantes Registrados"
+                      total={totalEstudiantes}
+                      data={estudiantesData}
+                      unit=""
+                      isPortrait={isPortrait}
+                      loading={loading}
+                      totalMesActual={totalEstudiantesMesSeleccionado}
+                      monthName={
+                        monthOptions.find((m) => m.value === selectedMonth)
+                          ?.label
+                      }
+                      isCurrentMonth={isCurrentMonthAndYear}
+                    />
+                  </View>
+                </View>
+              </ScrollView>
+            )}
+          </Tab.Screen>
+        </Tab.Navigator>
       )}
-    </ScrollView>
+    </View>
   );
 };
 
@@ -9298,14 +10148,18 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
     require("./assets/Catalogo/Catalogo-12.png"),
     require("./assets/Catalogo/Catalogo-13.png"),
     require("./assets/Catalogo/Catalogo-14.png"),
+    require("./assets/Catalogo/Catalogo-15.png"),
+    require("./assets/Catalogo/Catalogo-16.png"),
   ];
 
   const tarifarioImages = [
-    require("./assets/Tarifario/Tarifario-1.jpg"),
-    require("./assets/Tarifario/Tarifario-2.jpg"),
-    require("./assets/Tarifario/Tarifario-3.jpg"),
-    require("./assets/Tarifario/Tarifario-4.jpg"),
-    require("./assets/Tarifario/Tarifario-5.jpg"),
+    require("./assets/Tarifario/Tarifario-1.png"),
+    require("./assets/Tarifario/Tarifario-2.png"),
+    require("./assets/Tarifario/Tarifario-3.png"),
+    require("./assets/Tarifario/Tarifario-4.png"),
+    require("./assets/Tarifario/Tarifario-5.png"),
+    require("./assets/Tarifario/Tarifario-6.png"),
+    require("./assets/Tarifario/Tarifario-7.png"),
   ];
 
   const imagesToShow = catalogos ? tarifarioImages : catalogoImages;
