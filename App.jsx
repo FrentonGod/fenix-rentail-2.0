@@ -7840,7 +7840,6 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
           sortBy: [[MediaLibrary.SortBy.creationTime, false]], // Más recientes primero
         });
 
-
         // Buscar el archivo por nombre
         const foundAsset = assets.find(
           (asset) => asset.filename === ticketFileName

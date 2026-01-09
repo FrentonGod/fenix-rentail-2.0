@@ -70,6 +70,8 @@ info-proyecto.txt
 .idea
 
 *.sql
-
+*.txt
+*.json
+.easignore
 # End
 
