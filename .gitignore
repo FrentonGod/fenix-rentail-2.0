@@ -73,5 +73,6 @@ info-proyecto.txt
 *.txt
 *.json
 .easignore
+.expo/
 # End
 

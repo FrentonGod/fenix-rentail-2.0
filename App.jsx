@@ -287,7 +287,7 @@ function AppHeader({ navigation, route }) {
 
         // Buscar archivo que comience con "avatar"
         const avatarFile = files?.find((file) =>
-          file.name.startsWith("avatar.")
+          file.name.startsWith("avatar."),
         );
 
         if (avatarFile) {
@@ -361,7 +361,7 @@ const CustomDrawerContent = (props) => {
 
   // Recalculamos el índice activo después del filtrado
   const activeRouteIndex = filteredRoutes.findIndex(
-    (route) => route.key === state.routes[state.index]?.key
+    (route) => route.key === state.routes[state.index]?.key,
   );
 
   const newState = {
@@ -732,7 +732,7 @@ const TablaVentasPendientes = ({
         if (!k) return;
         setSortKey(k);
         setSortDir((d) =>
-          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"
+          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc",
         );
       }}
       className="py-3 px-3"
@@ -858,7 +858,7 @@ const TablaVentasPendientes = ({
                               className={`p-3 font-medium ${esAñoActual ? "text-slate-700" : "text-slate-600"}`}
                             >
                               {currencyFormatter.format(
-                                alumno.monto_pendiente || 0
+                                alumno.monto_pendiente || 0,
                               )}
                             </Text>
                             <View style={{ flex: 1.5 }} className="p-3">
@@ -1276,7 +1276,7 @@ const ScreenEstudiantes = ({ navigation }) => {
         grupo,
         estatus_alumno,
         cursos (nombre_curso)
-      `
+      `,
       )
       .order("id_alumno", { ascending: false });
 
@@ -1313,7 +1313,7 @@ const ScreenEstudiantes = ({ navigation }) => {
             grupo,
             estatus_alumno,
             cursos (nombre_curso)
-          `
+          `,
           )
           .order("id_alumno", { ascending: false });
 
@@ -1338,7 +1338,7 @@ const ScreenEstudiantes = ({ navigation }) => {
       return () => {
         isMounted = false;
       };
-    }, [])
+    }, []),
   );
 
   const handleDelete = (id) => {
@@ -1360,7 +1360,7 @@ const ScreenEstudiantes = ({ navigation }) => {
             else handleRefresh();
           },
         },
-      ]
+      ],
     );
   };
 
@@ -1404,7 +1404,7 @@ const ScreenEstudiantes = ({ navigation }) => {
     if (amount > selectedCourseForPayment.pendiente) {
       Alert.alert(
         "Error",
-        "El monto del abono no puede ser mayor al saldo pendiente."
+        "El monto del abono no puede ser mayor al saldo pendiente.",
       );
       return;
     }
@@ -1432,7 +1432,7 @@ const ScreenEstudiantes = ({ navigation }) => {
 
         const paymentForThisTransaction = Math.min(
           remainingPayment,
-          transaction.pendiente
+          transaction.pendiente,
         );
         const newPendiente = transaction.pendiente - paymentForThisTransaction;
 
@@ -1492,7 +1492,7 @@ const ScreenEstudiantes = ({ navigation }) => {
           curso_id,
           fecha_transaction,
           cursos (nombre_curso)
-        `
+        `,
         )
         .eq("alumno_id", estudiante.id_estudiante);
 
@@ -1544,7 +1544,7 @@ const ScreenEstudiantes = ({ navigation }) => {
       console.error("Error fetching student details:", err);
       Alert.alert(
         "Error",
-        "No se pudieron cargar los detalles del estudiante."
+        "No se pudieron cargar los detalles del estudiante.",
       );
       // No abrir el modal si hay error
       setDetailsModalVisible(false);
@@ -1578,7 +1578,7 @@ const ScreenEstudiantes = ({ navigation }) => {
 
               Alert.alert(
                 "Éxito",
-                `El estudiante ha sido marcado como ${estatusTexto}.`
+                `El estudiante ha sido marcado como ${estatusTexto}.`,
               );
 
               // Refrescar la lista
@@ -1587,12 +1587,12 @@ const ScreenEstudiantes = ({ navigation }) => {
               console.error("Error updating student status:", error);
               Alert.alert(
                 "Error",
-                "No se pudo actualizar el estatus del estudiante."
+                "No se pudo actualizar el estatus del estudiante.",
               );
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -1998,7 +1998,7 @@ const TablaEstudiantes = ({
         if (!k) return;
         setSortKey(k);
         setSortDir((d) =>
-          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"
+          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc",
         );
       }}
       className="py-3 px-3"
@@ -2187,7 +2187,7 @@ const ScreenAsesores = () => {
         setIsRefetching(false);
       };
       fetchAsesores();
-    }, [])
+    }, []),
   );
 
   const handleDelete = (id_asesor) => {
@@ -2211,7 +2211,7 @@ const ScreenAsesores = () => {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -2249,7 +2249,7 @@ const ScreenAsesores = () => {
             style: "destructive",
             onPress: closeAction,
           },
-        ]
+        ],
       );
     } else {
       closeAction();
@@ -2403,7 +2403,7 @@ const TablaAsesores = ({
         if (!k) return;
         setSortKey(k);
         setSortDir((d) =>
-          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"
+          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc",
         );
       }}
       className="py-3 px-3"
@@ -2552,7 +2552,7 @@ const ScreenPagos = ({ navigation }) => {
     useCallback(() => {
       // Resetea el estado de carga cuando la pantalla vuelve a tener foco
       setIsRedirecting(false);
-    }, [])
+    }, []),
   );
 
   const handleRedirectToVentas = () => {
@@ -3351,7 +3351,7 @@ const ScreenPagos = ({ navigation }) => {
                     <Pressable
                       onPress={() => {
                         setSelectedImage(
-                          require("./assets/Ubicacion/Localizacion-MQerKAcademy.jpg")
+                          require("./assets/Ubicacion/Localizacion-MQerKAcademy.jpg"),
                         );
                         setImageModalVisible(true);
                       }}
@@ -3406,7 +3406,7 @@ const ScreenPagos = ({ navigation }) => {
                     <Pressable
                       onPress={() => {
                         setSelectedImage(
-                          require("./assets/Ubicacion/Foto-Referencia_MQerKAcademy.jpeg")
+                          require("./assets/Ubicacion/Foto-Referencia_MQerKAcademy.jpeg"),
                         );
                         setImageModalVisible(true);
                       }}
@@ -3616,10 +3616,10 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
 
   // --- Lógica para el slider de Monto ---
   const [liveMonto, setLiveMonto] = useState(
-    Number(egresoToEdit?.monto_egreso) || 0
+    Number(egresoToEdit?.monto_egreso) || 0,
   );
   const [maxSliderValue, setMaxSliderValue] = useState(
-    Math.max(3000, Number(egresoToEdit?.monto_egreso) || 0)
+    Math.max(3000, Number(egresoToEdit?.monto_egreso) || 0),
   );
 
   const handleInputChange = (field, value) => {
@@ -3685,7 +3685,7 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
           const nextYear = siguienteFecha.getFullYear();
           const nextMonth = String(siguienteFecha.getMonth() + 1).padStart(
             2,
-            "0"
+            "0",
           );
           const nextDay = String(siguienteFecha.getDate()).padStart(2, "0");
           const nextDateString = `${nextYear}-${nextMonth}-${nextDay}`;
@@ -3718,7 +3718,7 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
       console.error("Error guardando egreso:", error);
       Alert.alert(
         "Error",
-        `Hubo un problema al guardar el egreso: ${error.message}`
+        `Hubo un problema al guardar el egreso: ${error.message}`,
       );
     }
   };
@@ -3738,7 +3738,7 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
             style: "destructive",
             onPress: () => onFormClose(null, false),
           },
-        ]
+        ],
       );
     } else {
       onFormClose(null, false);
@@ -3962,7 +3962,7 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
                     onSelect={(value) => {
                       handleMontoChange(value);
                       setMaxSliderValue((currentMax) =>
-                        Math.max(currentMax, value, 3000)
+                        Math.max(currentMax, value, 3000),
                       );
                     }}
                   />
@@ -4110,10 +4110,10 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
 
   // --- Lógica para el slider de Monto ---
   const [liveMonto, setLiveMonto] = useState(
-    Number(ingresoToEdit?.monto_ingreso) || 0
+    Number(ingresoToEdit?.monto_ingreso) || 0,
   );
   const [maxSliderValue, setMaxSliderValue] = useState(
-    Math.max(3000, Number(ingresoToEdit?.monto_ingreso) || 0)
+    Math.max(3000, Number(ingresoToEdit?.monto_ingreso) || 0),
   );
 
   const handleInputChange = (field, value) => {
@@ -4371,7 +4371,7 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                     onSelect={(value) => {
                       handleMontoChange(value);
                       setMaxSliderValue((currentMax) =>
-                        Math.max(currentMax, value, 3000)
+                        Math.max(currentMax, value, 3000),
                       );
                     }}
                   />
@@ -4661,7 +4661,7 @@ const TablaEgresos = ({ onEdit, refreshTrigger, dateFilter }) => {
             const nextYear = nextMonthDate.getFullYear();
             const nextMonth = String(nextMonthDate.getMonth() + 1).padStart(
               2,
-              "0"
+              "0",
             );
             const nextDay = String(nextMonthDate.getDate()).padStart(2, "0");
             const nextDateString = `${nextYear}-${nextMonth}-${nextDay}`;
@@ -4683,7 +4683,7 @@ const TablaEgresos = ({ onEdit, refreshTrigger, dateFilter }) => {
               console.error("Error creating next egreso:", insertError);
             } else {
               console.log(
-                `✅ Egreso recurrente procesado: ${egreso.nombre_egreso} - Siguiente fecha: ${newEgreso.fecha_egreso}`
+                `✅ Egreso recurrente procesado: ${egreso.nombre_egreso} - Siguiente fecha: ${newEgreso.fecha_egreso}`,
               );
             }
           } catch (err) {
@@ -4710,7 +4710,7 @@ const TablaEgresos = ({ onEdit, refreshTrigger, dateFilter }) => {
   useFocusEffect(
     useCallback(() => {
       handleFetch();
-    }, [])
+    }, []),
   );
 
   return (
@@ -4944,7 +4944,7 @@ const TablaEgresos = ({ onEdit, refreshTrigger, dateFilter }) => {
                       >
                         <Text className="text-slate-800 font-medium">
                           {currencyFormatter.format(
-                            egreso.monto_egreso || egreso.monto || 0
+                            egreso.monto_egreso || egreso.monto || 0,
                           )}
                         </Text>
                         {egreso.estado === "pagado" ? (
@@ -5113,7 +5113,7 @@ const TablaIngresos = ({ onEdit, refreshTrigger, dateFilter }) => {
   useFocusEffect(
     useCallback(() => {
       handleFetch();
-    }, [])
+    }, []),
   );
 
   const onRefresh = async () => {
@@ -5564,7 +5564,7 @@ const ScreenFinanzas = () => {
   useFocusEffect(
     useCallback(() => {
       fetchAvailableYears();
-    }, [])
+    }, []),
   );
 
   const dateFilterOptions = [
@@ -6304,7 +6304,7 @@ const ScreenCalendario = ({ navigation, route }) => {
     if (error) {
       Alert.alert(
         "Error",
-        `No pudo ${editingEventId ? "actualizarse" : "crearse"} el evento`
+        `No pudo ${editingEventId ? "actualizarse" : "crearse"} el evento`,
       );
     } else {
       setIsAddingEvent(false);
@@ -6314,7 +6314,7 @@ const ScreenCalendario = ({ navigation, route }) => {
 
       Alert.alert(
         "Éxito",
-        `Evento ${editingEventId ? "actualizado" : "creado"} correctamente`
+        `Evento ${editingEventId ? "actualizado" : "creado"} correctamente`,
       );
     }
   }
@@ -6405,7 +6405,7 @@ const ScreenCalendario = ({ navigation, route }) => {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -6420,7 +6420,7 @@ const ScreenCalendario = ({ navigation, route }) => {
         await fetchEvento();
       };
       loadEvents();
-    }, [])
+    }, []),
   );
 
   return (
@@ -6931,18 +6931,18 @@ const ScreenCalendario = ({ navigation, route }) => {
 
                                         const dayStr = String(day).padStart(
                                           2,
-                                          "0"
+                                          "0",
                                         );
                                         const monthStr = String(month).padStart(
                                           2,
-                                          "0"
+                                          "0",
                                         );
                                         const hoursStr = String(hours).padStart(
                                           2,
-                                          "0"
+                                          "0",
                                         );
                                         const minutesStr = String(
-                                          minutes
+                                          minutes,
                                         ).padStart(2, "0");
 
                                         // Para egresos, solo mostramos fecha, no hora (ya que es ficticia)
@@ -7072,7 +7072,7 @@ const TablaCursos = ({
       onPress={() => {
         setSortKey(k);
         setSortDir((d) =>
-          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"
+          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc",
         );
       }}
       className="py-3 px-3"
@@ -7551,7 +7551,7 @@ const ScreenCursos = () => {
             style: "destructive",
             onPress: () => setAddModalVisible(false), // Cierra el modal si el usuario confirma
           },
-        ]
+        ],
       );
     } else {
       // Si no hay cambios, simplemente cierra el modal sin preguntar.
@@ -7608,7 +7608,7 @@ const ScreenCursos = () => {
         setLoading(false);
       };
       fetchCursos();
-    }, []) // El array vacío asegura que la función de fetch no se recree en cada render
+    }, []), // El array vacío asegura que la función de fetch no se recree en cada render
   );
 
   const handleDelete = (id_curso) => {
@@ -7634,7 +7634,7 @@ const ScreenCursos = () => {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -7642,7 +7642,7 @@ const ScreenCursos = () => {
     if (!newCurso.nombre_curso || !newCurso.costo_curso) {
       Alert.alert(
         "Campos incompletos",
-        "Por favor, completa el nombre y el precio del curso."
+        "Por favor, completa el nombre y el precio del curso.",
       );
       return;
     }
@@ -7825,7 +7825,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
         if (status !== "granted") {
           Alert.alert(
             "Permisos necesarios",
-            "Se necesitan permisos para acceder a los archivos guardados."
+            "Se necesitan permisos para acceder a los archivos guardados.",
           );
           return;
         }
@@ -7842,7 +7842,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
 
         // Buscar el archivo por nombre
         const foundAsset = assets.find(
-          (asset) => asset.filename === ticketFileName
+          (asset) => asset.filename === ticketFileName,
         );
 
         if (foundAsset) {
@@ -7858,21 +7858,21 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
           // Listar algunos archivos para debugging
           const pdfFiles = assets
             .filter(
-              (a) => a.filename && a.filename.toLowerCase().includes(".pdf")
+              (a) => a.filename && a.filename.toLowerCase().includes(".pdf"),
             )
             .slice(0, 5)
             .map((a) => a.filename);
 
           Alert.alert(
             "Archivo no encontrado",
-            `No se encontró el ticket ${folio}.`
+            `No se encontró el ticket ${folio}.`,
           );
         }
       } catch (error) {
         console.error("Error buscando archivo:", error);
         Alert.alert(
           "Error",
-          `No se pudo acceder al archivo guardado.\n\n${error.message}`
+          `No se pudo acceder al archivo guardado.\n\n${error.message}`,
         );
       }
     } catch (error) {
@@ -7911,7 +7911,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
         *,
         alumnos!fk_transacciones_alumno (id_alumno, nombre_alumno, grupo, direccion_alumno, estatus_alumno),
         cursos (nombre_curso, costo_curso)
-      `
+      `,
       )
       .gt("pendiente", 0) // Solo transacciones con deuda
       .order("fecha_transaction", { ascending: false }); // Ordenar por fecha más reciente
@@ -7954,7 +7954,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
               }
               return null;
             })
-            .filter((y) => y !== null)
+            .filter((y) => y !== null),
         ),
       ].sort((a, b) => b - a);
 
@@ -7978,7 +7978,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
       if (estudiantesConAdeudo.length > 0) setIsRefetching(true);
       else setLoading(true);
       fetchEstudiantesConAdeudo();
-    }, [])
+    }, []),
   );
 
   const handleOpenPaymentModal = async (deuda) => {
@@ -7999,7 +7999,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
           id_transaccion,
           fecha_transaction,
           cursos (nombre_curso)
-        `
+        `,
         )
         .eq("alumno_id", deuda.id_alumno);
 
@@ -8049,7 +8049,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
       console.error("Error fetching student details:", err);
       Alert.alert(
         "Error",
-        "No se pudieron cargar los detalles del estudiante."
+        "No se pudieron cargar los detalles del estudiante.",
       );
     } finally {
       setProcessingPayment(false);
@@ -8072,7 +8072,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
     if (amount > selectedCourseForPayment.pendiente) {
       Alert.alert(
         "Error",
-        "El monto del abono no puede ser mayor al saldo pendiente."
+        "El monto del abono no puede ser mayor al saldo pendiente.",
       );
       return;
     }
@@ -8092,7 +8092,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
 
         const paymentForThisTransaction = Math.min(
           remainingPayment,
-          transaction.pendiente
+          transaction.pendiente,
         );
         const newPendiente = transaction.pendiente - paymentForThisTransaction;
 
@@ -8138,7 +8138,7 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
         if (!k) return;
         setSortKey(k);
         setSortDir((d) =>
-          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc"
+          sortKey === k ? (d === "asc" ? "desc" : "asc") : "asc",
         );
       }}
       className="py-3 px-3"
@@ -8441,7 +8441,7 @@ const SeccionReportes = () => {
       { label: "Noviembre", value: 11 },
       { label: "Diciembre", value: 12 },
     ],
-    []
+    [],
   );
 
   // Detectar orientación de la pantalla
@@ -8455,7 +8455,7 @@ const SeccionReportes = () => {
         style: "currency",
         currency: "MXN",
       }),
-    []
+    [],
   );
 
   // Función para cargar años disponibles desde Supabase (memoizada)
@@ -8481,7 +8481,7 @@ const SeccionReportes = () => {
       if (ingresosError || egresosError || transError) {
         console.error(
           "Error fetching years:",
-          ingresosError || egresosError || transError
+          ingresosError || egresosError || transError,
         );
         return;
       }
@@ -8667,7 +8667,7 @@ const SeccionReportes = () => {
       const filteredEgresos = filterDataByRange(monthlyEgresos, selectedYear);
       const filteredEstudiantes = filterDataByRange(
         monthlyEstudiantes,
-        selectedYear
+        selectedYear,
       );
 
       setIngresosData(filteredIngresos);
@@ -8695,26 +8695,26 @@ const SeccionReportes = () => {
         await fetchData(year);
       };
       loadData();
-    }, [year]) // Solo year como dependencia
+    }, [year]), // Solo year como dependencia
   );
 
   const totalIngresos = useMemo(
     () => ingresosData.reduce((sum, item) => sum + item.value, 0),
-    [ingresosData]
+    [ingresosData],
   );
   const totalEgresos = useMemo(
     () => egresosData.reduce((sum, item) => sum + item.value, 0),
-    [egresosData]
+    [egresosData],
   );
   const totalEstudiantes = useMemo(
     () => estudiantesData.reduce((sum, item) => sum + item.value, 0),
-    [estudiantesData]
+    [estudiantesData],
   );
 
   // Calcular balance (Ingresos - Egresos)
   const balance = useMemo(
     () => totalIngresos - totalEgresos,
-    [totalIngresos, totalEgresos]
+    [totalIngresos, totalEgresos],
   );
 
   // Calcular balance del mes actual
@@ -8851,7 +8851,7 @@ const SeccionReportes = () => {
           </View>
         )}
       </View>
-    )
+    ),
   );
 
   // Función para generar PDF del reporte
@@ -8861,7 +8861,7 @@ const SeccionReportes = () => {
       const currentYear = new Date().getFullYear();
       const currentMonth = new Date().getMonth() + 1; // 1-12
       const currentMonthName = monthOptions.find(
-        (m) => m.value === currentMonth
+        (m) => m.value === currentMonth,
       )?.label;
 
       const currentDate = new Date().toLocaleDateString("es-MX", {
@@ -9009,11 +9009,11 @@ const SeccionReportes = () => {
         })
         .join("");
 
-      // Función para generar gráfica SVG
+      // Función para generar gráfica SVG (para ingresos y egresos con $)
       const generateLineChartSVG = (data, color, label) => {
         const width = 700;
         const height = 250;
-        const padding = 40;
+        const padding = 70; // Aumentado de 40 a 70 para acomodar números grandes
         const chartWidth = width - padding * 2;
         const chartHeight = height - padding * 2;
 
@@ -9069,7 +9069,131 @@ const SeccionReportes = () => {
               >
                 $${Math.round(maxValue * ratio).toLocaleString()}
               </text>
-            `
+            `,
+              )
+              .join("")}
+            
+            <!-- Área rellena -->
+            <path 
+              d="${areaPath}" 
+              fill="${color}" 
+              fill-opacity="0.2"
+            />
+            
+            <!-- Línea -->
+            <polyline 
+              points="${points}" 
+              fill="none" 
+              stroke="${color}" 
+              stroke-width="3"
+            />
+            
+            <!-- Puntos -->
+            ${data
+              .map((value, index) => {
+                const x = padding + index * stepX;
+                const y = height - padding - (value / maxValue) * chartHeight;
+                return `
+                <circle cx="${x}" cy="${y}" r="4" fill="${color}"/>
+              `;
+              })
+              .join("")}
+            
+            <!-- Etiquetas del eje X -->
+            ${monthlyIngresos
+              .slice(1, currentMonth + 1)
+              .map((item, index) => {
+                const x = padding + index * stepX;
+                return `
+                <text 
+                  x="${x}" 
+                  y="${height - 10}" 
+                  text-anchor="middle" 
+                  font-size="10" 
+                  fill="#64748b"
+                >
+                  ${item.label.substring(0, 3)}
+                </text>
+              `;
+              })
+              .join("")}
+            
+            <!-- Título -->
+            <text 
+              x="${width / 2}" 
+              y="20" 
+              text-anchor="middle" 
+              font-size="14" 
+              font-weight="bold" 
+              fill="#1e293b"
+            >
+              ${label}
+            </text>
+          </svg>
+        `;
+      };
+
+      // Función para generar gráfica SVG para estudiantes (sin símbolo $)
+      const generateLineChartSVG_Students = (data, color, label) => {
+        const width = 700;
+        const height = 250;
+        const padding = 70; // Mismo padding que la función anterior
+        const chartWidth = width - padding * 2;
+        const chartHeight = height - padding * 2;
+
+        const maxValue = Math.max(...data, 1);
+        const stepX = chartWidth / (data.length - 1 || 1);
+
+        // Generar puntos de la línea
+        const points = data
+          .map((value, index) => {
+            const x = padding + index * stepX;
+            const y = height - padding - (value / maxValue) * chartHeight;
+            return `${x},${y}`;
+          })
+          .join(" ");
+
+        // Generar path para el área rellena
+        const areaPath = `
+          M ${padding},${height - padding}
+          L ${data
+            .map((value, index) => {
+              const x = padding + index * stepX;
+              const y = height - padding - (value / maxValue) * chartHeight;
+              return `${x},${y}`;
+            })
+            .join(" L ")}
+          L ${padding + (data.length - 1) * stepX},${height - padding}
+          Z
+        `;
+
+        return `
+          <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+            <!-- Fondo -->
+            <rect width="${width}" height="${height}" fill="#ffffff"/>
+            
+            <!-- Grid horizontal -->
+            ${[0, 0.25, 0.5, 0.75, 1]
+              .map(
+                (ratio) => `
+              <line 
+                x1="${padding}" 
+                y1="${height - padding - chartHeight * ratio}" 
+                x2="${width - padding}" 
+                y2="${height - padding - chartHeight * ratio}" 
+                stroke="#e2e8f0" 
+                stroke-width="1"
+              />
+              <text 
+                x="${padding - 10}" 
+                y="${height - padding - chartHeight * ratio + 5}" 
+                text-anchor="end" 
+                font-size="10" 
+                fill="#64748b"
+              >
+                ${Math.round(maxValue * ratio)}
+              </text>
+            `,
               )
               .join("")}
             
@@ -9137,19 +9261,19 @@ const SeccionReportes = () => {
       const ingresosSVG = generateLineChartSVG(
         monthlyIngresos.slice(1, currentMonth + 1).map((item) => item.value),
         "#10b981",
-        "Ingresos Mensuales"
+        "Ingresos Mensuales",
       );
 
       const egresosSVG = generateLineChartSVG(
         monthlyEgresos.slice(1, currentMonth + 1).map((item) => item.value),
         "#ef4444",
-        "Egresos Mensuales"
+        "Egresos Mensuales",
       );
 
-      const estudiantesSVG = generateLineChartSVG(
+      const estudiantesSVG = generateLineChartSVG_Students(
         monthlyEstudiantes.slice(1, currentMonth + 1).map((item) => item.value),
         "#6F09EA",
-        "Estudiantes Registrados"
+        "Estudiantes Registrados",
       );
 
       // Función para generar gráfica de pastel SVG
@@ -9281,7 +9405,7 @@ const SeccionReportes = () => {
       // Generar gráfica de pastel
       const pieChartSVG = generatePieChartSVG(
         totalIngresosAnual,
-        totalEgresosAnual
+        totalEgresosAnual,
       );
 
       // Función para generar gráfica de pastel de estudiantes por mes
@@ -10129,7 +10253,7 @@ const SeccionCatalogos = ({ catalogos, setCatalogos }) => {
       ]);
       sequence.start();
       return () => sequence.stop();
-    }, [])
+    }, []),
   );
 
   const catalogoImages = [
@@ -10460,7 +10584,7 @@ if (Platform.OS === "web") {
         msg.includes("props.pointerEvents is deprecated") ||
         msg.includes("TouchableWithoutFeedback is deprecated") ||
         msg.includes(
-          "@supabase/gotrue-js: Navigator LockManager returned a null lock"
+          "@supabase/gotrue-js: Navigator LockManager returned a null lock",
         ) ||
         msg.includes("LockManager returned a null lock")
       ) {
