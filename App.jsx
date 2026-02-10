@@ -3932,7 +3932,7 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
                       value={form.monto}
                       onChangeText={(text) => {
                         const numericText = text.replace(/[^0-9]/g, "");
-                        if (numericText.length > 4) {
+                        if (numericText.length > 5) {
                           handleMontoChange(maxSliderValue);
                         } else {
                           handleMontoChange(Number(numericText) || 0);
@@ -4341,7 +4341,7 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                       value={form.monto}
                       onChangeText={(text) => {
                         const numericText = text.replace(/[^0-9]/g, "");
-                        if (numericText.length > 4) {
+                        if (numericText.length > 5) {
                           handleMontoChange(maxSliderValue);
                         } else {
                           handleMontoChange(Number(numericText) || 0);
