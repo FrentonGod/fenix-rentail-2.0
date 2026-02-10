@@ -2154,6 +2154,7 @@ const ScreenAsesores = () => {
   // Estados para el formulario y la animación
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingAsesor, setEditingAsesor] = useState(null);
+  const [viewOnly, setViewOnly] = useState(false);
   const formAnimation = useRef(new Animated.Value(0)).current;
 
   const handleRefresh = async () => {
@@ -2217,6 +2218,18 @@ const ScreenAsesores = () => {
 
   const handleOpenForm = (asesor = null) => {
     setEditingAsesor(asesor);
+    setViewOnly(false);
+    setIsFormVisible(true);
+    Animated.timing(formAnimation, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleView = (asesor) => {
+    setEditingAsesor(asesor);
+    setViewOnly(true);
     setIsFormVisible(true);
     Animated.timing(formAnimation, {
       toValue: 1,
@@ -2234,6 +2247,7 @@ const ScreenAsesores = () => {
       }).start(() => {
         setIsFormVisible(false);
         setEditingAsesor(null);
+        setViewOnly(false);
         handleRefresh();
       });
     };
@@ -2302,7 +2316,7 @@ const ScreenAsesores = () => {
         onRefresh={handleRefresh}
         onEdit={handleOpenForm}
         onDelete={handleDelete}
-        onView={handleOpenForm}
+        onView={handleView}
       />
       {isFormVisible && (
         <Animated.View
@@ -2313,6 +2327,7 @@ const ScreenAsesores = () => {
             key={editingAsesor ? `edit-${editingAsesor.id_asesor}` : "new"}
             asesorToEdit={editingAsesor}
             onFormClose={handleCloseForm}
+            viewOnly={viewOnly}
           />
         </Animated.View>
       )}
@@ -2454,6 +2469,7 @@ const TablaAsesores = ({
             filtered.map((asesor, index) => (
               <Pressable
                 key={asesor.id_asesor}
+                onPress={() => onView(asesor)}
                 className={`flex-row items-center ${index % 2 ? "bg-white" : "bg-slate-50"}`}
                 android_ripple={{ color: "rgba(0,0,0,0.04)" }}
               >
@@ -2476,30 +2492,32 @@ const TablaAsesores = ({
                   </Text>
                 </View>
                 <View style={{ flex: 1.3 }} className="py-3 px-3">
-                  <View className="flex flex-row items-center justify-around">
-                    <TouchableOpacity onPress={() => onEdit(asesor)}>
-                      <Svg
-                        height="22"
-                        viewBox="0 -960 960 960"
-                        width="22"
-                        fill="#3b82f6"
+                  <Pressable onPress={(e) => e?.stopPropagation?.()}>
+                    <View className="flex flex-row items-center justify-around">
+                      <TouchableOpacity onPress={() => onEdit(asesor)}>
+                        <Svg
+                          height="22"
+                          viewBox="0 -960 960 960"
+                          width="22"
+                          fill="#3b82f6"
+                        >
+                          <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                        </Svg>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => onDelete(asesor.id_asesor)}
                       >
-                        <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
-                      </Svg>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => onDelete(asesor.id_asesor)}
-                    >
-                      <Svg
-                        height="22"
-                        viewBox="0 -960 960 960"
-                        width="22"
-                        fill="#ef4444"
-                      >
-                        <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
-                      </Svg>
-                    </TouchableOpacity>
-                  </View>
+                        <Svg
+                          height="22"
+                          viewBox="0 -960 960 960"
+                          width="22"
+                          fill="#ef4444"
+                        >
+                          <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                        </Svg>
+                      </TouchableOpacity>
+                    </View>
+                  </Pressable>
                 </View>
               </Pressable>
             ))
@@ -3632,8 +3650,9 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
   const handleMontoChange = (value) => {
     setLiveMonto(value);
     handleInputChange("monto", String(value));
-    if (value > maxSliderValue) {
-      setMaxSliderValue(value);
+    const integerPart = Math.floor(value);
+    if (integerPart > maxSliderValue) {
+      setMaxSliderValue(integerPart);
     } else if (value === 0 && maxSliderValue !== 3000) {
       setMaxSliderValue(3000);
     }
@@ -3913,35 +3932,44 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
                     <StepButton
                       type="decrement"
                       disabled={(Number(form.monto) || 0) <= 0}
-                      onPress={() =>
-                        handleMontoChange(Math.max(0, liveMonto - 50))
-                      }
+                      onPress={() => {
+                        const currentValue = Number(form.monto) || 0;
+                        const integerPart = Math.floor(currentValue);
+                        const decimalPart = currentValue - integerPart;
+                        const newInteger = Math.max(0, integerPart - 50);
+                        handleMontoChange(newInteger + decimalPart);
+                      }}
                     />
                     <Slider
                       style={{ flex: 1, height: 40 }}
                       minimumValue={0}
                       maximumValue={maxSliderValue}
                       step={50}
-                      value={liveMonto}
-                      onSlidingComplete={handleMontoChange}
+                      value={Math.floor(liveMonto)}
+                      onSlidingComplete={(sliderValue) => {
+                        const currentValue = Number(form.monto) || 0;
+                        const decimalPart =
+                          currentValue - Math.floor(currentValue);
+                        handleMontoChange(sliderValue + decimalPart);
+                      }}
                       minimumTrackTintColor={"#6F09EA"}
                       maximumTrackTintColor="#d1d5db"
                       thumbTintColor={"#6F09EA"}
                     />
                     <CurrencyInput
                       value={form.monto}
-                      onChangeText={(text) => {
-                        const numericText = text.replace(/[^0-9]/g, "");
-                        if (numericText.length > 5) {
-                          handleMontoChange(maxSliderValue);
-                        } else {
-                          handleMontoChange(Number(numericText) || 0);
-                        }
+                      onChangeText={(newValue) => {
+                        handleMontoChange(Number(newValue) || 0);
                       }}
                     />
                     <StepButton
                       type="increment"
-                      onPress={() => handleMontoChange(liveMonto + 50)}
+                      onPress={() => {
+                        const currentValue = Number(form.monto) || 0;
+                        const integerPart = Math.floor(currentValue);
+                        const decimalPart = currentValue - integerPart;
+                        handleMontoChange(integerPart + 50 + decimalPart);
+                      }}
                     />
                   </View>
                   <ChipButtonGroup
@@ -4126,8 +4154,9 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
   const handleMontoChange = (value) => {
     setLiveMonto(value);
     handleInputChange("monto", String(value));
-    if (value > maxSliderValue) {
-      setMaxSliderValue(value);
+    const integerPart = Math.floor(value);
+    if (integerPart > maxSliderValue) {
+      setMaxSliderValue(integerPart);
     } else if (value === 0 && maxSliderValue !== 3000) {
       setMaxSliderValue(3000);
     }
@@ -4322,35 +4351,44 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
                     <StepButton
                       type="decrement"
                       disabled={(Number(form.monto) || 0) <= 0}
-                      onPress={() =>
-                        handleMontoChange(Math.max(0, liveMonto - 50))
-                      }
+                      onPress={() => {
+                        const currentValue = Number(form.monto) || 0;
+                        const integerPart = Math.floor(currentValue);
+                        const decimalPart = currentValue - integerPart;
+                        const newInteger = Math.max(0, integerPart - 50);
+                        handleMontoChange(newInteger + decimalPart);
+                      }}
                     />
                     <Slider
                       style={{ flex: 1, height: 40 }}
                       minimumValue={0}
                       maximumValue={maxSliderValue}
                       step={50}
-                      value={liveMonto}
-                      onSlidingComplete={handleMontoChange}
+                      value={Math.floor(liveMonto)}
+                      onSlidingComplete={(sliderValue) => {
+                        const currentValue = Number(form.monto) || 0;
+                        const decimalPart =
+                          currentValue - Math.floor(currentValue);
+                        handleMontoChange(sliderValue + decimalPart);
+                      }}
                       minimumTrackTintColor={"#6F09EA"}
                       maximumTrackTintColor="#d1d5db"
                       thumbTintColor={"#6F09EA"}
                     />
                     <CurrencyInput
                       value={form.monto}
-                      onChangeText={(text) => {
-                        const numericText = text.replace(/[^0-9]/g, "");
-                        if (numericText.length > 5) {
-                          handleMontoChange(maxSliderValue);
-                        } else {
-                          handleMontoChange(Number(numericText) || 0);
-                        }
+                      onChangeText={(newValue) => {
+                        handleMontoChange(Number(newValue) || 0);
                       }}
                     />
                     <StepButton
                       type="increment"
-                      onPress={() => handleMontoChange(liveMonto + 50)}
+                      onPress={() => {
+                        const currentValue = Number(form.monto) || 0;
+                        const integerPart = Math.floor(currentValue);
+                        const decimalPart = currentValue - integerPart;
+                        handleMontoChange(integerPart + 50 + decimalPart);
+                      }}
                     />
                   </View>
                   <ChipButtonGroup
@@ -7207,6 +7245,14 @@ const TablaCursos = ({
 const CurrencyInput = ({ value, onChangeText, placeholder, editable }) => {
   const isEditable = editable !== false;
   const inputRef = React.useRef(null);
+  const [showDecimalMenu, setShowDecimalMenu] = useState(false);
+  const [customDecimal, setCustomDecimal] = useState("");
+
+  // Separar el valor en parte entera y decimal
+  const numericValue = Number(value) || 0;
+  const integerPart = Math.floor(numericValue);
+  const decimalPart = Math.round((numericValue - integerPart) * 100);
+  const decimalDisplay = String(decimalPart).padStart(2, "0");
 
   const handleFocus = () => {
     if (isEditable && (value === null || value === "")) {
@@ -7215,30 +7261,145 @@ const CurrencyInput = ({ value, onChangeText, placeholder, editable }) => {
     setTimeout(() => inputRef.current?.setSelection(99, 99), 0);
   };
 
+  const handleDecimalClick = () => {
+    if (!isEditable) return;
+    setCustomDecimal(String(decimalPart).padStart(2, "0"));
+    setShowDecimalMenu(true);
+  };
+
+  const handleDecimalSelect = (decimal) => {
+    const newValue = integerPart + decimal / 100;
+    onChangeText(String(newValue));
+    setShowDecimalMenu(false);
+  };
+
+  const handleCustomDecimalSave = () => {
+    const decimal = parseInt(customDecimal) || 0;
+    if (decimal >= 0 && decimal <= 99) {
+      handleDecimalSelect(decimal);
+    }
+  };
+
   return (
-    <View
-      style={[
-        styles.currencyInputContainer,
-        !isEditable && styles.disabledInput,
-      ]}
-    >
-      <Text style={styles.currencySymbol}>$</Text>
-      <TextInput
+    <>
+      <View
         style={[
-          styles.currencyInput,
-          (value === "0" || value === "" || value === null) &&
-            styles.currencyInputPlaceholder,
+          styles.currencyInputContainer,
+          !isEditable && styles.disabledInput,
         ]}
-        ref={inputRef}
-        value={value === null ? "" : String(Math.floor(value))}
-        onChangeText={onChangeText}
-        onFocus={handleFocus}
-        placeholder={placeholder || "0"}
-        keyboardType="number-pad"
-        editable={isEditable}
-      />
-      <Text style={styles.currencyCents}>.00</Text>
-    </View>
+      >
+        <Text style={styles.currencySymbol}>$</Text>
+        <TextInput
+          style={[
+            styles.currencyInput,
+            (value === "0" || value === "" || value === null) &&
+              styles.currencyInputPlaceholder,
+          ]}
+          ref={inputRef}
+          value={value === null ? "" : String(integerPart)}
+          onChangeText={(text) => {
+            const numericText = text.replace(/[^0-9]/g, "");
+            const newValue = (Number(numericText) || 0) + decimalPart / 100;
+            onChangeText(String(newValue));
+          }}
+          onFocus={handleFocus}
+          placeholder={placeholder || "0"}
+          keyboardType="number-pad"
+          editable={isEditable}
+        />
+        <TouchableOpacity
+          onPress={handleDecimalClick}
+          disabled={!isEditable}
+          style={{ flexDirection: "row", alignItems: "center" }}
+        >
+          <Text
+            style={[
+              styles.currencyCents,
+              isEditable && { color: "#6F09EA", fontWeight: "600" },
+            ]}
+          >
+            .{decimalDisplay}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Modal de selección de decimales */}
+      <Modal
+        visible={showDecimalMenu}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDecimalMenu(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowDecimalMenu(false)}>
+          <View style={styles.decimalMenuOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.decimalMenuContainer}>
+                <Text style={styles.decimalMenuTitle}>
+                  Seleccionar decimales
+                </Text>
+
+                <View style={styles.decimalQuickOptions}>
+                  {[0, 25, 50, 75, 99].map((decimal) => (
+                    <TouchableOpacity
+                      key={decimal}
+                      style={[
+                        styles.decimalOption,
+                        decimalPart === decimal && styles.decimalOptionSelected,
+                      ]}
+                      onPress={() => handleDecimalSelect(decimal)}
+                    >
+                      <Text
+                        style={[
+                          styles.decimalOptionText,
+                          decimalPart === decimal &&
+                            styles.decimalOptionTextSelected,
+                        ]}
+                      >
+                        .{String(decimal).padStart(2, "0")}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <View style={styles.decimalCustomContainer}>
+                  <Text style={styles.decimalCustomLabel}>Personalizado:</Text>
+                  <View style={styles.decimalCustomInputContainer}>
+                    <Text style={styles.decimalCustomDot}>.</Text>
+                    <TextInput
+                      style={styles.decimalCustomInput}
+                      value={customDecimal}
+                      onChangeText={(text) => {
+                        const numeric = text.replace(/[^0-9]/g, "");
+                        if (numeric.length <= 2) {
+                          setCustomDecimal(numeric);
+                        }
+                      }}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                      placeholder="00"
+                      placeholderTextColor="#9ca3af"
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.decimalCustomButton}
+                    onPress={handleCustomDecimalSave}
+                  >
+                    <Text style={styles.decimalCustomButtonText}>✓</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.decimalCloseButton}
+                  onPress={() => setShowDecimalMenu(false)}
+                >
+                  <Text style={styles.decimalCloseButtonText}>Cerrar</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    </>
   );
 };
 
@@ -10780,6 +10941,161 @@ const styles = StyleSheet.create({
   chipTextDisabled: {
     color: "#9ca3af",
     fontWeight: "500",
+  },
+  // Estilos para CurrencyInput
+  currencyInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    minWidth: 120,
+  },
+  currencySymbol: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#475569",
+    marginRight: 4,
+  },
+  currencyInput: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1e293b",
+    flex: 1,
+    padding: 0,
+    minWidth: 40,
+  },
+  currencyInputPlaceholder: {
+    color: "#9ca3af",
+  },
+  currencyCents: {
+    fontSize: 16,
+    color: "#94a3b8",
+    marginLeft: 2,
+  },
+  disabledInput: {
+    backgroundColor: "#f8fafc",
+    opacity: 0.7,
+  },
+  // Estilos para el menú de decimales
+  decimalMenuOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  decimalMenuContainer: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 20,
+    width: 300,
+    maxWidth: "90%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  decimalMenuTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1e293b",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  decimalQuickOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 16,
+  },
+  decimalOption: {
+    backgroundColor: "#f1f5f9",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#e2e8f0",
+    minWidth: "18%",
+    alignItems: "center",
+  },
+  decimalOptionSelected: {
+    backgroundColor: "#eef2ff",
+    borderColor: "#6F09EA",
+  },
+  decimalOptionText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#475569",
+  },
+  decimalOptionTextSelected: {
+    color: "#6F09EA",
+    fontWeight: "bold",
+  },
+  decimalCustomContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    gap: 8,
+  },
+  decimalCustomLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#475569",
+  },
+  decimalCustomInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    flex: 1,
+  },
+  decimalCustomDot: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#475569",
+    marginRight: 4,
+  },
+  decimalCustomInput: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1e293b",
+    flex: 1,
+    padding: 0,
+    minWidth: 30,
+  },
+  decimalCustomButton: {
+    backgroundColor: "#6F09EA",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  decimalCustomButtonText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  decimalCloseButton: {
+    backgroundColor: "#f1f5f9",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  decimalCloseButtonText: {
+    color: "#475569",
+    fontSize: 14,
+    fontWeight: "600",
   },
 });
 

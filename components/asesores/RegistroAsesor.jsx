@@ -124,6 +124,7 @@ export default function RegistroAsesor({
 
   const initialFormState = {
     nombre_asesor: "",
+    desc_asesor: "",
     correo_asesor: "",
     telefono_asesor: "",
     direccion_asesor: "",
@@ -170,7 +171,7 @@ export default function RegistroAsesor({
           acc[key] = false;
           return acc;
         },
-        {}
+        {},
       );
       setEditableFields(initialEditableState);
     }
@@ -207,7 +208,7 @@ export default function RegistroAsesor({
     if (status !== "granted") {
       Alert.alert(
         "Permiso denegado",
-        "Necesitamos acceso a tu galería para seleccionar una foto."
+        "Necesitamos acceso a tu galería para seleccionar una foto.",
       );
       return;
     }
@@ -253,7 +254,7 @@ export default function RegistroAsesor({
                 console.error("Error deleting image:", error);
                 Alert.alert(
                   "Error",
-                  "No se pudo eliminar la imagen del servidor."
+                  "No se pudo eliminar la imagen del servidor.",
                 );
                 return;
               }
@@ -265,7 +266,7 @@ export default function RegistroAsesor({
             }));
           },
         },
-      ]
+      ],
     );
   };
 
@@ -316,7 +317,7 @@ export default function RegistroAsesor({
         </View>
       );
     },
-    [asesorToEdit, editableFields]
+    [asesorToEdit, editableFields],
   ); // Dependencia para que se regenere si cambia el modo
 
   // Helpers de validación
@@ -365,7 +366,7 @@ export default function RegistroAsesor({
         v && !onlyLettersSpaces(v) ? "Usa solo letras y espacios" : "",
       genero_asesor: (v) => (!v ? "Selecciona el género" : ""),
     }),
-    [asesorToEdit] // Dependencia para que se regenere al cambiar de modo
+    [asesorToEdit], // Dependencia para que se regenere al cambiar de modo
   );
 
   const formatPhoneNumber = (value) => {
@@ -417,7 +418,7 @@ export default function RegistroAsesor({
       }
       return !msg;
     },
-    [form, validators, asesorToEdit]
+    [form, validators, asesorToEdit],
   );
 
   const validateAll = useCallback(() => {
@@ -455,6 +456,7 @@ export default function RegistroAsesor({
       }
       const payload = {
         nombre_asesor: form.nombre_asesor.trim(),
+        desc_asesor: form.desc_asesor.trim() || null,
         correo_asesor: email,
         telefono_asesor: phoneDigits(form.telefono_asesor.trim()),
         direccion_asesor: form.direccion_asesor.trim() || null,
@@ -692,7 +694,7 @@ export default function RegistroAsesor({
 
             {/* Grid 2 columnas */}
             <View className="flex-row flex-wrap gap-4">
-              <View style={[styles.half, isSmall && { width: "100%" }]}>
+              <View style={[styles.half && { width: "100%" }]}>
                 <LabeledInput
                   customLabel={renderLabelWithEditButton({
                     labelText: "Nombre completo",
@@ -719,6 +721,28 @@ export default function RegistroAsesor({
                   }
                 />
               </View>
+
+              {/* Campo de Descripción - Ancho completo */}
+              <View style={{ width: "100%" }}>
+                <LabeledInput
+                  customLabel={renderLabelWithEditButton({
+                    labelText: "Descripción",
+                    fieldKey: "desc_asesor",
+                  })}
+                  value={form.desc_asesor}
+                  onChangeText={(v) => set("desc_asesor")(v.slice(0, 200))}
+                  placeholder="Breve descripción del asesor..."
+                  placeholderTextColor="#9ca3af"
+                  multiline
+                  numberOfLines={3}
+                  maxLength={200}
+                  style={{ textAlignVertical: "top", height: 80 }}
+                  disabled={
+                    viewOnly || (asesorToEdit && !editableFields.desc_asesor)
+                  }
+                />
+              </View>
+
               <View style={[styles.half, isSmall && { width: "100%" }]}>
                 <View
                   ref={emailInputContainerRef}
@@ -726,7 +750,7 @@ export default function RegistroAsesor({
                     emailInputContainerRef.current.measureInWindow(
                       (x, y, width, height) => {
                         setEmailInputLayout({ x, y, width, height });
-                      }
+                      },
                     );
                   }}
                 >
@@ -748,7 +772,7 @@ export default function RegistroAsesor({
                       if (atIndex !== -1) {
                         const domainPart = currentValue.substring(atIndex + 1);
                         const filteredDomains = COMMON_DOMAINS.filter(
-                          (domain) => domain.startsWith(domainPart)
+                          (domain) => domain.startsWith(domainPart),
                         );
                         setDomainSuggestions(filteredDomains);
                         setShowDomainSuggestions(filteredDomains.length > 0);
@@ -876,7 +900,7 @@ export default function RegistroAsesor({
                         (x, y, w, h) => {
                           setMunicipioMenuPos({ x, y, w, h });
                           setMunicipioOpen(true);
-                        }
+                        },
                       );
                     }}
                     className={`border border-slate-300 rounded-xl px-4 py-3 flex-row items-center justify-between ${
@@ -1148,7 +1172,7 @@ export default function RegistroAsesor({
                       setForm({ ...initialFormState, ...asesorToEdit });
                       // Resetear el estado de editabilidad
                       const initialEditableState = Object.keys(
-                        initialFormState
+                        initialFormState,
                       ).reduce((acc, key) => {
                         acc[key] = false;
                         return acc;

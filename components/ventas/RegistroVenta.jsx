@@ -35,7 +35,6 @@ import { shareAsync } from "expo-sharing";
 import * as FileSystem from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
 
-
 const LabeledInput = ({
   label,
   error,
@@ -333,7 +332,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
   useEffect(() => {
     // El listener de 'change' nos da las nuevas dimensiones de la pantalla.
     const subscription = Dimensions.addEventListener("change", ({ screen }) =>
-      setIsLandscape(screen.width > screen.height)
+      setIsLandscape(screen.width > screen.height),
     );
     return () => subscription?.remove();
   }, []);
@@ -369,7 +368,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
   const [liveHoras, setLiveHoras] = useState(initialFormState.horas_sesion);
   const [liveAnticipo, setLiveAnticipo] = useState(initialFormState.anticipo);
   const [liveIncentivo, setLiveIncentivo] = useState(
-    initialFormState.incentivo_premium
+    initialFormState.incentivo_premium,
   );
 
   // --- Lógica para los inputs de fecha segmentados ---
@@ -407,7 +406,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
             onPress: () => navigation.dispatch(e.data.action),
           },
           { text: "Cancelar", style: "cancel", onPress: () => {} },
-        ]
+        ],
       );
     });
 
@@ -443,7 +442,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
             if (intervalRef.current) clearInterval(intervalRef.current);
           },
         },
-      ]
+      ],
     );
   };
 
@@ -457,7 +456,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
 
     const today = new Date();
     const formattedDate = `${String(today.getDate()).padStart(2, "0")}/${String(
-      today.getMonth() + 1
+      today.getMonth() + 1,
     ).padStart(2, "0")}/${today.getFullYear()}`;
 
     const cantidadTexto =
@@ -491,10 +490,10 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       gruposData.sort((a, b) => {
         const gruposAlFinal = ["Sabatino", "Dominical"];
         const aEsEspecial = gruposAlFinal.some((g) =>
-          a.label.toLowerCase().includes(g.toLowerCase())
+          a.label.toLowerCase().includes(g.toLowerCase()),
         );
         const bEsEspecial = gruposAlFinal.some((g) =>
-          b.label.toLowerCase().includes(g.toLowerCase())
+          b.label.toLowerCase().includes(g.toLowerCase()),
         );
 
         // Si ambos son especiales, ordenar alfabéticamente entre ellos
@@ -530,7 +529,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
             label: c.nombre_curso,
             value: c.id_curso,
             costo: c.costo_curso,
-          }))
+          })),
         );
       }
       setLoadingCursos(false);
@@ -549,7 +548,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
             value: e.id_alumno,
             grupo: e.grupo,
             direccion: e.direccion_alumno,
-          }))
+          })),
         );
       }
       setLoadingEstudiantes(false);
@@ -766,7 +765,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
         // En web, usamos window.confirm directamente para evitar problemas con Alert.
         if (
           window.confirm(
-            "¿Estás seguro de que deseas desactivar el incentivo? El valor configurado se perderá."
+            "¿Estás seguro de que deseas desactivar el incentivo? El valor configurado se perderá.",
           )
         ) {
           set_incentivo_active(false);
@@ -805,7 +804,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
             setIncentivoEnPorcentaje(false);
           },
         },
-      ]
+      ],
     );
   };
 
@@ -874,7 +873,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
   // Determina si los controles de anticipo deben estar deshabilitados.
   const isAnticipoDisabled = useMemo(
     () => !form.curso_id || totalConIncentivo <= 0,
-    [form.curso_id, totalConIncentivo]
+    [form.curso_id, totalConIncentivo],
   );
 
   // Determina si el pago se ha cubierto en su totalidad.
@@ -980,7 +979,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
 
   const selectedCursoInfo = useMemo(
     () => cursos.find((c) => c.value === form.curso_id),
-    [form.curso_id, cursos]
+    [form.curso_id, cursos],
   );
 
   useEffect(() => {
@@ -990,7 +989,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       const enteredDate = new Date(
         parseInt(year, 10),
         parseInt(month, 10) - 1,
-        parseInt(day, 10)
+        parseInt(day, 10),
       );
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -998,7 +997,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       if (enteredDate < today) {
         Alert.alert(
           "Fecha Inválida",
-          "No puedes seleccionar una fecha anterior al día de hoy."
+          "No puedes seleccionar una fecha anterior al día de hoy.",
         );
         setDateParts({ day: "", month: "", year: "" });
         setForm({ ...form, fecha_limite_pago: "" });
@@ -1036,7 +1035,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       if (enteredYear > maxYear) {
         Alert.alert(
           "Fecha Inválida",
-          "Asegurese de haber puesto una fecha correcta"
+          "Asegurese de haber puesto una fecha correcta",
         );
         Keyboard.dismiss();
         newParts = { day: "", month: "", year: "" };
@@ -1101,7 +1100,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       Keyboard.dismiss();
       Alert.alert(
         "Campos Incompletos",
-        "Por favor, asegúrate de ingresar el nombre del cliente, una fecha límite de pago válida, seleccionar un curso y definir un anticipo."
+        "Por favor, asegúrate de ingresar el nombre del cliente, una fecha límite de pago válida, seleccionar un curso y definir un anticipo.",
       );
       return;
     }
@@ -1151,7 +1150,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
         if (searchError) {
           console.error("Error buscando alumno:", searchError);
           throw new Error(
-            "Error al verificar el alumno: " + searchError.message
+            "Error al verificar el alumno: " + searchError.message,
           );
         }
 
@@ -1178,7 +1177,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
           if (newStudentError) {
             console.error("Error creando alumno:", newStudentError);
             throw new Error(
-              "Error al registrar el nuevo alumno: " + newStudentError.message
+              "Error al registrar el nuevo alumno: " + newStudentError.message,
             );
           }
 
@@ -1193,7 +1192,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
 
       if (!finalIdAlumno) {
         console.error(
-          "Error: ID de alumno es null antes de insertar transacción."
+          "Error: ID de alumno es null antes de insertar transacción.",
         );
         throw new Error("No se ha podido determinar el ID del alumno.");
       }
@@ -1260,14 +1259,14 @@ export default function RegistroVenta({ navigation, onFormClose }) {
 
       if (transactionData && transactionData.id_transaccion) {
         console.log(
-          `Actualizando alumno ${finalIdAlumno} con id_transaccion: ${transactionData.id_transaccion}`
+          `Actualizando alumno ${finalIdAlumno} con id_transaccion: ${transactionData.id_transaccion}`,
         );
 
         // Generar el folio con el formato MQ-AAAA-ID_TRANSACCION (con padding de 4 dígitos mínimo)
         const currentYear = new Date().getFullYear();
         const paddedId = String(transactionData.id_transaccion).padStart(
           4,
-          "0"
+          "0",
         );
         generatedFolio = `MQ-${currentYear}-${paddedId}`;
         console.log("Folio generado:", generatedFolio);
@@ -1283,7 +1282,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
         if (updateStudentError) {
           console.error(
             "Error actualizando alumno con transacción/curso:",
-            updateStudentError
+            updateStudentError,
           );
           // No bloqueamos el flujo, pero logueamos el error
         } else {
@@ -1305,7 +1304,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       console.error("Error al registrar la venta:", error);
       Alert.alert(
         "Error",
-        "No se pudo registrar la venta. Inténtalo de nuevo."
+        "No se pudo registrar la venta. Inténtalo de nuevo.",
       );
     } finally {
       setIsSaving(false);
@@ -1605,7 +1604,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
     if (status !== "granted") {
       Alert.alert(
         "Permisos necesarios",
-        "Se necesitan permisos de almacenamiento para guardar el ticket."
+        "Se necesitan permisos de almacenamiento para guardar el ticket.",
       );
       // Aún así compartir el archivo desde cache
       await shareAsync(uri, {
@@ -1635,7 +1634,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
         album = await MediaLibrary.createAlbumAsync(
           "Fenix-Retail",
           asset,
-          false
+          false,
         );
         console.log("Álbum Fenix-Retail creado en Pictures/Fenix-Retail");
       } else {
@@ -1646,7 +1645,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
 
       console.log(
         "Archivo guardado en: Pictures/Fenix-Retail/",
-        ticketFileName
+        ticketFileName,
       );
 
       // Compartir el archivo
@@ -1659,7 +1658,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       console.error("Error guardando archivo:", error);
       Alert.alert(
         "Error",
-        "No se pudo guardar el archivo en Fenix-Retail. Se compartirá desde caché."
+        "No se pudo guardar el archivo en Fenix-Retail. Se compartirá desde caché.",
       );
       await shareAsync(uri, {
         UTI: ".pdf",
@@ -1726,7 +1725,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
       console.error("Error guardando grupo personalizado:", error);
       Alert.alert(
         "Error",
-        `No se pudo guardar el grupo personalizado: ${error.message}`
+        `No se pudo guardar el grupo personalizado: ${error.message}`,
       );
       return null;
     }
@@ -1756,7 +1755,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                     onPress: onFormClose,
                   },
                   { text: "Cancelar", style: "cancel", onPress: () => {} },
-                ]
+                ],
               );
             }}
           >
@@ -2194,7 +2193,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                       disabled={isAnticipoDisabled || (form.anticipo || 0) <= 0}
                       onPress={() =>
                         handleDirectAnticipoChange(
-                          Math.max(0, (liveAnticipo || 0) - 50)
+                          Math.max(0, (liveAnticipo || 0) - 50),
                         )
                       }
                       onPressIn={() => {
@@ -2247,7 +2246,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                       }
                       onPress={() =>
                         handleDirectAnticipoChange(
-                          Math.min(form.importe, (liveAnticipo || 0) + 50)
+                          Math.min(form.importe, (liveAnticipo || 0) + 50),
                         )
                       }
                       onPressIn={() => {
@@ -2257,7 +2256,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                           handleDirectAnticipoChange((prevValue) => {
                             const newValue = Math.min(
                               form.importe,
-                              (prevValue || 0) + 50
+                              (prevValue || 0) + 50,
                             );
                             return newValue;
                           });
@@ -2440,8 +2439,8 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                               Math.max(
                                 0,
                                 (liveIncentivo || 0) -
-                                  (incentivoEnPorcentaje ? 5 : 50)
-                              )
+                                  (incentivoEnPorcentaje ? 5 : 50),
+                              ),
                             )
                           }
                           onPressIn={() => {
@@ -2532,7 +2531,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                           onPress={() =>
                             handleDirectIncentivoChange(
                               (liveIncentivo || 0) +
-                                (incentivoEnPorcentaje ? 5 : 50)
+                                (incentivoEnPorcentaje ? 5 : 50),
                             )
                           }
                           onPressIn={() => {
