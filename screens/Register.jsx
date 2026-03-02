@@ -5,9 +5,7 @@ import {
   TextInput,
   Pressable,
   Platform,
-  Keyboard,
   TouchableWithoutFeedback,
-  KeyboardAvoidingView,
   useWindowDimensions,
   ScrollView,
   Image,
@@ -83,7 +81,7 @@ export default function RegisterScreen({ navigation }) {
       } else {
         if (!data?.user?.email_confirmed_at) {
           setInfoMsg(
-            "Te enviamos un correo de verificación. Confirma para poder iniciar sesión."
+            "Te enviamos un correo de verificación. Confirma para poder iniciar sesión.",
           );
         } else {
           setInfoMsg("Registro exitoso. Ya puedes iniciar sesión.");
@@ -111,7 +109,7 @@ export default function RegisterScreen({ navigation }) {
         console.error("Resend verification error:", error);
       } else {
         setInfoMsg(
-          "Correo de verificación reenviado. Revisa tu bandeja y spam."
+          "Correo de verificación reenviado. Revisa tu bandeja y spam.",
         );
       }
     } finally {
@@ -128,13 +126,13 @@ export default function RegisterScreen({ navigation }) {
         style={{ flex: 1 }}
       >
         <SafeAreaView className="flex-1">
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "padding"}
-            key={isLandscape ? "landscape" : "portrait"}
-            style={{ flex: 1, backgroundColor: "#f8fafc" }}
-          >
+          <View style={{ flex: 1, backgroundColor: "#f8fafc" }}>
             <TouchableWithoutFeedback
-              onPress={Platform.OS !== "web" && Keyboard.dismiss}
+              onPress={
+                Platform.OS !== "web"
+                  ? () => require("react-native").Keyboard.dismiss()
+                  : undefined
+              }
             >
               <View className="flex-1">
                 <HeaderAdmin
@@ -152,17 +150,30 @@ export default function RegisterScreen({ navigation }) {
                       paddingVertical: 24,
                     }}
                     keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="interactive"
+                    automaticallyAdjustKeyboardInsets
                   >
                     {renderForm()}
                   </ScrollView>
                 ) : (
-                  <View className="flex-1 items-center justify-center px-4 py-6">
+                  <ScrollView
+                    contentContainerStyle={{
+                      flexGrow: 1,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      paddingHorizontal: 16,
+                      paddingVertical: 24,
+                    }}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="interactive"
+                    automaticallyAdjustKeyboardInsets
+                  >
                     {renderForm()}
-                  </View>
+                  </ScrollView>
                 )}
               </View>
             </TouchableWithoutFeedback>
-          </KeyboardAvoidingView>
+          </View>
         </SafeAreaView>
       </LinearGradient>
     </SafeAreaProvider>

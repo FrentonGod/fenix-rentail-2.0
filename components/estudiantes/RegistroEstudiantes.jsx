@@ -10,9 +10,7 @@ import {
   Modal,
   Platform,
   TouchableOpacity,
-  KeyboardAvoidingView,
   TouchableWithoutFeedback,
-  Keyboard,
 } from "react-native";
 import { supabase } from "../../lib/supabase";
 import Svg, { Path } from "react-native-svg";
@@ -97,10 +95,10 @@ export default function RegistroEstudiantes({ onFormClose }) {
       gruposData.sort((a, b) => {
         const gruposAlFinal = ["Sabatino", "Dominical"];
         const aEsEspecial = gruposAlFinal.some((g) =>
-          a.grupo.toLowerCase().includes(g.toLowerCase())
+          a.grupo.toLowerCase().includes(g.toLowerCase()),
         );
         const bEsEspecial = gruposAlFinal.some((g) =>
-          b.grupo.toLowerCase().includes(g.toLowerCase())
+          b.grupo.toLowerCase().includes(g.toLowerCase()),
         );
 
         if (aEsEspecial && bEsEspecial) {
@@ -301,12 +299,13 @@ export default function RegistroEstudiantes({ onFormClose }) {
 
   return (
     <TouchableWithoutFeedback
-      onPress={Platform.OS !== "web" ? Keyboard.dismiss : undefined}
+      onPress={
+        Platform.OS !== "web"
+          ? () => require("react-native").Keyboard.dismiss()
+          : undefined
+      }
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1, backgroundColor: "#f8fafc" }}
-      >
+      <View style={{ flex: 1, backgroundColor: "#f8fafc" }}>
         <View className="flex-1 p-4">
           <View className="w-full">
             {onFormClose && (
@@ -333,7 +332,13 @@ export default function RegistroEstudiantes({ onFormClose }) {
             </Text>
           </View>
 
-          <ScrollView className="w-full" keyboardShouldPersistTaps="handled">
+          <ScrollView
+            className="w-full"
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            automaticallyAdjustKeyboardInsets
+            contentContainerStyle={{ paddingBottom: 80 }}
+          >
             <LabeledInput
               label="Nombre del Estudiante"
               value={form.nombre_estudiante}
@@ -452,7 +457,7 @@ export default function RegistroEstudiantes({ onFormClose }) {
                       .replace(/\s\s+/g, " ")
                       .replace(
                         /([^a-zA-Z0-9\s\u00c1\u00c9\u00cd\u00d3\u00da\u00dc\u00d1\u00e1\u00e9\u00ed\u00f3\u00fa\u00fc\u00f1])\1+/g,
-                        "$1"
+                        "$1",
                       );
                     set("grupo")(cleanedText);
                   }}
@@ -615,7 +620,7 @@ export default function RegistroEstudiantes({ onFormClose }) {
             </ScrollView>
           </View>
         </Modal>
-      </KeyboardAvoidingView>
+      </View>
     </TouchableWithoutFeedback>
   );
 }

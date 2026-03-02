@@ -15,7 +15,6 @@ import {
   StyleSheet,
   ActivityIndicator,
   Switch,
-  KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
@@ -1775,16 +1774,15 @@ export default function RegistroVenta({ navigation, onFormClose }) {
 
         <View style={{ flex: 1, flexDirection: "row" }}>
           <View style={{ flex: 3 }}>
-            <KeyboardAvoidingView
-              key={isLandscape ? "landscape" : "portrait"} // Clave para forzar el reseteo
-              style={{ flex: 1 }}
-              behavior={Platform.OS === "ios" ? "padding" : "height"}
-              enabled={true} // Habilitado en ambas orientaciones
-              keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 80}
-            >
+            <View style={{ flex: 1 }}>
               <ScrollView
-                keyboardShouldPersistTaps="never"
-                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="interactive"
+                automaticallyAdjustKeyboardInsets
+                contentContainerStyle={[
+                  styles.scrollContent,
+                  { paddingBottom: 120 },
+                ]}
               >
                 {/* Toggle para nuevo estudiante */}
                 <View
@@ -2812,7 +2810,7 @@ export default function RegistroVenta({ navigation, onFormClose }) {
                   )}
                 </TouchableOpacity>
               </View>
-            </KeyboardAvoidingView>
+            </View>
           </View>
           <View
             id="ticket"

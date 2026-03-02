@@ -17,7 +17,6 @@ import {
   Platform,
   useWindowDimensions,
   TouchableOpacity,
-  KeyboardAvoidingView,
   Alert,
   TouchableWithoutFeedback,
   FlatList,
@@ -329,12 +328,11 @@ export default function RegistroAsesor({
   const rfcRe =
     /^([A-Z&Ñ]{3,4})(\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[A-Z\d]{3}$/;
 
-  const validateRFC = (rfc, nacionalidad) => {
-    if (!rfc && String(nacionalidad).toLowerCase() === "mexicana")
-      return "RFC requerido para nacionalidad mexicana";
+  const validateRFC = (rfc) => {
+    // RFC es opcional — solo validamos el formato si se ingresa algo
     if (!rfc) return "";
     const upper = rfc.toUpperCase();
-    if (!rfcRe.test(upper)) return "RFC inválido";
+    if (!rfcRe.test(upper)) return "RFC inválido (formato incorrecto)";
     return "";
   };
 
@@ -361,7 +359,7 @@ export default function RegistroAsesor({
         v && v.trim().length < 5 ? "Dirección demasiado corta" : "",
       municipio_asesor: (v) =>
         v && !onlyLettersSpaces(v) ? "Usa solo letras y espacios" : "",
-      rfc_asesor: (v, all) => validateRFC(v, all.nacionalidad_asesor),
+      rfc_asesor: (v) => validateRFC(v),
       nacionalidad_asesor: (v) =>
         v && !onlyLettersSpaces(v) ? "Usa solo letras y espacios" : "",
       genero_asesor: (v) => (!v ? "Selecciona el género" : ""),
@@ -541,16 +539,7 @@ export default function RegistroAsesor({
     <TouchableWithoutFeedback
       onPress={Platform.OS !== "web" ? Keyboard.dismiss : undefined}
     >
-      <KeyboardAvoidingView
-        onPress={Keyboard.dismiss}
-        enabled={isLandscape ? true : false}
-        behavior={Platform.OS === "ios" ? "padding" : "padding"}
-        key={isLandscape ? "landscape" : "portrait"}
-        style={{ flex: 1, backgroundColor: "#f8fafc" }}
-        keyboardVerticalOffset={
-          isLandscape ? (Platform.OS === "ios" ? 80 : 100) : 0
-        }
-      >
+      <View style={{ flex: 1, backgroundColor: "#f8fafc" }}>
         <View className={`flex-1 p-[16] pb-0 ${isTablet ? "pt-[24]" : ""}`}>
           {/* Título en el contenedor principal (sin card que limite el diseño) */}
           <View
@@ -599,7 +588,11 @@ export default function RegistroAsesor({
           <ScrollView
             id="formulario-asesores"
             className={`max-w-6xl self-center ${isLandscape ? "" : "mt-4"}`}
-            keyboardShouldPersistTaps="never"
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            automaticallyAdjustKeyboardInsets
+            contentContainerStyle={{ paddingBottom: 120 }}
+            showsVerticalScrollIndicator={false}
           >
             {/* Sección de la foto de perfil */}
             <TouchableOpacity activeOpacity={1} className="items-center mb-4">
@@ -761,19 +754,24 @@ export default function RegistroAsesor({
                     })}
                     value={form.correo_asesor}
                     onChangeText={(v) => {
-                      // Ignora mayúsculas y caracteres no permitidos.
-                      // Solo permite a-z, 0-9 y @ . _ -
+                      // Normalizar a minúsculas y permitir solo caracteres válidos de email
                       const currentValue = v
-                        .replace(/[^a-z0-9@._-]/g, "")
+                        .toLowerCase()
+                        .replace(/[^a-z0-9@._+-]/g, "")
                         .slice(0, 80);
                       set("correo_asesor")(currentValue);
 
+                      // Mostrar sugerencias de dominio al escribir @
                       const atIndex = currentValue.indexOf("@");
                       if (atIndex !== -1) {
                         const domainPart = currentValue.substring(atIndex + 1);
-                        const filteredDomains = COMMON_DOMAINS.filter(
-                          (domain) => domain.startsWith(domainPart),
-                        );
+                        // Si no hay nada después del @, mostrar todos los dominios
+                        const filteredDomains =
+                          domainPart === ""
+                            ? COMMON_DOMAINS
+                            : COMMON_DOMAINS.filter((domain) =>
+                                domain.startsWith(domainPart),
+                              );
                         setDomainSuggestions(filteredDomains);
                         setShowDomainSuggestions(filteredDomains.length > 0);
                       } else {
@@ -798,7 +796,9 @@ export default function RegistroAsesor({
                   />
                 </View>
               </View>
-              <View style={[styles.half, isSmall && { width: "100%" }]}>
+              <TouchableOpacity
+                style={[styles.half, isSmall && { width: "100%" }]}
+              >
                 <LabeledInput
                   customLabel={renderLabelWithEditButton({
                     labelText: "Teléfono",
@@ -822,7 +822,7 @@ export default function RegistroAsesor({
                     (asesorToEdit && !editableFields.telefono_asesor)
                   }
                 />
-              </View>
+              </TouchableOpacity>
               <View style={[styles.half, isSmall && { width: "100%" }]}>
                 <LabeledInput
                   customLabel={renderLabelWithEditButton({
@@ -945,12 +945,15 @@ export default function RegistroAsesor({
                   })}
                   value={form.rfc_asesor}
                   onChangeText={(v) => {
-                    // Filtra cualquier caracter que no sea letra o número.
-                    const cleanedText = v.replace(/[^A-Z-0-9]/g, "");
+                    // Acepta letras y números, convierte a mayúsculas
+                    const cleanedText = v
+                      .toUpperCase()
+                      .replace(/[^A-ZÑ&0-9]/g, "");
                     set("rfc_asesor")(cleanedText);
                   }}
                   onEndEditing={() => validateField("rfc_asesor")}
-                  placeholder="XAXX010101000"
+                  placeholder="XAXX010101000 (Opcional)"
+                  error={fieldErrors.rfc_asesor}
                   autoComplete="off"
                   autoCapitalize="characters"
                   maxLength={13} // Limita la longitud a 13 caracteres
@@ -1254,7 +1257,7 @@ export default function RegistroAsesor({
             />
           </View>
         )}
-      </KeyboardAvoidingView>
+      </View>
     </TouchableWithoutFeedback>
   );
 }

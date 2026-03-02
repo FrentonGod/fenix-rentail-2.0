@@ -7,11 +7,7 @@ import {
   ActivityIndicator,
   Image,
   useWindowDimensions,
-  Touchable,
   TouchableWithoutFeedback,
-  Modal,
-  Keyboard,
-  KeyboardAvoidingView,
   ScrollView,
 } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
@@ -22,92 +18,6 @@ import { useState, useEffect } from "react";
 import HeaderAdmin from "../components/HeaderAdmin";
 import Svg, { Path } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
-
-const InputModal = ({
-  visible,
-  onClose,
-  label,
-  value,
-  onChangeText,
-  ...textInputProps
-}) => {
-  return (
-    <Modal
-      transparent={true}
-      visible={visible}
-      animationType={Platform.OS === "ios" ? "slide" : "fade"}
-      onRequestClose={onClose}
-    >
-      <BlurView
-        intensity={100}
-        tint="dark"
-        className="flex-1 justify-center items-center"
-      >
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View
-            className="flex-1 justify-center items-center w-full p-4"
-            style={Platform.OS === "ios" ? { paddingBottom: 100 } : {}}
-          >
-            <TouchableWithoutFeedback onPress={() => {}}>
-              <View className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-                {/* Header con gradiente */}
-                <LinearGradient
-                  colors={["#6F09EA", "#7009E8"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  className="p-5 flex-row justify-between items-center"
-                >
-                  <Text className="text-xl font-bold text-white">{label}</Text>
-                  <Pressable
-                    onPress={onClose}
-                    hitSlop={15}
-                    className="p-1 rounded-full bg-black/20"
-                  >
-                    <Svg
-                      height="20"
-                      viewBox="0 -960 960 960"
-                      width="20"
-                      fill="#ffffff"
-                    >
-                      <Path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z" />
-                    </Svg>
-                  </Pressable>
-                </LinearGradient>
-
-                {/* Cuerpo del modal */}
-                <View className="p-6">
-                  <TextInput
-                    className="bg-slate-100 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 text-base focus:border-violet-500 focus:ring-2 focus:ring-violet-200"
-                    value={value}
-                    onChangeText={onChangeText}
-                    autoFocus={true}
-                    {...textInputProps}
-                  />
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </BlurView>
-    </Modal>
-  );
-};
-
-const PressableInput = ({ label, value, onPress, icon }) => (
-  <Pressable
-    onPress={onPress}
-    className="bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-3 flex-row items-center"
-    style={{ height: 48 }}
-  >
-    <View className="absolute left-3" pointerEvents="none">
-      {icon}
-    </View>
-    <Text className={value ? "text-slate-900" : "text-slate-400"}>
-      {value || label}
-    </Text>
-  </Pressable>
-);
 
 export default function LoginScreen({ navigation }) {
   const { width, height } = useWindowDimensions();
@@ -120,7 +30,10 @@ export default function LoginScreen({ navigation }) {
   const showHeroArt = width >= 600;
   const cardMaxWidth = Math.min(
     720,
-    Math.max(520, Math.round(width * (isLarge ? 0.66 : isTablet ? 0.76 : 0.92)))
+    Math.max(
+      520,
+      Math.round(width * (isLarge ? 0.66 : isTablet ? 0.76 : 0.92)),
+    ),
   );
   const variant = (
     process.env.EXPO_PUBLIC_LOGIN_VARIANT || "classic"
@@ -147,21 +60,11 @@ export default function LoginScreen({ navigation }) {
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
 
-  // --- Estado para el modal de inputs en landscape ---
-  const [modalInputVisible, setModalInputVisible] = useState(false);
-  const [editingField, setEditingField] = useState(null); // 'email' o 'password'
-
   // --- Lógica para el efecto de máquina de escribir ---
   const welcomeText = "¡Bienvenido!";
   const [typedText, setTypedText] = useState("");
   const [showCaret, setShowCaret] = useState(false);
   const [caretVisible, setCaretVisible] = useState(true);
-
-  const handleInputPress = (field) => {
-    setEditingField(field);
-    setModalInputVisible(true);
-  };
-
   useEffect(() => {
     // Reiniciar el texto si el componente se vuelve a montar
     setTypedText("");
@@ -257,7 +160,7 @@ export default function LoginScreen({ navigation }) {
         console.error("Resend verification error:", error);
       } else {
         setErrorMsg(
-          "Correo de verificación reenviado. Revisa tu bandeja y spam."
+          "Correo de verificación reenviado. Revisa tu bandeja y spam.",
         );
       }
     } finally {
@@ -325,42 +228,13 @@ export default function LoginScreen({ navigation }) {
         style={{ flex: 1 }}
       >
         <SafeAreaView className="flex-1">
-          <InputModal
-            visible={modalInputVisible}
-            onClose={() => setModalInputVisible(false)}
-            label={
-              editingField === "email" ? "Correo Electrónico" : "Contraseña"
-            }
-            value={editingField === "email" ? email : password}
-            onChangeText={
-              editingField === "email"
-                ? (text) => setEmail(text.replace(/\s/g, "")) // Elimina espacios para el correo
-                : setPassword
-            }
-            placeholder={
-              editingField === "email" ? "tucorreo@dominio.com" : "•••••••••"
-            }
-            keyboardType={
-              editingField === "email" ? "email-address" : "default"
-            }
-            autoCapitalize="none"
-            secureTextEntry={editingField === "password"}
-            autoCorrect={false}
-            textContentType={
-              editingField === "email" ? "emailAddress" : "password"
-            }
-          />
-
-          <KeyboardAvoidingView
-          behavior={Platform.OS !== "web" ? (!isLandscape && "padding"):""}
-          keyboardVerticalOffset={`0`}
-          className="flex-1 bg-[#f0ebfb]"
-          enabled={!isLandscape}
-          >
+          <View className="flex-1 bg-[#f0ebfb]">
             <ScrollView
-            keyboardDismissMode="interactive"
+              keyboardDismissMode="interactive"
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets
               contentContainerStyle={{
-                flex:1,
+                flex: 1,
                 justifyContent: "center",
                 overflow: "hidden",
               }}
@@ -469,7 +343,7 @@ export default function LoginScreen({ navigation }) {
                   </View>
 
                   {/* Cuerpo del formulario */}
-                  <KeyboardAvoidingView>
+                  <View>
                     <View className="p-7 border border-t-0 border-[#8756E5] bg-slate-50 rounded-b-2xl box-content">
                       <Text
                         className="text-slate-900 font-extrabold mb-1 text-center"
@@ -483,235 +357,196 @@ export default function LoginScreen({ navigation }) {
                       <View className="gap-y-3">
                         <Text className="text-slate-800 font-bold">Correo</Text>
                         <View className="relative">
-                          {isLandscape ? (
-                            <PressableInput
-                              label="tucorreo@dominio.com"
-                              value={email}
-                              onPress={() => handleInputPress("email")}
-                              icon={
-                                <Svg
-                                  width={18}
-                                  height={18}
-                                  viewBox="0 -960 960 960"
-                                  fill="#64748b"
-                                >
-                                  <Path d="M160-200q-33 0-56.5-23.5T80-280v-400q0-33 23.5-56.5T160-760h640q33 0 56.5 23.5T880-680v400q0 33-23.5 56.5T800-200H160Zm320-260L160-640v360h640v-360L480-460Zm0-60 320-180H160l320 180Z" />
-                                </Svg>
-                              }
-                            />
-                          ) : (
-                            <>
-                              <View
-                                pointerEvents="none"
-                                style={{
-                                  position: "absolute",
-                                  left: 12,
-                                  top: "50%",
-                                  transform: [{ translateY: -9 }],
-                                  zIndex: 1,
-                                }}
+                          <>
+                            <View
+                              pointerEvents="none"
+                              style={{
+                                position: "absolute",
+                                left: 12,
+                                top: "50%",
+                                transform: [{ translateY: -9 }],
+                                zIndex: 1,
+                              }}
+                            >
+                              <Svg
+                                width={18}
+                                height={18}
+                                viewBox="0 -960 960 960"
+                                fill="#64748b"
                               >
-                                <Svg
-                                  width={18}
-                                  height={18}
-                                  viewBox="0 -960 960 960"
-                                  fill="#64748b"
-                                >
-                                  <Path d="M160-200q-33 0-56.5-23.5T80-280v-400q0-33 23.5-56.5T160-760h640q33 0 56.5 23.5T880-680v400q0 33-23.5 56.5T800-200H160Zm320-260L160-640v360h640v-360L480-460Zm0-60 320-180H160l320 180Z" />
-                                </Svg>
-                              </View>
-                              <TextInput
-                                placeholder="tucorreo@dominio.com"
-                                autoCapitalize="none"
-                                keyboardType="email-address"
-                                onChangeText={(text) => {
-                                  // Evita que se puedan ingresar espacios
-                                  setEmail(text.replace(/\s/g, ""));
-                                }}
-                                className={`bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-3 text-slate-900`}
-                                onFocus={() => {
-                                  if (Platform.OS !== "web")
-                                    setEmailFocused(true);
-                                }}
-                                onBlur={() => {
-                                  if (Platform.OS !== "web")
-                                    setEmailFocused(false);
-                                }}
-                                style={[
-                                  { height: 48 },
-                                  Platform.OS !== "web" && emailFocused
-                                    ? { borderColor: "#6F09EA" }
-                                    : null,
-                                ]}
-                                autoCorrect={false}
-                                importantForAutofill="yes"
-                                textContentType={
-                                  Platform.OS === "ios"
-                                    ? "emailAddress"
-                                    : undefined
+                                <Path d="M160-200q-33 0-56.5-23.5T80-280v-400q0-33 23.5-56.5T160-760h640q33 0 56.5 23.5T880-680v400q0 33-23.5 56.5T800-200H160Zm320-260L160-640v360h640v-360L480-460Zm0-60 320-180H160l320 180Z" />
+                              </Svg>
+                            </View>
+                            <TextInput
+                              placeholder="tucorreo@dominio.com"
+                              autoCapitalize="none"
+                              keyboardType="email-address"
+                              onChangeText={(text) => {
+                                setEmail(text.replace(/\s/g, ""));
+                              }}
+                              className={`bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-3 text-slate-900`}
+                              onFocus={() => {
+                                if (Platform.OS !== "web")
+                                  setEmailFocused(true);
+                              }}
+                              onBlur={() => {
+                                if (Platform.OS !== "web")
+                                  setEmailFocused(false);
+                              }}
+                              style={[
+                                { height: 48 },
+                                Platform.OS !== "web" && emailFocused
+                                  ? { borderColor: "#6F09EA" }
+                                  : null,
+                              ]}
+                              autoCorrect={false}
+                              importantForAutofill="yes"
+                              textContentType={
+                                Platform.OS === "ios"
+                                  ? "emailAddress"
+                                  : undefined
+                              }
+                              autoComplete="email"
+                              blurOnSubmit={false}
+                              placeholderTextColor="#9ca3af"
+                              onKeyPress={(e) => {
+                                if (
+                                  Platform.OS === "web" &&
+                                  e?.nativeEvent?.key === "Enter"
+                                ) {
+                                  e.preventDefault?.();
                                 }
-                                autoComplete="email"
-                                blurOnSubmit={false}
-                                placeholderTextColor="#9ca3af"
-                                onKeyPress={(e) => {
-                                  if (
-                                    Platform.OS === "web" &&
-                                    e?.nativeEvent?.key === "Enter"
-                                  ) {
-                                    e.preventDefault?.();
-                                  }
-                                }}
-                                value={email}
-                              />
-                            </>
-                          )}
+                              }}
+                              value={email}
+                            />
+                          </>
                         </View>
 
                         <Text className="text-slate-800 font-bold">
                           Contraseña
                         </Text>
                         <View className="relative">
-                          {isLandscape ? (
-                            <PressableInput
-                              label="•••••••••"
-                              value={password ? "•••••••••" : ""}
-                              onPress={() => handleInputPress("password")}
-                              icon={
-                                <Svg
-                                  width={18}
-                                  height={18}
-                                  viewBox="0 -960 960 960"
-                                  fill="#64748b"
-                                >
-                                  <Path d="M240-440v-200q0-100 70-170t170-70q100 0 170 70t70 170v200h40q33 0 56.5 23.5T840-360v280q0 33-23.5 56.5T760-0H200q-33 0-56.5-23.5T120-80v-280q0-33 23.5-56.5T200-440h40Zm80 0h320v-200q0-67-46.5-113.5T480-800q-67 0-113.5 46.5T320-640v200Z" />
-                                </Svg>
+                          <>
+                            <View
+                              style={{
+                                position: "absolute",
+                                left: 12,
+                                top: "50%",
+                                transform: [{ translateY: -9 }],
+                                zIndex: 2,
+                              }}
+                              pointerEvents="none"
+                            >
+                              <Svg
+                                width={18}
+                                height={18}
+                                viewBox="0 -960 960 960"
+                                fill="#64748b"
+                              >
+                                <Path d="M240-440v-200q0-100 70-170t170-70q100 0 170 70t70 170v200h40q33 0 56.5 23.5T840-360v280q0 33-23.5 56.5T760-0H200q-33 0-56.5-23.5T120-80v-280q0-33 23.5-56.5T200-440h40Zm80 0h320v-200q0-67-46.5-113.5T480-800q-67 0-113.5 46.5T320-640v200Z" />
+                              </Svg>
+                            </View>
+                            <TextInput
+                              id="password-input"
+                              placeholder="•••••••••"
+                              autoCapitalize="none"
+                              secureTextEntry={!showPwd}
+                              onChangeText={setPassword}
+                              className={`bg-white border border-slate-300 rounded-xl pl-10 pr-12 py-3 text-slate-900`}
+                              onFocus={() => {
+                                if (Platform.OS !== "web") setPwdFocused(true);
+                              }}
+                              onBlur={() => {
+                                if (Platform.OS !== "web") setPwdFocused(false);
+                              }}
+                              style={[
+                                { height: 48 },
+                                { fontSize: 14 },
+                                Platform.OS !== "web" ? { zIndex: 1 } : null,
+                                Platform.OS !== "web" && pwdFocused
+                                  ? { borderColor: "#6F09EA" }
+                                  : null,
+                              ]}
+                              autoCorrect={false}
+                              importantForAutofill="yes"
+                              textContentType={
+                                Platform.OS === "ios" ? "password" : undefined
                               }
+                              autoComplete="current-password"
+                              blurOnSubmit={false}
+                              placeholderTextColor="#9ca3af"
+                              onKeyPress={(e) => {
+                                if (
+                                  Platform.OS === "web" &&
+                                  e?.nativeEvent?.key === "Enter"
+                                ) {
+                                  e.preventDefault?.();
+                                }
+                              }}
+                              value={password}
                             />
-                          ) : (
-                            <>
-                              <View
-                                style={{
-                                  position: "absolute",
-                                  left: 12,
-                                  top: "50%",
-                                  transform: [{ translateY: -9 }],
-                                  zIndex: 2,
-                                }}
-                                pointerEvents="none"
-                              >
+                            <Pressable
+                              onPress={() => setShowPwd((v) => !v)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full items-center justify-center bg-white/70 border border-slate-300 shadow-sm active:opacity-80"
+                              hitSlop={10}
+                              accessibilityLabel={
+                                showPwd
+                                  ? "Ocultar contraseña"
+                                  : "Mostrar contraseña"
+                              }
+                              style={
+                                Platform.OS === "web"
+                                  ? { cursor: "pointer" }
+                                  : { zIndex: 2 }
+                              }
+                            >
+                              {showPwd ? (
                                 <Svg
-                                  width={18}
-                                  height={18}
-                                  viewBox="0 -960 960 960"
-                                  fill="#64748b"
+                                  width={20}
+                                  height={20}
+                                  viewBox="0 0 24 24"
+                                  fill="none"
                                 >
-                                  <Path d="M240-440v-200q0-100 70-170t170-70q100 0 170 70t70 170v200h40q33 0 56.5 23.5T840-360v280q0 33-23.5 56.5T760-0H200q-33 0-56.5-23.5T120-80v-280q0-33 23.5-56.5T200-440h40Zm80 0h320v-200q0-67-46.5-113.5T480-800q-67 0-113.5 46.5T320-640v200Z" />
+                                  <Path
+                                    d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12Z"
+                                    stroke="#475569"
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                  <Path
+                                    d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+                                    stroke="#475569"
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
                                 </Svg>
-                              </View>
-                              <TextInput
-                                id="password-input"
-                                placeholder="•••••••••"
-                                autoCapitalize="none"
-                                secureTextEntry={!showPwd}
-                                onChangeText={setPassword}
-                                className={`bg-white border border-slate-300 rounded-xl pl-10 pr-12 py-3 text-slate-900`}
-                                onFocus={() => {
-                                  if (Platform.OS !== "web")
-                                    setPwdFocused(true);
-                                }}
-                                onBlur={() => {
-                                  if (Platform.OS !== "web")
-                                    setPwdFocused(false);
-                                }}
-                                style={[
-                                  { height: 48 },
-                                  { fontSize: 14 },
-                                  Platform.OS !== "web" ? { zIndex: 1 } : null,
-                                  Platform.OS !== "web" && pwdFocused
-                                    ? { borderColor: "#6F09EA" }
-                                    : null,
-                                ]}
-                                autoCorrect={false}
-                                importantForAutofill="yes"
-                                textContentType={
-                                  Platform.OS === "ios" ? "password" : undefined
-                                }
-                                autoComplete="current-password"
-                                blurOnSubmit={false}
-                                placeholderTextColor="#9ca3af"
-                                onKeyPress={(e) => {
-                                  if (
-                                    Platform.OS === "web" &&
-                                    e?.nativeEvent?.key === "Enter"
-                                  ) {
-                                    e.preventDefault?.();
-                                  }
-                                }}
-                                value={password}
-                              />
-                              <Pressable
-                                onPress={() => setShowPwd((v) => !v)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full items-center justify-center bg-white/70 border border-slate-300 shadow-sm active:opacity-80"
-                                hitSlop={10}
-                                accessibilityLabel={
-                                  showPwd
-                                    ? "Ocultar contraseña"
-                                    : "Mostrar contraseña"
-                                }
-                                style={
-                                  Platform.OS === "web"
-                                    ? { cursor: "pointer" }
-                                    : { zIndex: 2 }
-                                }
-                              >
-                                {showPwd ? (
-                                  <Svg
-                                    width={20}
-                                    height={20}
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                  >
-                                    <Path
-                                      d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12Z"
-                                      stroke="#475569"
-                                      strokeWidth={2}
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    />
-                                    <Path
-                                      d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
-                                      stroke="#475569"
-                                      strokeWidth={2}
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    />
-                                  </Svg>
-                                ) : (
-                                  <Svg
-                                    width={20}
-                                    height={20}
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                  >
-                                    <Path
-                                      d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12Z"
-                                      stroke="#475569"
-                                      strokeWidth={2}
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    />
-                                    <Path
-                                      d="M3 3l18 18"
-                                      stroke="#475569"
-                                      strokeWidth={2}
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    />
-                                  </Svg>
-                                )}
-                              </Pressable>
-                            </>
-                          )}
+                              ) : (
+                                <Svg
+                                  width={20}
+                                  height={20}
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                >
+                                  <Path
+                                    d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12Z"
+                                    stroke="#475569"
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                  <Path
+                                    d="M3 3l18 18"
+                                    stroke="#475569"
+                                    strokeWidth={2}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </Svg>
+                              )}
+                            </Pressable>
+                          </>
                         </View>
 
                         <View className="flex-row items-center justify-between mt-1">
@@ -814,11 +649,11 @@ export default function LoginScreen({ navigation }) {
                         </Text>
                       </View>
                     </View>
-                  </KeyboardAvoidingView>
+                  </View>
                 </View>
               </View>
             </ScrollView>
-          </KeyboardAvoidingView>
+          </View>
         </SafeAreaView>
       </LinearGradient>
     </SafeAreaProvider>

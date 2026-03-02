@@ -2,10 +2,7 @@
   "expo": {
     "orientation": "default",
     "scheme": "fenixretail",
-    "plugins": [
-      "expo-router",
-      "expo-secure-store"
-    ],
+    "plugins": ["expo-router", "expo-secure-store"],
     "name": "Fenix Retail",
     "slug": "fenix-retail-2",
     "version": "2.0.0",
@@ -35,6 +32,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "pan",
       "package": "com.mquerkacademy.fenixretail2"
     },
     "web": {

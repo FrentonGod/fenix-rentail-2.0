@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Platform,
   Modal,
-  KeyboardAvoidingView,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { decode } from "base64-arraybuffer";
@@ -86,7 +85,8 @@ export default function ScreenConfiguracion() {
       // Buscar archivo que comience con "avatar" o que contenga el ID del usuario
       const avatarFile = data?.find(
         (file) =>
-          file.name.startsWith("avatar.") || file.name.includes(session.user.id)
+          file.name.startsWith("avatar.") ||
+          file.name.includes(session.user.id),
       );
 
       console.log("🖼️ Archivo de avatar encontrado:", avatarFile);
@@ -109,7 +109,7 @@ export default function ScreenConfiguracion() {
         console.log("⚠️ No se encontró archivo de avatar");
         console.log(
           "💡 Archivos disponibles:",
-          data?.map((f) => f.name)
+          data?.map((f) => f.name),
         );
       }
     } catch (error) {
@@ -123,7 +123,7 @@ export default function ScreenConfiguracion() {
     if (status !== "granted") {
       Alert.alert(
         "Permiso denegado",
-        "Necesitamos permiso para acceder a tus fotos."
+        "Necesitamos permiso para acceder a tus fotos.",
       );
       return;
     }
@@ -147,7 +147,7 @@ export default function ScreenConfiguracion() {
       console.error("Error picking image:", error);
       Alert.alert(
         "Error",
-        `No se pudo seleccionar la imagen: ${error.message}`
+        `No se pudo seleccionar la imagen: ${error.message}`,
       );
     }
   };
@@ -207,7 +207,7 @@ export default function ScreenConfiguracion() {
       console.error("Error uploading avatar:", error);
       Alert.alert(
         "Error",
-        `No se pudo subir la foto de perfil: ${error.message}`
+        `No se pudo subir la foto de perfil: ${error.message}`,
       );
     } finally {
       setUploading(false);
@@ -263,7 +263,7 @@ export default function ScreenConfiguracion() {
                 .list(session.user.id);
 
               const avatarFile = files?.find((file) =>
-                file.name.startsWith("avatar.")
+                file.name.startsWith("avatar."),
               );
 
               if (avatarFile) {
@@ -291,7 +291,7 @@ export default function ScreenConfiguracion() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -314,7 +314,7 @@ export default function ScreenConfiguracion() {
 
       Alert.alert(
         "Éxito",
-        "Se ha enviado un correo de confirmación a tu nueva dirección de email"
+        "Se ha enviado un correo de confirmación a tu nueva dirección de email",
       );
     } catch (error) {
       console.error("Error updating email:", error);
@@ -366,12 +366,14 @@ export default function ScreenConfiguracion() {
   }
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1"
-      behavior={"padding"}
-      keyboardVerticalOffset={Platform.OS !== "web" ? 70 : 0}
-    >
-      <ScrollView className="flex-1 bg-slate-50">
+    <View className="flex-1">
+      <ScrollView
+        className="flex-1 bg-slate-50"
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
         <View className="p-6">
           {/* Sección de foto de perfil */}
           <View className="bg-white rounded-2xl p-6 mb-6 shadow-sm border border-slate-200">
@@ -571,6 +573,6 @@ export default function ScreenConfiguracion() {
           </View>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }

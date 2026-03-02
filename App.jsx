@@ -17,7 +17,6 @@ import {
   Keyboard,
   ActivityIndicator,
   RefreshControl,
-  KeyboardAvoidingView,
   LayoutAnimation,
   UIManager,
   Alert,
@@ -3768,12 +3767,7 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
     <TouchableWithoutFeedback
       onPress={Platform.OS !== "web" ? Keyboard.dismiss : ""}
     >
-      <KeyboardAvoidingView
-        enabled={isLandscape}
-        behavior={Platform.OS === "ios" ? "padding" : "padding"}
-        style={{ flex: 1, backgroundColor: "#f8fafc" }}
-        keyboardVerticalOffset={Platform.OS === "android" ? 100 : 0}
-      >
+      <View style={{ flex: 1, backgroundColor: "#f8fafc" }}>
         <View className="flex-1 bg-slate-50 p-[16] pb-[28]">
           <View className="max-w-6xl self-start">
             <TouchableOpacity
@@ -3803,6 +3797,10 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
           <ScrollView
             id="form-egreso"
             className="flex-1 max-w-6xl self-center mt-4"
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            automaticallyAdjustKeyboardInsets
+            contentContainerStyle={{ paddingBottom: 100 }}
           >
             <View className="flex-row flex-wrap gap-4">
               <View style={[styles_finanzas.half, styles_finanzas.fullOnSmall]}>
@@ -4037,7 +4035,7 @@ const RegistroEgreso = ({ egresoToEdit, onFormClose }) => {
             </View>
           </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </TouchableWithoutFeedback>
   );
 };
@@ -4214,11 +4212,7 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
     <TouchableWithoutFeedback
       onPress={Platform.OS !== "web" ? Keyboard.dismiss : ""}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "padding"}
-        style={{ flex: 1, backgroundColor: "#f8fafc" }}
-        keyboardVerticalOffset={Platform.OS === "android" ? 100 : 0}
-      >
+      <View style={{ flex: 1, backgroundColor: "#f8fafc" }}>
         <View className="flex-1 bg-slate-50 p-[16] pb-[28]">
           <View className="max-w-6xl self-start">
             <TouchableOpacity
@@ -4247,7 +4241,13 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
             </Text>
           </View>
 
-          <ScrollView className="flex-1 max-w-6xl self-center mt-4">
+          <ScrollView
+            className="flex-1 max-w-6xl self-center mt-4"
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            automaticallyAdjustKeyboardInsets
+            contentContainerStyle={{ paddingBottom: 100 }}
+          >
             <View className="flex-row flex-wrap gap-4">
               <View style={{ width: "100%" }}>
                 <LabeledInput
@@ -4456,7 +4456,7 @@ const RegistroIngreso = ({ ingresoToEdit, onFormClose }) => {
             </View>
           </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </TouchableWithoutFeedback>
   );
 };
@@ -6535,20 +6535,7 @@ const ScreenCalendario = ({ navigation, route }) => {
         </View>
 
         {/* Contenedor de Eventos */}
-        <KeyboardAvoidingView
-          id="keyboard-avoiding-calendario-form"
-          behavior={
-            Platform.OS === "ios"
-              ? "padding"
-              : isLandscape
-                ? "padding"
-                : "height"
-          }
-          style={{ flex: 1 }}
-          keyboardVerticalOffset={
-            Platform.OS === "ios" ? 90 : isLandscape ? 100 : 100
-          }
-        >
+        <View style={{ flex: 1 }}>
           <View className="bg-white rounded-xl w-full h-full shadow-sm border border-slate-200 p-4">
             {/* Cabecera de la sección de eventos */}
             <View
@@ -7062,7 +7049,7 @@ const ScreenCalendario = ({ navigation, route }) => {
               </View>
             )}
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </View>
     </TouchableWithoutFeedback>
   );
@@ -7846,12 +7833,7 @@ const ScreenCursos = () => {
       onPress={Platform.OS === "web" ? "" : Keyboard.dismiss}
       accessible={false}
     >
-      <KeyboardAvoidingView
-        key={isLandscape ? "landscape" : "portrait"} // Clave para forzar el reseteo en cambio de orientación
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
-      >
+      <View style={{ flex: 1 }}>
         <View className="flex-1 bg-slate-50">
           <View className="flex-row items-center justify-between p-4">
             <View className="flex-row items-center bg-white border border-slate-300 rounded-full px-3 py-1 shadow-sm">
@@ -7907,7 +7889,7 @@ const ScreenCursos = () => {
             />
           )}
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </TouchableWithoutFeedback>
   );
 };
@@ -8579,9 +8561,16 @@ const SeccionVentas = ({ onFormToggle, navigation }) => {
 const SeccionReportes = () => {
   const [year, setYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1); // 1-12
-  const [ingresosData, setIngresosData] = useState([]);
-  const [egresosData, setEgresosData] = useState([]);
-  const [estudiantesData, setEstudiantesData] = useState([]);
+  // Datos completos de los 12 meses (índice 0 = Enero, índice 11 = Diciembre)
+  const [ingresosData, setIngresosData] = useState(
+    Array(12).fill({ value: 0, label: "", dataPointText: "" }),
+  );
+  const [egresosData, setEgresosData] = useState(
+    Array(12).fill({ value: 0, label: "", dataPointText: "" }),
+  );
+  const [estudiantesData, setEstudiantesData] = useState(
+    Array(12).fill({ value: 0, label: "", dataPointText: "" }),
+  );
   const [loading, setLoading] = useState(true);
   const [availableYears, setAvailableYears] = useState([]);
   const [loadingYears, setLoadingYears] = useState(false);
@@ -8810,30 +8799,11 @@ const SeccionReportes = () => {
         }
       });
 
-      // Filter to show relevant range
-      const filterDataByRange = (data, selectedYear) => {
-        const currentYear = new Date().getFullYear();
-        const currentMonth = new Date().getMonth() + 1;
-
-        const validData = data.filter((item) => item !== null);
-
-        if (selectedYear === currentYear) {
-          return validData.slice(1, currentMonth + 1);
-        }
-
-        return validData.slice(1, 13);
-      };
-
-      const filteredIngresos = filterDataByRange(monthlyIngresos, selectedYear);
-      const filteredEgresos = filterDataByRange(monthlyEgresos, selectedYear);
-      const filteredEstudiantes = filterDataByRange(
-        monthlyEstudiantes,
-        selectedYear,
-      );
-
-      setIngresosData(filteredIngresos);
-      setEgresosData(filteredEgresos);
-      setEstudiantesData(filteredEstudiantes);
+      // Guardar los 12 meses completos (índice 0 = Enero ... índice 11 = Diciembre)
+      // El slice para la gráfica se calcula por separado en un useMemo
+      setIngresosData(monthlyIngresos.slice(1, 13));
+      setEgresosData(monthlyEgresos.slice(1, 13));
+      setEstudiantesData(monthlyEstudiantes.slice(1, 13));
     } catch (error) {
       console.error("Error in fetchData:", error);
     } finally {
@@ -8859,17 +8829,41 @@ const SeccionReportes = () => {
     }, [year]), // Solo year como dependencia
   );
 
+  // Slice de datos para la gráfica: si es el año actual, solo hasta el mes actual;
+  // si es un año anterior, los 12 meses completos.
+  const chartIngresos = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    if (year === currentYear) return ingresosData.slice(0, currentMonth);
+    return ingresosData;
+  }, [ingresosData, year]);
+
+  const chartEgresos = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    if (year === currentYear) return egresosData.slice(0, currentMonth);
+    return egresosData;
+  }, [egresosData, year]);
+
+  const chartEstudiantes = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    if (year === currentYear) return estudiantesData.slice(0, currentMonth);
+    return estudiantesData;
+  }, [estudiantesData, year]);
+
+  // Totales anuales (solo meses disponibles para el chart)
   const totalIngresos = useMemo(
-    () => ingresosData.reduce((sum, item) => sum + item.value, 0),
-    [ingresosData],
+    () => chartIngresos.reduce((sum, item) => sum + item.value, 0),
+    [chartIngresos],
   );
   const totalEgresos = useMemo(
-    () => egresosData.reduce((sum, item) => sum + item.value, 0),
-    [egresosData],
+    () => chartEgresos.reduce((sum, item) => sum + item.value, 0),
+    [chartEgresos],
   );
   const totalEstudiantes = useMemo(
-    () => estudiantesData.reduce((sum, item) => sum + item.value, 0),
-    [estudiantesData],
+    () => chartEstudiantes.reduce((sum, item) => sum + item.value, 0),
+    [chartEstudiantes],
   );
 
   // Calcular balance (Ingresos - Egresos)
@@ -8878,25 +8872,8 @@ const SeccionReportes = () => {
     [totalIngresos, totalEgresos],
   );
 
-  // Calcular balance del mes actual
-  const balanceMesActual = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1; // 1-12
-
-    // Solo calcular si estamos viendo el año actual
-    if (year !== currentYear) return null;
-
-    // El último elemento del array es el mes actual
-    const lastIndex = ingresosData.length - 1;
-    if (lastIndex < 0) return 0;
-
-    const ingresosMes = ingresosData[lastIndex]?.value || 0;
-    const egresosMes = egresosData[lastIndex]?.value || 0;
-
-    return ingresosMes - egresosMes;
-  }, [ingresosData, egresosData, year]);
-
-  // Calcular balance del mes seleccionado
+  // Calcular balance y totales del mes seleccionado
+  // ingresosData[0] = Enero, ingresosData[selectedMonth-1] = mes seleccionado
   const balanceMesSeleccionado = useMemo(() => {
     const ingresosMes = ingresosData[selectedMonth - 1]?.value || 0;
     const egresosMes = egresosData[selectedMonth - 1]?.value || 0;
@@ -8922,23 +8899,6 @@ const SeccionReportes = () => {
     const currentMonth = new Date().getMonth() + 1;
     return year === currentYear && selectedMonth === currentMonth;
   }, [year, selectedMonth]);
-
-  // Calcular totales del mes actual para mostrar en las gráficas
-  const totalIngresosMesActual = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    if (year !== currentYear) return null;
-
-    const lastIndex = ingresosData.length - 1;
-    return lastIndex >= 0 ? ingresosData[lastIndex]?.value || 0 : 0;
-  }, [ingresosData, year]);
-
-  const totalEgresosMesActual = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    if (year !== currentYear) return null;
-
-    const lastIndex = egresosData.length - 1;
-    return lastIndex >= 0 ? egresosData[lastIndex]?.value || 0 : 0;
-  }, [egresosData, year]);
 
   const ChartCard = React.memo(
     ({
@@ -9018,11 +8978,11 @@ const SeccionReportes = () => {
   // Función para generar PDF del reporte
   const generateReportPDF = async () => {
     try {
-      // Siempre usar el año y mes actual para el reporte
-      const currentYear = new Date().getFullYear();
-      const currentMonth = new Date().getMonth() + 1; // 1-12
+      // Usar el año y mes seleccionados en los filtros
+      const reportYear = year;
+      const reportMonth = selectedMonth;
       const currentMonthName = monthOptions.find(
-        (m) => m.value === currentMonth,
+        (m) => m.value === reportMonth,
       )?.label;
 
       const currentDate = new Date().toLocaleDateString("es-MX", {
@@ -9031,9 +8991,9 @@ const SeccionReportes = () => {
         day: "numeric",
       });
 
-      // Obtener datos del año actual
-      const startDate = `${currentYear}-01-01`;
-      const endDate = `${currentYear}-12-31`;
+      // Obtener datos del año seleccionado
+      const startDate = `${reportYear}-01-01`;
+      const endDate = `${reportYear}-12-31`;
 
       // Fetch data para el año actual
       const { data: transacciones } = await supabase
@@ -9110,26 +9070,26 @@ const SeccionReportes = () => {
         }
       });
 
-      // Calcular totales hasta el mes actual
+      // Calcular totales hasta el mes seleccionado (reportMonth)
       let totalIngresosAnual = 0;
       let totalEgresosAnual = 0;
       let totalEstudiantesAnual = 0;
 
-      for (let i = 1; i <= currentMonth; i++) {
+      for (let i = 1; i <= reportMonth; i++) {
         totalIngresosAnual += monthlyIngresos[i].value;
         totalEgresosAnual += monthlyEgresos[i].value;
         totalEstudiantesAnual += monthlyEstudiantes[i].value;
       }
 
       const balanceAnual = totalIngresosAnual - totalEgresosAnual;
-      const ingresosMesActual = monthlyIngresos[currentMonth].value;
-      const egresosMesActual = monthlyEgresos[currentMonth].value;
-      const estudiantesMesActual = monthlyEstudiantes[currentMonth].value;
+      const ingresosMesActual = monthlyIngresos[reportMonth].value;
+      const egresosMesActual = monthlyEgresos[reportMonth].value;
+      const estudiantesMesActual = monthlyEstudiantes[reportMonth].value;
       const balanceMesActual = ingresosMesActual - egresosMesActual;
 
-      // Generar tablas HTML solo hasta el mes actual
+      // Generar tablas HTML hasta el mes seleccionado
       const ingresosTable = monthlyIngresos
-        .slice(1, currentMonth + 1)
+        .slice(1, reportMonth + 1)
         .map((item) => {
           return `
             <tr>
@@ -9143,7 +9103,7 @@ const SeccionReportes = () => {
         .join("");
 
       const egresosTable = monthlyEgresos
-        .slice(1, currentMonth + 1)
+        .slice(1, reportMonth + 1)
         .map((item) => {
           return `
             <tr>
@@ -9157,7 +9117,7 @@ const SeccionReportes = () => {
         .join("");
 
       const estudiantesTable = monthlyEstudiantes
-        .slice(1, currentMonth + 1)
+        .slice(1, reportMonth + 1)
         .map((item) => {
           return `
             <tr>
@@ -9262,7 +9222,7 @@ const SeccionReportes = () => {
             
             <!-- Etiquetas del eje X -->
             ${monthlyIngresos
-              .slice(1, currentMonth + 1)
+              .slice(1, reportMonth + 1)
               .map((item, index) => {
                 const x = padding + index * stepX;
                 return `
@@ -9386,7 +9346,7 @@ const SeccionReportes = () => {
             
             <!-- Etiquetas del eje X -->
             ${monthlyIngresos
-              .slice(1, currentMonth + 1)
+              .slice(1, reportMonth + 1)
               .map((item, index) => {
                 const x = padding + index * stepX;
                 return `
@@ -9420,19 +9380,19 @@ const SeccionReportes = () => {
 
       // Generar SVGs de las gráficas
       const ingresosSVG = generateLineChartSVG(
-        monthlyIngresos.slice(1, currentMonth + 1).map((item) => item.value),
+        monthlyIngresos.slice(1, reportMonth + 1).map((item) => item.value),
         "#10b981",
         "Ingresos Mensuales",
       );
 
       const egresosSVG = generateLineChartSVG(
-        monthlyEgresos.slice(1, currentMonth + 1).map((item) => item.value),
+        monthlyEgresos.slice(1, reportMonth + 1).map((item) => item.value),
         "#ef4444",
         "Egresos Mensuales",
       );
 
       const estudiantesSVG = generateLineChartSVG_Students(
-        monthlyEstudiantes.slice(1, currentMonth + 1).map((item) => item.value),
+        monthlyEstudiantes.slice(1, reportMonth + 1).map((item) => item.value),
         "#6F09EA",
         "Estudiantes Registrados",
       );
@@ -9577,9 +9537,9 @@ const SeccionReportes = () => {
         const centerY = height / 2 - 20;
         const radius = 120;
 
-        // Obtener datos hasta el mes actual
+        // Obtener datos hasta el mes seleccionado
         const dataWithLabels = monthlyData
-          .slice(1, currentMonth + 1)
+          .slice(1, reportMonth + 1)
           .map((item, index) => ({
             label: item.label,
             value: item.value,
@@ -9879,14 +9839,14 @@ const SeccionReportes = () => {
           <div class="header">
             <p style="margin: 0; font-size: 18px; font-weight: bold; color: #6F09EA;">MQerKAcademy</p>
             <p style="margin: 0; font-size: 12px; color: #64748b; margin-bottom: 10px;">Sistema Fenix Retail</p>
-            <h1>Reporte Financiero ${currentYear}</h1>
+            <h1>Reporte Financiero ${reportYear}</h1>
             <p>Generado el ${currentDate}</p>
-            <p>Período: Enero - ${currentMonthName} ${currentYear}</p>
+            <p>Período: Enero - ${currentMonthName} ${reportYear}</p>
           </div>
           
           <div class="balance-section">
             <div class="balance-card ${balanceAnual >= 0 ? "positive" : "negative"}">
-              <h3>Balance Total ${currentYear}</h3>
+              <h3>Balance Total ${reportYear}</h3>
               <p class="amount">${currencyFormatter.format(balanceAnual)}</p>
             </div>
             <div class="balance-card ${balanceMesActual >= 0 ? "positive" : "negative"}">
@@ -9897,11 +9857,11 @@ const SeccionReportes = () => {
           
           <div class="summary">
             <div class="summary-row">
-              <span>Total Ingresos ${currentYear}:</span>
+              <span>Total Ingresos ${reportYear}:</span>
               <span>${currencyFormatter.format(totalIngresosAnual)}</span>
             </div>
             <div class="summary-row">
-              <span>Total Egresos ${currentYear}:</span>
+              <span>Total Egresos ${reportYear}:</span>
               <span>${currencyFormatter.format(totalEgresosAnual)}</span>
             </div>
             <div class="summary-row total">
@@ -9950,7 +9910,7 @@ const SeccionReportes = () => {
           </div>
           
           <div class="section">
-            <h2>Desglose de Ingresos ${currentYear}</h2>
+            <h2>Desglose de Ingresos ${reportYear}</h2>
             <table>
               <thead>
                 <tr>
@@ -9965,7 +9925,7 @@ const SeccionReportes = () => {
           </div>
           
           <div class="section">
-            <h2>Desglose de Egresos ${currentYear}</h2>
+            <h2>Desglose de Egresos ${reportYear}</h2>
             <table>
               <thead>
                 <tr>
@@ -9980,7 +9940,7 @@ const SeccionReportes = () => {
           </div>
           
           <div class="section">
-            <h2>Estudiantes Registrados ${currentYear}</h2>
+            <h2>Estudiantes Registrados ${reportYear}</h2>
             <table>
               <thead>
                 <tr>
@@ -10010,7 +9970,7 @@ const SeccionReportes = () => {
       `;
 
       // Generar nombre del archivo PDF
-      const yearShort = currentYear.toString().slice(-2); // Últimos 2 dígitos del año
+      const yearShort = reportYear.toString().slice(-2); // Últimos 2 dígitos del año
       const monthNameShort = currentMonthName.substring(0, 3); // Primeras 3 letras del mes
       const pdfFileName = `Reporte-FenixRetail_Ene-${monthNameShort}-${yearShort}.pdf`;
 
@@ -10271,7 +10231,7 @@ const SeccionReportes = () => {
                   <ChartCard
                     title="Ingresos"
                     total={totalIngresos}
-                    data={ingresosData}
+                    data={chartIngresos}
                     unit="$"
                     isPortrait={isPortrait}
                     loading={loading}
@@ -10284,7 +10244,7 @@ const SeccionReportes = () => {
                   <ChartCard
                     title="Egresos"
                     total={totalEgresos}
-                    data={egresosData}
+                    data={chartEgresos}
                     unit="$"
                     isPortrait={isPortrait}
                     loading={loading}
@@ -10327,7 +10287,7 @@ const SeccionReportes = () => {
                     <ChartCard
                       title="Estudiantes Registrados"
                       total={totalEstudiantes}
-                      data={estudiantesData}
+                      data={chartEstudiantes}
                       unit=""
                       isPortrait={isPortrait}
                       loading={loading}
