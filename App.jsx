@@ -1090,6 +1090,7 @@ const StudentDetailsModal = ({
   details,
   loading,
   onMakePayment, // Nueva prop para manejar el pago
+  onDeleteCourse, // Nueva prop para eliminar el registro del curso
 }) => {
   return (
     <Modal
@@ -1214,14 +1215,31 @@ const StudentDetailsModal = ({
                         )}
                       </View>
                       {curso.pendiente > 0 && (
-                        <TouchableOpacity
-                          onPress={() => onMakePayment(curso)}
-                          className="bg-indigo-100 px-4 py-2 rounded-full"
-                        >
-                          <Text className="text-indigo-700 font-bold text-sm">
-                            Abonar
-                          </Text>
-                        </TouchableOpacity>
+                        <View className="flex-row items-center gap-2">
+                          <TouchableOpacity
+                            onPress={() => onMakePayment(curso)}
+                            className="bg-indigo-100 px-4 py-2 rounded-full"
+                          >
+                            <Text className="text-indigo-700 font-bold text-sm">
+                              Abonar
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() =>
+                              onDeleteCourse && onDeleteCourse(curso)
+                            }
+                            className="bg-red-100 p-2 rounded-full"
+                          >
+                            <Svg
+                              height="18"
+                              viewBox="0 -960 960 960"
+                              width="18"
+                              fill="#dc2626"
+                            >
+                              <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
+                            </Svg>
+                          </TouchableOpacity>
+                        </View>
                       )}
                     </View>
                   ))
@@ -1392,6 +1410,39 @@ const ScreenEstudiantes = ({ navigation }) => {
     setSelectedCourseForPayment(curso);
     setPaymentAmount(0); // Inicializamos en 0
     setPaymentModalVisible(true);
+  };
+
+  const handleDeleteCourse = (curso) => {
+    Alert.alert(
+      "Eliminar registro",
+      `¿Estás seguro de que deseas eliminar todas las transacciones del curso "${curso.nombre}" para este estudiante? Esta acción no se puede deshacer.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from("transacciones")
+                .delete()
+                .eq("alumno_id", selectedStudent.id_estudiante)
+                .eq("curso_id", curso.id);
+              if (error) throw error;
+              Alert.alert("Listo", "El registro del curso ha sido eliminado.");
+              // Recargar los detalles del estudiante
+              handleViewDetails(selectedStudent);
+            } catch (err) {
+              console.error("Error deleting course record:", err);
+              Alert.alert(
+                "Error",
+                "No se pudo eliminar el registro del curso.",
+              );
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleProcessPayment = async () => {
@@ -1703,6 +1754,7 @@ const ScreenEstudiantes = ({ navigation }) => {
         details={studentDetails}
         loading={loadingDetails}
         onMakePayment={handleOpenPaymentModal}
+        onDeleteCourse={handleDeleteCourse}
       />
 
       {/* Modal simple para ingresar abono */}
@@ -4732,11 +4784,42 @@ const TablaEgresos = ({ onEdit, refreshTrigger, dateFilter }) => {
     }
   };
 
-  // Función para refrescar con pull-to-refresh
   const onRefresh = async () => {
     setRefreshing(true);
     await handleFetch();
     setRefreshing(false);
+  };
+
+  const handleDelete = (egreso) => {
+    Alert.alert(
+      "Eliminar egreso",
+      `¿Estás seguro de que deseas eliminar el egreso "${egreso.nombre_egreso || egreso.nombre}"? Esta acción no se puede deshacer.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { error, count } = await supabase
+                .from("egresos")
+                .delete({ count: "exact" })
+                .eq("id", egreso.id);
+              if (error) throw error;
+              if (count === 0) throw new Error("No se encontró el registro.");
+              await handleFetch();
+              Alert.alert(
+                "Eliminado",
+                "El egreso ha sido eliminado correctamente.",
+              );
+            } catch (err) {
+              console.error("Error deleting egreso:", err);
+              Alert.alert("Error", "No se pudo eliminar el egreso.");
+            }
+          },
+        },
+      ],
+    );
   };
 
   // Recargar datos cuando refreshTrigger cambia
@@ -5008,7 +5091,7 @@ const TablaEgresos = ({ onEdit, refreshTrigger, dateFilter }) => {
 
                       <View
                         style={{ flex: 1 }}
-                        className="p-3 flex-row justify-center items-center"
+                        className="p-3 flex-row justify-center items-center gap-3"
                       >
                         <TouchableOpacity onPress={() => onEdit(egreso)}>
                           <Svg
@@ -5018,6 +5101,16 @@ const TablaEgresos = ({ onEdit, refreshTrigger, dateFilter }) => {
                             fill="#3b82f6"
                           >
                             <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                          </Svg>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDelete(egreso)}>
+                          <Svg
+                            height="20"
+                            viewBox="0 -960 960 960"
+                            width="20"
+                            fill="#dc2626"
+                          >
+                            <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
                           </Svg>
                         </TouchableOpacity>
                       </View>
@@ -5142,6 +5235,38 @@ const TablaIngresos = ({ onEdit, refreshTrigger, dateFilter }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDelete = (ingreso) => {
+    Alert.alert(
+      "Eliminar ingreso",
+      `¿Estás seguro de que deseas eliminar el ingreso "${ingreso.nombre_ingreso}"? Esta acción no se puede deshacer.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { error, count } = await supabase
+                .from("ingresos")
+                .delete({ count: "exact" })
+                .eq("id_ingresos", ingreso.id_ingresos);
+              if (error) throw error;
+              if (count === 0) throw new Error("No se encontró el registro.");
+              await handleFetch();
+              Alert.alert(
+                "Eliminado",
+                "El ingreso ha sido eliminado correctamente.",
+              );
+            } catch (err) {
+              console.error("Error deleting ingreso:", err);
+              Alert.alert("Error", "No se pudo eliminar el ingreso.");
+            }
+          },
+        },
+      ],
+    );
   };
 
   useEffect(() => {
@@ -5442,7 +5567,13 @@ const TablaIngresos = ({ onEdit, refreshTrigger, dateFilter }) => {
                         {currencyFormatter.format(ingreso.monto_ingreso)}
                       </Text>
                       <View
-                        style={{ flex: 1, alignItems: "center" }}
+                        style={{
+                          flex: 1,
+                          alignItems: "center",
+                          flexDirection: "row",
+                          justifyContent: "center",
+                          gap: 12,
+                        }}
                         className="p-3"
                       >
                         <TouchableOpacity onPress={() => onEdit(ingreso)}>
@@ -5453,6 +5584,16 @@ const TablaIngresos = ({ onEdit, refreshTrigger, dateFilter }) => {
                             fill="#6366f1"
                           >
                             <Path d="M200-200h56l345-345-56-56-345 345v56Zm572-403L602-771l56-56q23-23 56.5-23t56.5 23l56 56q23 23 23 56.5T849-602l-57 57Zm-58 59L290-120H120v-170l424-424 170 170Z" />
+                          </Svg>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDelete(ingreso)}>
+                          <Svg
+                            height="20"
+                            viewBox="0 -960 960 960"
+                            width="20"
+                            fill="#dc2626"
+                          >
+                            <Path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
                           </Svg>
                         </TouchableOpacity>
                       </View>
