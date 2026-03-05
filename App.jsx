@@ -37,11 +37,9 @@ import * as Clipboard from "expo-clipboard";
 import "./global.css";
 
 import Svg, { Path } from "react-native-svg";
-import Ripple from "react-native-material-ripple";
 import { LineChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import { Dropdown } from "react-native-element-dropdown";
-import { BlurView } from "expo-blur";
 import Slider from "@react-native-community/slider";
 import { Calendar, LocaleConfig } from "react-native-calendars";
 import * as Print from "expo-print";

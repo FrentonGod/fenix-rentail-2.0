@@ -16,13 +16,11 @@ import {
   ActivityIndicator,
   Switch,
   Platform,
-  TouchableWithoutFeedback,
   Keyboard,
   SafeAreaView,
   Alert,
   Dimensions,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
 import equal from "fast-deep-equal";
 import { supabase } from "../../lib/supabase";
 import { Dropdown } from "react-native-element-dropdown";
