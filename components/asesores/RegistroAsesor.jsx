@@ -24,7 +24,6 @@ import {
 } from "react-native";
 import { supabase } from "../../lib/supabase";
 import Svg, { Path } from "react-native-svg";
-import equal from "fast-deep-equal";
 import * as ImagePicker from "expo-image-picker";
 import { decode } from "base64-arraybuffer";
 
