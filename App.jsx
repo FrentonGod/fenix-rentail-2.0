@@ -39,7 +39,7 @@ import "./global.css";
 import Svg, { Path } from "react-native-svg";
 import { LineChart } from "react-native-gifted-charts";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
-import { Dropdown } from "react-native-element-dropdown";
+import { Dropdown } from "react-native-element-dropdown"
 import Slider from "@react-native-community/slider";
 import { Calendar, LocaleConfig } from "react-native-calendars";
 import * as Print from "expo-print";
@@ -103,7 +103,7 @@ function AppScreens() {
         end={{ x: 1, y: 0 }}
         style={{ flex: 1 }}
       >
-        <SafeAreaView style={{}} className={`flex-1`}>
+        <SafeAreaView style={{flex: 1}}>
           <Drawer.Navigator
             drawerContent={(props) => <CustomDrawerContent {...props} />}
             screenOptions={{
