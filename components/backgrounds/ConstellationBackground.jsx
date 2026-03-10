@@ -1,25 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Platform } from "react-native";
-import Svg, {
-  Defs,
-  LinearGradient as SvgLinearGradient,
-  Stop,
-  Rect,
-  Circle,
-  Line,
-} from "react-native-svg";
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Rect, Circle, Line } from 'react-native-svg';
 
 // Ligero fondo tipo "constelación": puntos y líneas con sutil animación
 // Pensado para ser absolutamente posicionado detrás de contenido, sin capturar toques
-export default function ConstellationBackground({
-  width = 800,
-  height = 600,
-  color = "#6F09EA",
-}) {
-  const nodeCount = Math.min(
-    30,
-    Math.max(18, Math.floor((width * height) / 35000)),
-  ); // escala con tamaño
+export default function ConstellationBackground({ width = 800, height = 600, color = '#6F09EA' }) {
+  const nodeCount = Math.min(30, Math.max(18, Math.floor((width * height) / 35000))); // escala con tamaño
   const maxLinkDist = Math.min(width, height) / 6; // distancia máxima para conectar
   const speed = 0.15; // velocidad de oscilación
 
@@ -38,10 +24,7 @@ export default function ConstellationBackground({
   }
 
   useEffect(() => {
-    const interval = setInterval(
-      () => setTick((t) => t + 1),
-      Platform.OS === "web" ? 50 : 80,
-    );
+    const interval = setInterval(() => setTick((t) => t + 1), Platform.OS === 'web' ? 50 : 80);
     return () => clearInterval(interval);
   }, []);
 
@@ -73,7 +56,7 @@ export default function ConstellationBackground({
   }, [animated, maxLinkDist]);
 
   const bgFrom = `${color}20`; // 12% opacidad
-  const bgTo = `${color}05`; // 2% opacidad
+  const bgTo = `${color}05`;   // 2% opacidad
   const dot = color;
   const line = color;
 
@@ -104,15 +87,8 @@ export default function ConstellationBackground({
 
       {/* Nodos */}
       {animated.map((n, idx) => (
-        <Circle
-          key={`c-${idx}`}
-          cx={n.x}
-          cy={n.y}
-          r={n.r}
-          fill={dot}
-          fillOpacity={0.7}
-        />
-      ))}
+        <Circle key={`c-${idx}`} cx={n.x} cy={n.y} r={n.r} fill={dot} fillOpacity={0.7} />)
+      )}
     </Svg>
   );
 }

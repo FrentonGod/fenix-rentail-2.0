@@ -8,6 +8,7 @@ import {
   TouchableWithoutFeedback,
   useWindowDimensions,
   ScrollView,
+  Image,
 } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import * as Linking from "expo-linking";

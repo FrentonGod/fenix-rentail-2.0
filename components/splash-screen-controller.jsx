@@ -1,6 +1,6 @@
-import { useEffect } from "react";
-import * as SplashScreen from "expo-splash-screen";
-import { useAuthContext } from "../hooks/use-auth-context";
+import { useEffect } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
+import { useAuthContext } from '../hooks/use-auth-context';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 

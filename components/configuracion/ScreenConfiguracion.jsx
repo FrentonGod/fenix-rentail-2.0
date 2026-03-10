@@ -8,12 +8,14 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Platform,
   Modal,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { decode } from "base64-arraybuffer";
 import { supabase } from "../../lib/supabase";
 import { useAuthContext } from "../../hooks/use-auth-context";
+import Svg, { Path } from "react-native-svg";
 
 export default function ScreenConfiguracion() {
   const { session, profile, refreshProfile } = useAuthContext();

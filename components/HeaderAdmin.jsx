@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
   Image,
   Pressable,
+  StyleSheet,
   useWindowDimensions,
   Platform,
   Modal,
@@ -128,10 +129,10 @@ function HeaderAdmin({
                 style={{
                   opacity: onLogout ? 1 : 0,
                   width: Math.round(
-                    (isSmall ? 40 : isTablet ? 52 : 56) * scale,
+                    (isSmall ? 40 : isTablet ? 52 : 56) * scale
                   ),
                   height: Math.round(
-                    (isSmall ? 40 : isTablet ? 52 : 56) * scale,
+                    (isSmall ? 40 : isTablet ? 52 : 56) * scale
                   ),
                 }}
               />
@@ -140,10 +141,10 @@ function HeaderAdmin({
                 className="rounded-full bg-white/20 items-center justify-center"
                 style={{
                   width: Math.round(
-                    (isSmall ? 40 : isTablet ? 52 : 56) * scale,
+                    (isSmall ? 40 : isTablet ? 52 : 56) * scale
                   ),
                   height: Math.round(
-                    (isSmall ? 40 : isTablet ? 52 : 56) * scale,
+                    (isSmall ? 40 : isTablet ? 52 : 56) * scale
                   ),
                 }}
               >
@@ -151,7 +152,7 @@ function HeaderAdmin({
                   className="text-white font-extrabold"
                   style={{
                     fontSize: Math.round(
-                      (isSmall ? 14 : isTablet ? 16 : 18) * scale,
+                      (isSmall ? 14 : isTablet ? 16 : 18) * scale
                     ),
                   }}
                 >
