@@ -48,6 +48,7 @@ import * as Print from "expo-print";
 import { shareAsync } from "expo-sharing";
 import * as FileSystem from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
+import { File, Directory, Paths } from "expo-file-system";
 
 import { useFocusEffect } from "@react-navigation/native";
 import {
